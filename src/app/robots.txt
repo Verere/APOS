@@ -1,0 +1,6 @@
+# Global crawler rules
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+
+Sitemap: https://quickordering.online/sitemap.xml

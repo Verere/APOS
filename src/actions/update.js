@@ -1,0 +1,188 @@
+"use server";
+import {redirect } from "next/navigation";
+import connectToDB from "@/utils/connectDB";
+import Subscription from "@/models/subscription"
+// import Hotel from "@/models/hotel"
+import Store from '@/models/store'
+import Menu from "@/models/menu"
+import Location from "@/models/location"
+import MenuCategory from "@/models/menuCategory"
+import MenuStock from "@/models/menuStock"
+import Group from "@/models/group"
+import Product from "@/models/product"
+
+import { revalidatePath } from "next/cache";
+import { signIn } from "@/auth";
+import { hash } from "bcryptjs";
+import User  from '@/models/user';
+import  Sales  from '@/models/sales';
+import Order  from '@/models/order';
+
+//update sales qty
+export async function updateSalesAction(id, qty, price, path) {
+    await connectToDB();
+    let Qty = parseInt(qty) 
+    let newQty =  Qty += 1
+    await Sales.findOneAndUpdate(
+      {
+        _id: id,
+      },
+      {
+       qty:  newQty,
+       amount: price*newQty,
+
+      },
+      { new: true }
+    );
+  
+    revalidatePath(path);
+  }
+//update sales qty
+export async function updateItemStock(id, qty, totalValue, path) {
+ console.log(id, qty, totalValue,'d')
+    await connectToDB();
+  
+    await Product.findOneAndUpdate(
+      {
+        _id: id,
+      },
+      {
+       qty,
+       totalValue
+
+      },
+      { new: true }
+    );
+  
+    revalidatePath(path);
+  }
+export async function updateSalesCancel(id, path) {
+    await connectToDB();
+ 
+    await Sales.findOneAndUpdate(
+      {
+        _id: id,
+      },
+      {
+        isCancelled:  true,
+
+      },
+      { new: true }
+    );
+  
+    revalidatePath(path);
+  }
+export async function updateEodCancel(id, ) {
+    await connectToDB();
+ 
+    await Sales.findOneAndUpdate(
+      {
+        _id: id,
+      },
+      {
+        isCancelled:  true,
+
+      },
+      { new: true }
+    );
+  
+  }
+//update order suspended
+export async function updateSuspendOrder(id) {
+    await connectToDB();
+   
+    await Order.findOneAndUpdate(
+      {
+        _id: id,
+      },
+      {
+        status:"Suspended",
+       isSuspended: true
+      },
+      { new: true }
+    );
+  
+  }
+//update order canceled
+export async function updateCancelOrder(id) {
+    await connectToDB();
+   
+    await Order.findOneAndUpdate(
+      {
+        _id: id,
+      },
+      {
+        status:"Cancelled",
+       isCancelled: true
+      },
+      { new: true }
+    );
+  
+  }
+//update order completed
+export async function updateCompletedOrder(id) {
+    await connectToDB();
+   
+    await Order.findOneAndUpdate(
+      {
+        _id: id,
+      },
+      {
+        status:"Completed",
+       isCompleted: true
+      },
+      { new: true }
+    );
+  
+  }
+export async function updateCompletedOrderDetails(id,amountPaid, bal) {
+  console.log("id",id, amountPaid, "bal",bal)
+    await connectToDB();
+   
+    await Order.findOneAndUpdate(
+      {
+        _id: id,
+      },
+      {
+        status:"Completed",
+       isCompleted: true, 
+       amountPaid,
+       bal
+      },
+      { new: true }
+    );
+  
+  }
+//update order completed
+export async function updateMenuStock(idd, qtyy, balanceStock,  ) {
+  await connectToDB();
+   
+    await MenuStock.findOneAndUpdate(
+      {
+        _id: idd,
+      },
+      {
+   
+   qty: qtyy, 
+   balanceStock, 
+      },
+      { new: true }
+    );
+  
+  }
+//update order completed
+export async function updateOrderAmount(idd,  amountTotal ) {
+  await connectToDB();
+   
+    await Order.findOneAndUpdate(
+      {
+        _id: idd,
+      },
+      {
+   
+    amount:amountTotal
+      },
+      { new: true }
+    );
+  
+  }
