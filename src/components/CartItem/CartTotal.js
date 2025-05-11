@@ -20,11 +20,9 @@ useEffect(()=>{
   const getPayment= async()=>{
  
   //  const Payments = await fetchPaymentByOrder(order?._id)
-   console.log("fp", pays)
-   console.log("rct", order.orderNum )
    let allPayments=[]
-    allPayments =  pays.map((i) => i.amountPaid)  
-       const paymentt = allPayments.reduce((acc, item) => 
+    allPayments =  pays?.map((i) => i.amountPaid)  
+       const paymentt = allPayments?.reduce((acc, item) => 
        acc + (item)
        ,0)
        setPayment(paymentt)

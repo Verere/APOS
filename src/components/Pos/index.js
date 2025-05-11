@@ -112,8 +112,8 @@ const handleCancel= async(id)=>{
 useEffect(()=>{
   const getpayments=async()=>{
     let allPayments=[]
-    allPayments =  pays.map((i) => i.amountPaid)  
-       const paymentt = allPayments.reduce((acc, item) => 
+    allPayments =  pays?.map((i) => i.amountPaid)  
+       const paymentt = allPayments?.reduce((acc, item) => 
        acc + (item)
        ,0)
        setPayment(paymentt)

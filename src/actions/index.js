@@ -213,6 +213,7 @@ if(order  ==="newOrder")updateSuspendOrder(orderId)
 export const addSales = async (prvState, formData) => {
   const {order, slug, orderNum, itemId, barcode, item, qty, price, amount, soldBy, stock, bDate, totalOrder, status, path} =
     Object.fromEntries(formData);
+    console.log(order, slug, orderNum, itemId, barcode, item, qty, price, amount, soldBy, stock, bDate, totalOrder,)
      const Payments = await fetchPaymentByOrder(order)
    
     if(Payments.length !== 0)return{error:"Payment has been taken for this order. Please create a new order"}
