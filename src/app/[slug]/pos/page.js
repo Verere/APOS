@@ -1,28 +1,29 @@
-import { FetchCategory, fetchOneOrder, fetchSalesByOrderId, fetchBDate, fetchPaymentByOrder, fetchSlug, fetchAllOrders, fetchCategory, fetchProducts } from '@/actions/fetch';
+import { FetchCategory, fetchOneOrder, fetchSearchedProducts, fetchSalesByOrderId, fetchBDate, fetchPaymentByOrder, fetchSlug, fetchAllOrders, fetchCategory, fetchProducts } from '@/actions/fetch';
 import PosPage from '@/components/Pos';
 
 
 const Pos = async({params, searchParams})=>{
     const {slug} = await params
     const {q,o,category} = await searchParams
-     const menus=await fetchProducts(slug)
     const orderRcpt=  await fetchOneOrder(slug)
     const getHotel = await fetchSlug(slug)
-    const fetchOrders = await fetchAllOrders(slug, q, )   
+    const fetchOrders = await fetchAllOrders(slug, )   
     const categories  = await FetchCategory(slug)  
-    console.log('r', orderRcpt)
     
-    let sales;
-    let payment
+     let menus;
+     let sales;
+     let payment
     
-    if(o){
-        sales=await fetchSalesByOrderId(o)
-        payment=await fetchPaymentByOrder(o)
+    if(q){
+         menus  = await fetchSearchedProducts(slug, q)  
+        // sales=await fetchSalesByOrderId(o)
+        // payment=await fetchPaymentByOrder(o)
         
     }else{
-        sales=  await fetchSalesByOrderId(orderRcpt[0]?._id) 
-        // if(sales === undefined){ sales= []}
-        payment= await fetchPaymentByOrder(orderRcpt[0]?._id) 
+         menus=await fetchProducts(slug)
+        // sales=  await fetchSalesByOrderId(orderRcpt[0]?._id) 
+        // // if(sales === undefined){ sales= []}
+        // payment= await fetchPaymentByOrder(orderRcpt[0]?._id) 
         // if(payment === undefined){ payment = []}
        
 
@@ -33,7 +34,8 @@ const Pos = async({params, searchParams})=>{
        <PosPage 
        menus={menus} 
        getHotel={getHotel} slug={slug} 
-       orderRcpt={orderRcpt} sales={sales} 
+       orderRcpt={orderRcpt} 
+       sales={sales} 
        pays={payment}
        orders={fetchOrders}
        categories={categories}

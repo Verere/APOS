@@ -7,6 +7,7 @@ export const CartContext = createContext();
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
   const [order, setOrder] = useState([]);
+  const [codeItems, setCodeItems] = useState([]);
   const [prvOrder, setPrvOrder] = useState([]);
   const [currentOrder, setCurrentOrder]= useState(true)
 const [cpayment, setCPayment] = useState(0)
@@ -109,7 +110,8 @@ const [cpayment, setCPayment] = useState(0)
         setOrderToState,
         prvOrder, setPrvOrder,
         currentOrder, setCurrentOrder,
-        cpayment, setCPayment
+        cpayment, setCPayment,
+        codeItems, setCodeItems
       }}
       >        
       <div >{children}</div>

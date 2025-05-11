@@ -22,7 +22,7 @@ import { createSubAccount } from "./stack/sub";
 import { v4 as uuidv4 } from 'uuid'
 import moment from "moment";
 import { fetchCountOrder, fetchLatestStockItem, fetchPaymentByOrder, fetchProductById, fetchSalesByOrderId } from "./fetch";
-import { updateOrderAmount, updateSalesAction, updateItemStock, updateMenuStock, updateCompletedOrderDetails, updateSuspendOrder } from "./update";
+import { updateOrderAmount, updateSalesAction, updateItemStock, updateMenuStock, updateCompletedOrderDetails, updateSuspendOrder, updateProduct } from "./update";
 
 
 
@@ -100,20 +100,25 @@ console.log('sub',slug, sub, startDate, endDate)
 };
 
 export const addProduct = async (prvState, formData) => {
-  const { name, barcode, price, qty, unit, category,  slug, path } =
+  const {up, id, name, barcode, price, qty, category,  slug, path } =
     Object.fromEntries(formData);
-
     try {
+      if(up==="true"){
+await updateProduct(id, price, qty, category, barcode)
+return{success:true}
+      }else{
     connectToDB();
 
     const newProduct = new Product({
-      name, barcode, price,  qty, unit, category, slug, 
+      name, barcode, price,  qty, category, slug, 
     
     });
 
     await newProduct.save();
     revalidatePath(path);
     return{success:true}
+  }
+
   } catch (err) {
     console.log(err);
     return{error:"Failed to create product!"};

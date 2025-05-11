@@ -37,9 +37,9 @@ useEffect(()=>{
 
 useEffect(() => {
     const getTotal = () => {     
-      const newData= cart   
+      // const newData= cart   
       let newCartItems=[]
-      newCartItems =  newData.map((i) =>
+      newCartItems =  cart?.map((i) =>
         i.amount)
     
           if(cart?.length > 0){

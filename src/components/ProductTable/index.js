@@ -37,7 +37,7 @@ await updateProd(id, path)
 return(
    
 
-        <div className="w-full mt-3 overflow-y-scroll overflow-x-scroll">
+        <div className="w-full mt-3 overflow-y-scroll overflow-x-scroll uppercase font-bold">
         <Table.Root layout="auto" variant="surface">
     <Table.Header>
       
@@ -64,7 +64,7 @@ return(
         <Table.Cell>{patient?.qty}</Table.Cell>
         <Table.Cell>
        
-          <button   className="p-2  bg-blue-500 text-white font-bold rounded-lg">
+          <button   className="p-2  bg-blue-500 text-white font-bold rounded-lg" onClick={()=>replace(`/${slug}/dashboard/products?id=${patient._id}`)}>
                       <FaEdit/>
 
                       </button>

@@ -186,3 +186,20 @@ export async function updateOrderAmount(idd,  amountTotal ) {
     );
   
   }
+//update order completed
+export async function updateProduct(idd,  price, qty, category, barcode ) {
+  console.log('updtn',idd, price)
+  await connectToDB();
+   
+    await Product.findOneAndUpdate(
+      {
+        _id: idd,
+      },
+      {
+   
+        price, qty, category, barcode
+      },
+      { new: true }
+    );
+  
+  }

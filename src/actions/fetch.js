@@ -55,21 +55,37 @@ export async function fetchMenuBySku(hotelId, sku, location) {
     }
   }
   // fetch menu query
-  export async function fetchMenuSearch(storeid, location, q) {
+  export async function fetchSearchedProducts(slug,  q) {
     const regex = new RegExp(q, "i");
     await connectToDB();
   
     try {
       connectToDB();
       if(q){
-        const result = await Menu.find({hotelId:storeid, location, menu: { $regex: regex }})
+        const result = await Product.find({slug,  name: { $regex: regex }})
         return JSON.parse(JSON.stringify(result));
       }
     
      
     } catch (err) {
       console.log(err);
-      return{error:"Failed to fetch menu"};
+      return{error:"Failed to fetch product"};
+    }
+  }
+  // fetch menu query
+  export async function fetchCodeProduct(slug,  code) {
+    console.log('s', slug, code)
+    await connectToDB();
+  
+    try {
+      connectToDB();
+        const result = await Product.find({slug,  barcode: code})
+        return JSON.parse(JSON.stringify(result));
+    
+     
+    } catch (err) {
+      console.log(err);
+      return{error:"Failed to fetch product"};
     }
   }
   // fetch menustock query by location

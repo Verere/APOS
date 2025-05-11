@@ -27,9 +27,9 @@ const TopBar = ({showNav, setShowNav}) => {
       <h1 onClick={()=>replace(`/${slug}/pos`)} className="text-xl" >UZ Mall</h1>
         </div>
     
-     <ul className="flex mr-3 text-white justify-between items-center w-1/2 md:hidden">
+     <ul className="flex mr-3 text-white justify-between items-center w-1/2 md:hidden uppercase">
       <Link href={`/${slug}/pos`}><li>POS</li></Link>
-      <Link href={`/${slug}/dashboard`}><li>Sales</li></Link>
+      {/* <Link href={`/${slug}/dashboard`}><li>Sales</li></Link> */}
       <Link href={`/${slug}/dashboard/payments`}><li>Payments</li></Link>
       <Link href={`/${slug}/dashboard/categories`}><li>Categories</li></Link>
       <Link href={`/${slug}/dashboard/products`}><li>Products</li></Link>

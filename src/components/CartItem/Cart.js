@@ -21,9 +21,9 @@ const [total, setTotal] = useState(0)
 
 useEffect(() => {
     const getTotal = () => {  
-  const newData= cart   
+  // var newData= cart   
   let newCartItems=[]
-  newCartItems =  newData.map((i) =>
+  newCartItems =  cart?.map((i) =>
     i.amount)
 
       if(cart?.length > 0){
