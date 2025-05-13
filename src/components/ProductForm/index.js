@@ -89,7 +89,7 @@ getProd()
 
 useEffect(()=>{
   const getTotal = async()=>{
-    if(qty &&  price ){
+    if(qty &&  price && price.length && qty.length ){
       const totals = parseInt(qty)* parseInt(price)
       setTotal(totals)
     }
