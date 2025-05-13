@@ -45,7 +45,6 @@ useEffect(()=>{
             leaveTo="-translate-x-full"
             >
 
-              <Sidebar showNav={showNav} setShowNav={setShowNav}/>
             </Transition>
           
              <div className={`transition-all  duration-[400ms]  ${showNav && !isMobile ? "pl-42": ''}`}>

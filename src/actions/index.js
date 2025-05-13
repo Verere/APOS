@@ -100,17 +100,18 @@ console.log('sub',slug, sub, startDate, endDate)
 };
 
 export const addProduct = async (prvState, formData) => {
-  const {up, id, name, barcode, price, qty, category,  slug, path } =
+  const {up, id, name, barcode, price, qty, category, totalValue, slug, path } =
     Object.fromEntries(formData);
+  
     try {
       if(up==="true"){
-await updateProduct(id, price, qty, category, barcode)
+await updateProduct(id, price, qty, category, barcode, totalValue)
 return{success:true}
       }else{
     connectToDB();
 
     const newProduct = new Product({
-      name, barcode, price,  qty, category, slug, 
+      name, barcode, price,  qty, category,totalValue, slug, 
     
     });
 
@@ -213,7 +214,8 @@ if(order  ==="newOrder")updateSuspendOrder(orderId)
 export const addSales = async (prvState, formData) => {
   const {order, slug, orderNum, itemId, barcode, item, qty, price, amount, soldBy, stock, bDate, totalOrder, status, path} =
     Object.fromEntries(formData);
-    console.log(order, slug, orderNum, itemId, barcode, item, qty, price, amount, soldBy, stock, bDate, totalOrder,)
+    console.log('ss', itemId, barcode, item, qty, price, amount, soldBy, stock, bDate, totalOrder,path)
+    
      const Payments = await fetchPaymentByOrder(order)
    
     if(Payments.length !== 0)return{error:"Payment has been taken for this order. Please create a new order"}
@@ -241,7 +243,7 @@ export const addSales = async (prvState, formData) => {
         
         await  updateSalesAction(prvSales, qtyy, price, path)
         
-        
+         console.log(itemId, balanceStock, totalValue,'d1')
         await  updateItemStock(itemId, balanceStock, totalValue, path)
         await  updateMenuStock(itemId, qtyy, balanceStock, path)
         
@@ -261,6 +263,8 @@ export const addSales = async (prvState, formData) => {
    form.set("stock", stock)
    form.set("action", "Sales")
    form.set("qty", qty)
+   form.set("price", price)
+   form.set("path", path)
    form.set("balanceStock", balanceStock)
    form.set("user", soldBy)
 
@@ -793,21 +797,6 @@ export async function updateAcc(id, pathToRevalidate) {
   revalidatePath(pathToRevalidate);
 }
 
-//update post action
-export async function updateMenu(id, pathToRevalidate) {
-  await connectToDB();
-  await Menu.findOneAndUpdate(
-    {
-      _id: id,
-    },
-    {
-      isDeleted: true,     
-    },
-    { new: true }
-  );
-
-  revalidatePath(pathToRevalidate);
-}
 export async function updateOrder(id, payment) {
   console.log('p',id, payment)
   await connectToDB();
@@ -843,7 +832,7 @@ export async function updateStoreSub(slug, sub,starts, ends, reference) {
 export const addMenuStock= async (prevState, formData) => {
   const {slug, itemId, item,  action,  qty, balanceStock, price,  user,  bDate, path} =
     Object.fromEntries(formData);
-    console.log('p', path)
+    console.log('p', price, path)
     const prod = await fetchProductById(itemId)
  const pStock = prod[0].qty
  const balStock = parseInt(pStock) + parseInt(qty)

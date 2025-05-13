@@ -10,10 +10,9 @@ const ProductPage = async({params}) => {
 
      const patientList = await fetchProducts(slug) 
   return (
-    <>
-    <Heading title="All Products"/>
+    <div className='-mt-[56px]'>      
     <ProductTable products={patientList} slug={slug}/>
-    </>
+    </div>
   )
 }
 

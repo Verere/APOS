@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import ProductButton from "./ProductButton"
 import ProductTile from "./ProductTile"
-import { useContext, useEffect } from "react"
+import { useContext, useEffect, useState } from "react"
 import { GlobalContext } from "@/context"
 import { CartContext } from "@/context/CartContext"
 
@@ -11,8 +11,9 @@ import { CartContext } from "@/context/CartContext"
 
 
 export default function CommonListing({data, orderRcpt}){
-    const { cart,  order, setOrder,  currentOrder} =
+    const { cart,  order, setOrder,  currentOrder, } =
         useContext(CartContext);
+   
 
 useEffect(()=>{
     const setOrd = async()=>{
@@ -22,6 +23,7 @@ useEffect(()=>{
     }
     setOrd()
 })
+
     return(
         <section className="bg-white w-full">
                 <div className="grid grid-cols-2 gap-2 px-2 ">

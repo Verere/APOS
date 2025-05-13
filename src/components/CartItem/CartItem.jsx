@@ -12,7 +12,6 @@ import { updateSalesAction, updateSalesCancel } from '@/actions/update'
 const CartItemPanel = ({item}) => {
   const [state, formAction, isPending] = useActionState(addMenuStock, {});
   const { replace } = useRouter();
-  console.log('p', item)
 const {_id}= item
     const {cart, incr, decr, deleteItem} = useContext(CartContext)  
    const[loading, setLoading] = useState(false)

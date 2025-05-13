@@ -25,6 +25,7 @@ import TopBar from '../topbar/topbar';
 import moment from 'moment'
 import { MdSearch } from 'react-icons/md';
 import { useDebouncedCallback } from 'use-debounce';
+import CodeItem from '../CodeItem';
 
 const PosPage=({slug, menus, orderRcpt, sales, orders, getHotel, pays, categories})=>{
     const {busDate, location, setBusDate, user,  CanOrders, setCanOrders,
@@ -33,12 +34,12 @@ const PosPage=({slug, menus, orderRcpt, sales, orders, getHotel, pays, categorie
        cCanOrders, setCCanOrders,
        cCompOrders, setCCompOrders,
         cSuspOrders, setCSuspOrders, cartTotal, setHotel, setCPayment,total, payment, setPayment, setBal} = useContext(GlobalContext)
-    const { prvOrder, setPrvOrder, order, setOrder,currentOrder, setCurrentOrder, cpayment, setCodeItems
+    const { prvOrder, setPrvOrder, order, setOrder,currentOrder, setCurrentOrder, cpayment,  codeItems, setCodeItems
       } = useContext(CartContext)
     const [orderName, setOrderName]= useState("")
     // const [payment, setPayment]= useState([])
     const [loading, setLoading]= useState(false)
-   const [code, setCode]= useState('')
+
     var date = moment();
 const bDate = date.format('D/MM/YYYY')
     const searchParams = useSearchParams()
@@ -112,8 +113,8 @@ const handleCancel= async(id)=>{
 useEffect(()=>{
   const getpayments=async()=>{
     let allPayments=[]
-    allPayments =  pays?.map((i) => i.amountPaid)  
-       const paymentt = allPayments?.reduce((acc, item) => 
+    allPayments =  pays.map((i) => i.amountPaid)  
+       const paymentt = allPayments.reduce((acc, item) => 
        acc + (item)
        ,0)
        setPayment(paymentt)
@@ -177,22 +178,9 @@ useEffect(()=>{
          }
          getError()
        },[state])   
-     useEffect(()=>{
-         const getError = async()=>{
+      
+
      
-           if(code){
-            const item = await fetchCodeProduct(slug, code)
-            if(item){setCodeItems(item)}
-              console.log(codeItems)
-           }
-         }
-         getError()
-       },[code])   
-
-        const handleCode = async(e) => {
-      await    console.log(e.target.value)
-
-         }
         const handleSearch = useDebouncedCallback((e) => {
            const params = new URLSearchParams(searchParams);
        
@@ -211,6 +199,9 @@ useEffect(()=>{
          }, 300);
 
     return(
+      <>
+       
+    
         <div className='min-h-screen  w-screen overflow-x-hidden'>
           <TopBar slug={slug}/>
     {/* cart and menu */}
@@ -220,7 +211,7 @@ useEffect(()=>{
             <div className='w-full '>
               <div className="w-full flex justify-between align-center mx-auto px-4 border-b-black mb-2 bg-slate-100">
               <h2 className="flex justify-between text-xl font-semibold w-full "><span className='text-blue-800'>Sales Cart</span>  <span>Receipt No.: <span>{currentOrder? orderRcpt[0]?.orderNum: order?.orderNum}</span></span></h2>
-      <input type="hidden" autoFocus placeholder="Search Item" value={code} onChange={async(e)=>await setCode(e.target.value)}  className=" outline-none focus:border-none "/>     
+          
               </div>
             <ScrollArea type="always" scrollbars="vertical" style={{ height: 300 }}>
             <Cart cart={sales} />
@@ -315,12 +306,14 @@ useEffect(()=>{
    </div>
         {/* menu and cat panel */}
         <div className="sm:order-1 w-1/2 sm:w-full ">
-        <div className='border bg-slate-200  w-full mx-auto'>
+        <div className='flex justify-between items-center p-2 border bg-slate-200  w-full mx-auto'>
 
-                <div className="w-full flex items-center border mb-1 border-gray-400  rounded-lg p-2 mx-auto ">
+                <div className="flex items-center border border-gray-400 w-2/3  rounded-lg p-2 mx-auto ">
       <MdSearch />
-      <input type="text" placeholder="Search Item" onChange={(e)=>handleSearch(e)} name="name" className=" w-full outline-none focus:border-none "/>     
+      <input type="text" placeholder="Search Item" onChange={(e)=>handleSearch(e)} name="name" className=" outline-none focus:border-none "/>     
     </div>
+    <CodeItem order={orderRcpt} slug={slug} />
+
                 {/* <Flex direction="column"  >
                 <div className="uppercase text-sm font-bold mb-2 pl-1">
                      Categories
@@ -350,6 +343,8 @@ useEffect(()=>{
 
 </div>
 </div>
+      </>
+
     )
 }
 export default PosPage

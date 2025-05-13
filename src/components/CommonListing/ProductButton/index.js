@@ -15,8 +15,9 @@ export default function ProductButton({ item}) {
 
   var date = moment()
   const bDate = date.format('D/MM/YYYY')
-  const { cart,  order,} =
-    useContext(CartContext);
+
+     const { cart,  order, setOrder,  currentOrder,  codeItems, setCodeItems} =
+            useContext(CartContext);
     const {user, cartTotal}= useContext(GlobalContext)
   const pathname = usePathname();
   const router = useRouter();
@@ -24,6 +25,16 @@ export default function ProductButton({ item}) {
 
   const [state, formAction, isPending] = useActionState(addSales, {});
   const[loading, setLoading]= useState(false)
+
+  useEffect(()=>{
+    const getItem = async()=>{
+        if(codeItems && codeItems.length){
+      datas = codeItems
+        }else{datas=data}
+
+    }
+    getItem()
+},[codeItems])
 
   useEffect(()=>{
     const getError = async()=>{
@@ -92,7 +103,7 @@ const id = item._id
   return (
 
     <>
-     
+    
         <div>
           <form action={formAction}>  
           <input type="hidden" name="slug" value={order?.slug} />
@@ -127,6 +138,7 @@ const id = item._id
           </button>
           </form>
         </div>
+
     </>
   );
 }

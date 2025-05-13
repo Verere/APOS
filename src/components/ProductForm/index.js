@@ -42,6 +42,7 @@ const [price, setPrice] = useState('')
 const [code, setCode] = useState('')
 const [id, setId] =useState('')
 const [qty, setQty]= useState('')
+const [total, setTotal]=useState('')
 
  useEffect(()=>{
   const getState=()=>{
@@ -60,6 +61,7 @@ if(state.success){
  setUp(false)
  setQty('')
  setId('')
+ setTotal('')
 }
 }
 getState()
@@ -69,6 +71,7 @@ getState()
   const getProd = async ()=>{
     const params = new URLSearchParams(searchParams)
     const id = params.get('id')
+      // setTotal(prod[0]?.totalValue)
 
      if(id){
       const prod = await fetchProductById(id)
@@ -84,6 +87,18 @@ getState()
 getProd()
 },[searchParams])
 
+useEffect(()=>{
+  const getTotal = async()=>{
+    if(qty &&  price ){
+      const totals = parseInt(qty)* parseInt(price)
+      setTotal(totals)
+    }
+
+
+  }
+  getTotal()
+},[qty,price])
+
   return (
     <>
       <form action={formAction} className="w-full -mt-[56px]">
@@ -96,7 +111,7 @@ getProd()
       
             <input type="number" placeholder="Enter Price" name="price" value= {price}  onChange={async (e)=>await setPrice(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
             <input type="number" placeholder="Enter Qty" name="qty" value ={qty} onChange={async (e)=>await setQty(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
-            <input type="text" placeholder="Total Value" name="totalValue" className="border mx-auto mb-1 border-gray-400 p-2 w-full "/>
+            <input type="text" placeholder="Total Value" name="totalValue" value ={total} onChange={async (e)=>await setTotal(e.target.value)}  className="border mx-auto mb-1 border-gray-400 p-2 w-full "/>
             <select name="category" id="cat"  value={category} className="mx-auto mb-1 p-2 w-full " onChange={async (e)=>await setCategory(e.target.value)}>
           <option value="">Choose Category</option>
             {

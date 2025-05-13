@@ -18,7 +18,6 @@ const DashBoardPage =async({params}) => {
     const cancelled = await fetchOrdersBySlugCancelled(slug)
      const dailyOrders = await fetchOrdersBySlugandDate(slug)
      const products = await fetchProducts(slug)
-    console.log(orders.length,  dailyOrders.length, 'o')
   if(!user) redirect("/login")
   return (
    <>

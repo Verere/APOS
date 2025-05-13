@@ -39,7 +39,7 @@ export async function updateSalesAction(id, qty, price, path) {
   }
 //update sales qty
 export async function updateItemStock(id, qty, totalValue, path) {
- console.log(id, qty, totalValue,'d')
+ console.log(id, qty, totalValue, path,'d')
     await connectToDB();
   
     await Product.findOneAndUpdate(
@@ -187,8 +187,8 @@ export async function updateOrderAmount(idd,  amountTotal ) {
   
   }
 //update order completed
-export async function updateProduct(idd,  price, qty, category, barcode ) {
-  console.log('updtn',idd, price)
+export async function updateProduct(idd,  price, qty, category, barcode, totalValue ) {
+  console.log('updtn',idd, price, totalValue)
   await connectToDB();
    
     await Product.findOneAndUpdate(
@@ -197,7 +197,7 @@ export async function updateProduct(idd,  price, qty, category, barcode ) {
       },
       {
    
-        price, qty, category, barcode
+        price, qty, category, barcode, totalValue
       },
       { new: true }
     );
