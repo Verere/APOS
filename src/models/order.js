@@ -10,7 +10,7 @@ const OrderSchema = new mongoose.Schema({
    amount: {type: Number}, 
    amountPaid: {type: Number, default:0}, 
    bal: {type: Number}, 
-   bDate: {type: Date},
+   bDate: {type: String},
    soldBy:{type: String,   required: true},
    status:{type: String, default:'newOrder'},
    isSuspended:{type: Boolean, default:false},
