@@ -18,6 +18,8 @@ const Pos = async({params, searchParams})=>{
          menus  = await fetchSearchedProducts(slug, q)  
          sales=await fetchSalesByOrderId(o)
          payment=await fetchPaymentByOrder(o)
+         console.log('s',sales)
+         console.log('s',q, o)
         
     }else{
          menus=await fetchProducts(slug)
@@ -25,6 +27,7 @@ const Pos = async({params, searchParams})=>{
          if(sales === undefined){ sales= []}
      payment= await fetchPaymentByOrder(orderRcpt[0]?._id) 
          if(payment === undefined){ payment = []}
+         console.log('s',sales)
        
 
     }

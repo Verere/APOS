@@ -23,6 +23,7 @@ import { v4 as uuidv4 } from 'uuid'
 import moment from "moment";
 import { fetchCountOrder, fetchLatestStockItem, fetchPaymentByOrder, fetchProductById, fetchSalesByOrderId } from "./fetch";
 import { updateOrderAmount, updateSalesAction, updateItemStock, updateMenuStock, updateCompletedOrderDetails, updateSuspendOrder, updateProduct } from "./update";
+import Pos from './../app/[slug]/pos/page';
 
 
 
