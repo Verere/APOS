@@ -11,12 +11,12 @@ import { fetchLatestStockItem } from "@/actions/fetch";
 import { GlobalContext } from "@/context";
 import moment from 'moment'
 
-export default function ProductButton({ item}) {
+export default function ProductButton({ item, orderRcpt}) {
 
   var date = moment()
   const bDate = date.format('D/MM/YYYY')
 
-     const { cart,  order, setOrder,  currentOrder,  codeItems, setCodeItems} =
+     const { cart, order,   setOrder,  currentOrder, } =
             useContext(CartContext);
     const {user, cartTotal}= useContext(GlobalContext)
   const pathname = usePathname();
@@ -26,15 +26,7 @@ export default function ProductButton({ item}) {
   const [state, formAction, isPending] = useActionState(addSales, {});
   const[loading, setLoading]= useState(false)
 
-  useEffect(()=>{
-    const getItem = async()=>{
-        if(codeItems && codeItems.length){
-      datas = codeItems
-        }else{datas=data}
-
-    }
-    getItem()
-},[codeItems])
+ 
 
   useEffect(()=>{
     const getError = async()=>{
@@ -55,14 +47,7 @@ export default function ProductButton({ item}) {
 
 const id = item._id
 
-// const getQty = () => {
-//   const newData = [...(cart?.cartItems ?? [])];
-//   newData.forEach((items) => {
-//     if (items?.product === item._id) {
-//       setQuantity(items?.qty);
-//     }
-//   });
-// };
+
 
   useEffect(() => {
     const getQty = () => {

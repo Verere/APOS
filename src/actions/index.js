@@ -215,7 +215,7 @@ if(order  ==="newOrder")updateSuspendOrder(orderId)
 export const addSales = async (prvState, formData) => {
   const {order, slug, orderNum, itemId, barcode, item, qty, price, amount, soldBy, stock, bDate, totalOrder, status, path} =
     Object.fromEntries(formData);
-    console.log('ss', itemId, barcode, item, qty, price, amount, soldBy, stock, bDate, totalOrder,path)
+    console.log('ss',order, slug, item, itemId)
     
      const Payments = await fetchPaymentByOrder(order)
    

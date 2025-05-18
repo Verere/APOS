@@ -10,14 +10,13 @@ import { fetchCodeProduct,} from "@/actions/fetch";
 import { GlobalContext } from "@/context";
 import moment from 'moment'
 
-const CodeItem=({slug})=>{
+const CodeItem=({slug, menus})=>{
     
       var date = moment()
       const bDate = date.format('D/MM/YYYY')
     const [code, setCode]=useState('')
     const[item, setItem] = useState([])
-         const { cart, order,  currentOrder,  codeItems, setCodeItems} =
-                useContext(CartContext);
+        
         const {user, cartTotal}= useContext(GlobalContext)
       const pathname = usePathname();
       const router = useRouter();
@@ -28,6 +27,18 @@ const CodeItem=({slug})=>{
    const inputRef = useRef(null);
     const formRef = useRef(null);
 
+    const {  order, setOrder,  currentOrder, } =
+        useContext(CartContext);
+   
+
+useEffect(()=>{
+    const setOrd = async()=>{
+        if(currentOrder){
+        await    setOrder(orderRcpt[0])
+        }
+    }
+    setOrd()
+})
 
     
       useEffect(()=>{
@@ -49,11 +60,17 @@ const CodeItem=({slug})=>{
       useEffect(()=>{
              const getError = async()=>{
                if(code && code.length){
-                const items = await fetchCodeProduct(slug, code)
+                console.log(order,'ord')
+                
+                let tempOrders= [...menus]   
+                const items = tempOrders.filter(product=>product?.barcode===code)  
+                console.log(items,'it')
+                //  const items = await fetchCodeProduct(slug, code)
                 if (items && items.length) {
                  
                 await  setItem(items)
               }else{
+                toast.warn('no item with this barcode')
                 await setCode('')
             await setItem([])
               }
@@ -84,7 +101,7 @@ const CodeItem=({slug})=>{
                   <input ref={inputRef} type="text" autoFocus placeholder="scan barcode" onChange={async(e)=>await setCode(e.target.value)} value={code} className=" outline-none focus:border-none "/>     
       </div>
         <form ref={formRef}  action={formAction} >
-        <input type="hidden" name="slug" value={order?.slug} />
+        <input type="hidden" name="slug" value={slug} />
                   <input type="hidden" name="order" value={order?._id} />
                   <input type="hidden" name="orderNum" value={order?.orderNum} />
                   <input type="hidden" name="itemId" value={item[0]?._id} />

@@ -15,7 +15,7 @@ const CartItemPanel = ({item}) => {
 const {_id}= item
     const {cart, incr, decr, deleteItem} = useContext(CartContext)  
    const[loading, setLoading] = useState(false)
-    const { user, } = useContext(GlobalContext)
+    const { user, payment, setPayment, setBal} = useContext(GlobalContext)
     const pathname = usePathname()
     // if(!user)replace("/login")
 
@@ -31,8 +31,13 @@ const {_id}= item
     },[state])
 
 const handleCancel = async(item, pathname)=> {
-  await setLoading(true)
-  await updateSalesCancel(item, pathname)
+  if(payment){
+    toast.warn('Payment has been taken for this order. Create new Order')
+  }else{
+
+    await setLoading(true)
+    await updateSalesCancel(item, pathname)
+  }
 }
 
   return (

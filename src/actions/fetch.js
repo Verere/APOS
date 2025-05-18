@@ -479,6 +479,7 @@ export async function fetchSalesByMenuId(order) {
   }
   //fetch sales by orderId
 export async function fetchSalesByOrderId(order) {
+  console.log('fetch', order)
 
     await connectToDB();
     try {

@@ -37,7 +37,6 @@ const PosPage=({slug, menus, orderRcpt, sales, orders, getHotel, pays, categorie
     const { prvOrder, setPrvOrder, order, setOrder,currentOrder, setCurrentOrder, cpayment,  codeItems, setCodeItems
       } = useContext(CartContext)
     const [orderName, setOrderName]= useState("")
-    // const [payment, setPayment]= useState([])
     const [loading, setLoading]= useState(false)
 
     var date = moment();
@@ -137,7 +136,7 @@ useEffect(()=>{
         
         if(currentOrder){
        setOrder(orderRcpt[0])
-        
+        removeO
           const params = new URLSearchParams(searchParams)
           params.delete("o")
           router.refresh()
@@ -248,49 +247,12 @@ useEffect(()=>{
 
           </PopoverTrigger>
           <PopoverContent> 
-          <PaymentPage slug={slug} order={order} pays={pays} location={location} busDate={busDate} pathname={pathname}/>
+          <PaymentPage slug={slug} order={order} pays={pays} location={location} busDate={bDate} pathname={pathname}/>
                     </PopoverContent>
         </Popover>
-        <button onClick={()=>handleSuspend(order?._id)} className='bg-red-500/80 text-white px-2  py-1 rounded-lg uppercase' >
-            Suspend 
-        </button>
+       
               
-{/* 
-        <Popover>
-          <PopoverTrigger>
-          <button className='bg-orange-500 text-white px-2  py-1 rounded-lg uppercase'>
-        Credit
-        </button>  
 
-          </PopoverTrigger>
-          <PopoverContent> 
-          <CreditSales hotelId={hotelId} orderRcpt={orderRcpt} location={location} busDate={busDate} pathname={pathname}/>
-                    </PopoverContent>
-        </Popover>
-
-        <Popover>
-          <PopoverTrigger>
-          <button onClick={()=>getOrders()} className='bg-blue-100 text-blue-700 px-2  py-1 rounded-lg uppercase'>
-        Complimentary
-        </button> 
-
-          </PopoverTrigger>
-          <PopoverContent> 
-          <Complimentary hotelId={hotelId} orderRcpt={orderRcpt} location={location} busDate={busDate} pathname={pathname}/>
-                    </PopoverContent>
-        </Popover> */}
-{/* 
-        <Popover>
-          <PopoverTrigger>
-          <button className='bg-black/50 text-white px-2  py-1 rounded-lg uppercase'>
-          Docket
-        </button> 
-
-          </PopoverTrigger>
-          <PopoverContent> 
-          <PrintPage cart={sales}/>
-              </PopoverContent>
-        </Popover> */}
         <Popover>
           <PopoverTrigger>
           <a className='bg-black text-white px-2  py-1 rounded-lg uppercase'>Receipt</a>
@@ -312,7 +274,7 @@ useEffect(()=>{
       <MdSearch />
       <input type="text" placeholder="Search Item" onChange={(e)=>handleSearch(e)} name="name" className=" outline-none focus:border-none "/>     
     </div>
-    <CodeItem order={orderRcpt} slug={slug} />
+    <CodeItem order={orderRcpt} slug={slug} menus={menus} />
 
                 {/* <Flex direction="column"  >
                 <div className="uppercase text-sm font-bold mb-2 pl-1">

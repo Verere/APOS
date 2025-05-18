@@ -32,7 +32,7 @@ useEffect(()=>{
                     data.map(item =>(
                         <article className="relative flex flex-col border mb-2 cursor-pointer px-2 mt-2" key={item._id}>
                         <ProductTile item={item}/>
-                        <ProductButton  item={item} orderRcpt={orderRcpt}/>
+                        <ProductButton  item={item} order={orderRcpt}/>
                     </article>
                     ))                  
                     
