@@ -9,6 +9,7 @@ import { useFormState } from 'react-dom';
 import { fetchCodeProduct,} from "@/actions/fetch";
 import { GlobalContext } from "@/context";
 import moment from 'moment'
+import { useDebouncedCallback } from "use-debounce";
 
 const CodeItem=({slug, menus})=>{
     
@@ -57,27 +58,46 @@ useEffect(()=>{
         getError()
       },[state])
     
-      useEffect(()=>{
-             const getError = async()=>{
-               if(code && code.length){
-                console.log(order,'ord')
-                
-                let tempOrders= [...menus]   
-                const items = tempOrders.filter(product=>product?.barcode===code)  
+       const handleSearch = useDebouncedCallback((e) => {
+             
+                 if (e.target.value) {
+                      let tempOrders= [...menus]   
+                 console.log(tempOrders,'tord')
+                const items = tempOrders.filter(product=>product?.barcode===e.target.value)  
                 console.log(items,'it')
-                //  const items = await fetchCodeProduct(slug, code)
-                if (items && items.length) {
+                if (items && items.length) {                 
+                  setItem(items)
+                  e.target.value=""
+                 } else {
+                   toast.warn('no item with this barcode')
+                 setCode('')
+                 e.target.value=""
+                 }
+                }
+               }, 300);
+
+      // useEffect(()=>{
+      //        const getError = async()=>{
+      //          if(code && code.length){
                  
-                await  setItem(items)
-              }else{
-                toast.warn('no item with this barcode')
-                await setCode('')
-            await setItem([])
-              }
+      //            let tempOrders= [...menus]   
+      //            console.log(tempOrders,'tord')
+      //           const items = tempOrders.filter(product=>product?.barcode===code)  
+      //           console.log(items,'it')
+      //           //  const items = await fetchCodeProduct(slug, code)
+      //           if (items && items.length) {
+                 
+      //           await  setItem(items)
+
+      //         }else{
+      //           toast.warn('no item with this barcode')
+      //           await setCode('')
+      //       await setItem([])
+      //         }
                 
-             }}
-             getError()
-           },[code]) 
+      //        }}
+      //        getError()
+      //      },[code]) 
 
      
     
@@ -98,7 +118,7 @@ useEffect(()=>{
 
       <div className="flex items-center border border-gray-400 w-1/3 rounded-lg p-2 mr-3 ">
 
-                  <input ref={inputRef} type="text" autoFocus placeholder="scan barcode" onChange={async(e)=>await setCode(e.target.value)} value={code} className=" outline-none focus:border-none "/>     
+                  <input ref={inputRef} type="text" name="code" autoFocus placeholder="scan barcode" onChange={(e)=>handleSearch(e)} className=" outline-none focus:border-none "/>     
       </div>
         <form ref={formRef}  action={formAction} >
         <input type="hidden" name="slug" value={slug} />
