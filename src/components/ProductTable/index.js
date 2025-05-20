@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Table } from "@radix-ui/themes";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { updateProd, updateProdPrice } from "@/actions";
+import { fetchSearchedProducts } from "@/actions/fetch";
 import { FaEdit } from "react-icons/fa";
 import { useEffect, useState } from "react";
 import {
@@ -18,6 +19,8 @@ import { useDebouncedCallback } from "use-debounce";
 
 
 const ProductTable=({products, slug})=>{
+
+  const initialItems=[...products]
  
     const { replace } = useRouter();
     const pathname = usePathname()
@@ -25,11 +28,33 @@ const ProductTable=({products, slug})=>{
     const [qty, setQty] = useState(0)
     const [loading, setLoading]= useState(false)
     const [total, setTotal] = useState(0)
+    const [prod, setProd]= useState([])
+     const [code, setCode]=useState('')
+     const [item, setItem]=useState(initialItems)
    
     const searchParams = useSearchParams()
     const  handleUpdate =async(id, path)=>{
 await updateProd(id, path)
     }
+
+      //  const handleSearch = useDebouncedCallback((e) => {
+                   
+      //                  if (e.target.value) {
+      //                       let tempOrders= [...products]   
+      //                  console.log(tempOrders,'tord')
+      //                 const items = tempOrders.filter(product=>product?.barcode===e.target.value)  
+      //                 console.log(items,'it')
+      //                 if (items && items.length) {                 
+      //                   setItem(items)
+      //                   e.target.value=""
+      //                  } else {
+      //                    toast.warn('no item with this barcode')
+      //                  setCode('')
+      //                  e.target.value=""
+      //                  }
+      //                 }
+      //                }, 300);
+    
 
     const handleEdit=async(id, price, qty, path)=>{
       setLoading(true)
@@ -38,6 +63,9 @@ await updateProd(id, path)
      setPrice(0)
      setQty(0)
     }
+    useEffect(()=>{
+      if(code!=='')setItem(initialItems)
+    },[code])
 useEffect(()=>{
   const getTotal= async()=>{
           let tempOrders= [...products]      
@@ -55,22 +83,19 @@ await   setQty(counter)
 },[products])
 
 
-        const handleSearch = useDebouncedCallback((e) => {
-           const params = new URLSearchParams(searchParams);
+        const handleSearch = async(code) => {       
        
-       
-           if (e.target.value) {
-             e.target.value.length > 2 && params.set("q", e.target.value);
-           } else {
-             params.delete("q");
+           if (code && code.length) {
+             const items = await fetchSearchedProducts(slug, code)
+             console.log(items)
+               setItem(items)
+                      setCode("")
+                    } else{
+                      setItem(initialItems)
+                      setCode("")
            }
-           if(pathname){
-       
-             replace(`${pathname}?${params}`);
-           }else{
-             replace(`/?${params}`);
-           }
-         }, 300);
+          
+         }
 
 return(
    <>
@@ -83,9 +108,13 @@ return(
                     <p>Total Product :</p>
                    <p> {qty}</p>
                    </div>
-                <div className="flex items-center border border-gray-400 w-1/3  rounded-lg p-2 mx-auto ">
-                   <MdSearch />
-                   <input type="text" placeholder="Search Item" onChange={(e)=>handleSearch(e)} name="name" className=" outline-none focus:border-none "/>     
+                <div className="flex justify-between items-center border border-gray-400 w-1/3  pl-2 rounded-lg ">
+                   <input type="text" placeholder="Search Item" 
+                   onChange={(e)=>setCode(e.target.value)} 
+                   name="code" className="p-2 outline-none focus:border-none "/>  
+                   <button className="flex justify-between items-center bg-gray-400 p-2  rounded-r-lg"
+                   onClick={()=>handleSearch(code)}> 
+                    Search</button>  
                  </div>
                    </div>
         <div className="w-full overflow-y-scroll overflow-x-scroll uppercase font-bold">
@@ -106,7 +135,7 @@ return(
     </Table.Header>
   
     <Table.Body>
-     {products && products?.map((patient) => (
+     {item && item?.map((patient) => (
               
       <Table.Row key={patient?._id}>
         <Table.RowHeaderCell> {patient?.name}</Table.RowHeaderCell>
