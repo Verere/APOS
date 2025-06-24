@@ -122,7 +122,6 @@ export async function fetchMenuBySku(hotelId, sku, location) {
   
     // fetch menuStock item
     export async function fetchLatestStockItem(menuId) {
-      console.log(menuId)
       await connectToDB();
     
       try {
@@ -345,6 +344,22 @@ export async function fetchOneOrder(slug) {
       return{error:"Failed to fetch Order number!"};
     }
   }
+  //fetch order
+export async function fetchOrderItems(orderId) {
+  console.log(orderId)
+    await connectToDB();
+   
+    try {
+      connectToDB();
+      const result = await Order.find({orderId})
+  
+      return JSON.parse(JSON.stringify(result));
+    } catch (err) {
+      console.log(err);
+      return{error:"Failed to fetch Order number!"};
+    }
+  }
+ 
   
   //fetch order suspended
 export async function fetchSuspendedOrders(slug, bDate) {
@@ -499,7 +514,7 @@ export async function fetchAllPayments(slug) {
    
     try {
       connectToDB();
-      const result = await payments.find({bDate}).sort({'createdAt':'desc'})
+      const result = await payments.find({slug, bDate}).sort({'createdAt':'desc'})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -512,7 +527,6 @@ export async function fetchAllPayments(slug) {
 
  //fetch pment by orderId
  export async function fetchPaymentByOrder(order) {
-  console.log('o',order)
   await connectToDB();
  
   try {

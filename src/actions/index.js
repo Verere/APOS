@@ -21,7 +21,9 @@ import User  from '@/models/user';
 import { createSubAccount } from "./stack/sub";
 import { v4 as uuidv4 } from 'uuid'
 import moment from "moment";
-import { fetchCountOrder, fetchLatestStockItem, fetchPaymentByOrder, fetchProductById, fetchSalesByOrderId } from "./fetch";
+import { fetchCountOrder, fetchLatestStockItem, fetchPaymentByOrder, fetchProductById, fetchSalesByOrderId ,
+ fetchOrderItems
+} from "./fetch";
 import { updateOrderAmount, updateSalesAction, updateItemStock, updateMenuStock, updateCompletedOrderDetails, updateSuspendOrder, updateProduct } from "./update";
 import Pos from './../app/[slug]/pos/page';
 
@@ -297,9 +299,12 @@ export const addPayment = async (prvState, formData) => {
   const {slug, orderId, orderNum, orderAmount,amountPaid, bal, mop, user, bDate, path} =
     Object.fromEntries(formData);
    
+    let items;
   try {   
  const Payments = await fetchPaymentByOrder(orderId)
-
+const sales = await fetchSalesByOrderId(orderId)
+const orderItems = await fetchOrderItems(orderId)
+const oItems = orderItems?.items
 
  let allPayments=[]
  allPayments =  Payments.map((i) => i.amountPaid)
@@ -308,8 +313,13 @@ export const addPayment = async (prvState, formData) => {
      acc + (item)
      ,0)
 
- console.log("tp", amtTotal)
- console.log("tp", amountPaid)
+if(oItems && oItems.length){
+items = []
+}else{
+
+  items =sales
+
+}
   if(amtTotal===0 && amountPaid <= orderAmount || amountPaid <= (orderAmount - amtTotal)){
      connectToDB(); 
 
@@ -319,7 +329,7 @@ export const addPayment = async (prvState, formData) => {
    
       
       await newMenu.save();
-  await updateCompletedOrderDetails(orderId, amountPaid, bal)
+  await updateCompletedOrderDetails(orderId, amountPaid, bal, items)
       revalidatePath(path); 
       return{success:"Payment Succesfull"}}
       else if(amtTotal===orderAmount){

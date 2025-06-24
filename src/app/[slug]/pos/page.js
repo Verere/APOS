@@ -18,6 +18,7 @@ const Pos = async({params, searchParams})=>{
          menus  = await fetchSearchedProducts(slug, q)  
          sales=await fetchSalesByOrderId(o)
          payment=await fetchPaymentByOrder(o)
+         if(sales === undefined){ sales= []}
       
         
     }else{

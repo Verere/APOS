@@ -16,6 +16,11 @@ import {
 import { currencyFormat } from "@/utils/currency";
 import { MdSearch } from "react-icons/md";
 import { useDebouncedCallback } from "use-debounce";
+import BarcodePrinter from "../BarCodePrinter";
+import { updateBarcode } from "@/actions/update";
+import { toast } from "react-toastify";
+import { generateEAN13FromUUID } from "@/lib/genBarcode";
+
 
 
 const ProductTable=({products, slug})=>{
@@ -31,6 +36,7 @@ const ProductTable=({products, slug})=>{
     const [prod, setProd]= useState([])
      const [code, setCode]=useState('')
      const [item, setItem]=useState(initialItems)
+
    
     const searchParams = useSearchParams()
     const  handleUpdate =async(id, path)=>{
@@ -96,6 +102,24 @@ await   setQty(counter)
            }
           
          }
+         const handleBarcode = async(patient) => {   
+          setLoading(true)
+          const {_id, barcode} = patient
+          const id= _id
+          if (barcode && barcode.length ) {
+            setLoading(false)
+            toast.warn("This Product already has a barcode")
+          }else{
+              const barcodes = generateEAN13FromUUID();
+           const items=    await updateBarcode(id, barcodes, pathname)
+
+                setLoading(false)
+             toast.success("Barcode generated successfully")
+            
+
+           }
+          
+         }
 
 return(
    <>
@@ -131,6 +155,7 @@ return(
         <Table.ColumnHeaderCell>Update</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell>Delete</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell>Stock</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell>Print Barcode</Table.ColumnHeaderCell>
       </Table.Row>
     </Table.Header>
   
@@ -161,6 +186,24 @@ return(
                     </Table.Cell>
      
             <Table.Cell> <button className="bg-green-700 px-2 py-1 text-white font-bold rounded-lg" onClick={()=>replace(`/${slug}/dashboard/stock?id=${patient._id}`)}>Add Stock</button></Table.Cell>
+            <Table.Cell> <button className="bg-gray-700 px-2 py-1 text-white font-bold rounded-lg" onClick={()=>handleBarcode(patient)}>{loading? 'Generating...' :  'Generate Barcode'}</button></Table.Cell>
+          
+            <Table.Cell> 
+             
+                     
+                            
+              
+                      <Popover>
+                        <PopoverTrigger>
+                        <a className='bg-black text-white px-2  py-1 rounded-lg uppercase block'>Print Barcode</a>
+              
+              
+                        </PopoverTrigger>
+                        <PopoverContent> 
+              <BarcodePrinter product={patient}/>
+                            </PopoverContent>
+                      </Popover>
+              </Table.Cell>
        
       </Table.Row>
     ))} 

@@ -44,6 +44,7 @@ const [id, setId] =useState('')
 const [qty, setQty]= useState('')
 const [total, setTotal]=useState('')
 
+ 
  useEffect(()=>{
   const getState=()=>{
 
@@ -136,6 +137,7 @@ useEffect(()=>{
       </div>
     
       </form>
+          
      <Link href={`/${slug}/dashboard/products/product-table`}> <button onClick={()=>setLoading(true)}  className="border border-gray-400 rounded-md mt-2 bg-black/80 text-white p-2 w-full">
         View Products</button></Link>
     </>
