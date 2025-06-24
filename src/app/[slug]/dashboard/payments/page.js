@@ -7,7 +7,6 @@ const Payment = async({params})=>{
 
    const     payment= await fetchAllPayments(slug) 
        
-console.log(payment, 'p')
 
     return(
         <>            

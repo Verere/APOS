@@ -24,7 +24,7 @@ import moment from "moment";
 import { fetchCountOrder, fetchLatestStockItem, fetchPaymentByOrder, fetchProductById, fetchSalesByOrderId ,
  fetchOrderItems
 } from "./fetch";
-import { updateOrderAmount, updateSalesAction, updateItemStock, updateMenuStock, updateCompletedOrderDetails, updateSuspendOrder, updateProduct } from "./update";
+import {updateAllPayment, updateOrderAmount, updateSalesAction, updateItemStock, updateMenuStock, updateCompletedOrderDetails, updateSuspendOrder, updateProduct } from "./update";
 import Pos from './../app/[slug]/pos/page';
 
 
@@ -298,7 +298,6 @@ updateOrderAmount(order, amountTotal)
 export const addPayment = async (prvState, formData) => {
   const {slug, orderId, orderNum, orderAmount,amountPaid, bal, mop, user, bDate, path} =
     Object.fromEntries(formData);
-   
     let items;
   try {   
  const Payments = await fetchPaymentByOrder(orderId)
@@ -330,6 +329,7 @@ items = []
       
       await newMenu.save();
   await updateCompletedOrderDetails(orderId, amountPaid, bal, items)
+  // await updateAllPayment()
       revalidatePath(path); 
       return{success:"Payment Succesfull"}}
       else if(amtTotal===orderAmount){

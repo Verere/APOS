@@ -7,7 +7,7 @@ import { toast } from "react-toastify"
 import { useFormState } from 'react-dom';
 import { CartContext } from "@/context/CartContext"
 
-const PaymentPage=({hotelId, order, location, busDate, pathname})=>{
+const PaymentPage=({slug, order, location, busDate, pathname})=>{
     const {cartTotal,bal, user} = useContext(GlobalContext)
     const {cpayment, setCPayment} = useContext(CartContext)
     const [payment, setPayment]= useState(null)
@@ -65,7 +65,7 @@ const PaymentPage=({hotelId, order, location, busDate, pathname})=>{
     </select>
     </div>
 
-                <input type="hidden" name="hotelId" value={hotelId} />
+                <input type="hidden" name="slug" value={slug} />
                 <input type="hidden" name="orderId" value={order?._id} />
                 <input type="hidden" name="orderNum" value={order?.orderNum} />
                 <input type="hidden" name="orderName" value={order?.orderName} />

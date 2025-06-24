@@ -392,13 +392,13 @@ export async function fetchEods(slug,  bDate) {
   }
   
   //fetch All  orders
-export async function fetchAllOrders(slug,  bDate) {
+export async function fetchAllOrders(slug) {
 
     await connectToDB();
    
     try {
       connectToDB();
-      const result = await Order.find({slug, bDate:{"$gte" : bDate}}).sort({createdAt:-1})
+      const result = await Order.find({slug, bDate}).sort({createdAt:"desc"})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -510,6 +510,7 @@ export async function fetchSalesByOrderId(order) {
   
   //fetch sales by location
 export async function fetchAllPayments(slug) {
+  console.log('slug', slug)
     await connectToDB();
    
     try {

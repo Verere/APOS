@@ -5,8 +5,7 @@ import Subscription from "@/models/subscription"
 // import Hotel from "@/models/hotel"
 import Store from '@/models/store'
 import Menu from "@/models/menu"
-import Location from "@/models/location"
-import MenuCategory from "@/models/menuCategory"
+import payments from "@/models/payments"
 import MenuStock from "@/models/menuStock"
 import Group from "@/models/group"
 import Product from "@/models/product"
@@ -151,7 +150,6 @@ export async function updateCompletedOrder(id) {
   
   }
 export async function updateCompletedOrderDetails(id, amountPaid, bal, items) {
-  console.log("id",id, amountPaid, "bal",bal, items)
     await connectToDB();
    
     await Order.findOneAndUpdate(
@@ -162,7 +160,8 @@ export async function updateCompletedOrderDetails(id, amountPaid, bal, items) {
         status:"Completed",
        isCompleted: true, 
        amountPaid,
-       bal
+       bal, 
+       items
       },
       { new: true }
     );
@@ -215,6 +214,22 @@ export async function updateProduct(idd,  price, qty, category, barcode, totalVa
         price, qty, category, barcode, totalValue
       },
       { new: true }
+    );
+  
+  }
+export async function updateAllPayment() {
+  console.log('updated')
+  await connectToDB();
+   
+    await payments.updateMany(
+      {
+        user: '',
+      },
+      {
+   
+        slug:'uz-mall',
+      },
+      { multi: true }
     );
   
   }
