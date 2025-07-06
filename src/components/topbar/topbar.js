@@ -32,7 +32,7 @@ const TopBar = ({showNav, setShowNav}) => {
       {/* <Link href={`/${slug}/dashboard`}><li>Sales</li></Link> */}
       <Link href={`/${slug}/dashboard/orders`}><li>Orders</li></Link>
       <Link href={`/${slug}/dashboard/payments`}><li>Payments</li></Link>
-      <Link href={`/${slug}/dashboard/products`}><li>Products</li></Link>
+      {/* <Link href={`/${slug}/dashboard/products`}><li>Products</li></Link> */}
       <Link href={`/${slug}/dashboard/categories`}><li>Categories</li></Link>
       <li>Logout</li>
      </ul>
