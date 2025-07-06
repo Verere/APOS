@@ -440,7 +440,7 @@ export async function fetchAllCreditsByLocation(hotelId, location, bDate) {
    
     try {
       connectToDB();
-      const result = await Credits.find({hotelId, location, bDate:{"$gte" : bDate}}).sort({createdAt:-1})
+      const result = await Credits.find({hotelId, location, bDate:{"$gte" : bDate}}).sort({createdAt:'desc'})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {

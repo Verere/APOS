@@ -29,8 +29,8 @@ const TopBar = ({showNav, setShowNav}) => {
     
      <ul className="flex mr-3 text-white justify-between items-center w-1/2 md:hidden uppercase">
       <Link href={`/${slug}/pos`}><li>POS</li></Link>
-      {/* <Link href={`/${slug}/dashboard`}><li>Sales</li></Link> 
-      <Link href={`/${slug}/dashboard/orders`}><li>Orders</li></Link>*/}
+      {/* <Link href={`/${slug}/dashboard`}><li>Sales</li></Link> */}
+      <Link href={`/${slug}/dashboard/orders`}><li>Orders</li></Link>
       <Link href={`/${slug}/dashboard/payments`}><li>Payments</li></Link>
       <Link href={`/${slug}/dashboard/products`}><li>Products</li></Link>
       <Link href={`/${slug}/dashboard/categories`}><li>Categories</li></Link>

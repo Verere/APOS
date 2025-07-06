@@ -12,7 +12,7 @@ import { toast } from "react-toastify";
 
 
 const LoginForm = () => {
-   const {isAuthUser,  setIsAuthUser, setShowNavModal} = useContext(GlobalContext);
+   const {setUser, isAuthUser,  setIsAuthUser, setShowNavModal} = useContext(GlobalContext);
   //  const {setStore} = useContext(CartContext);
    const [state, action, isPending] = useActionState(authenticate, undefined);
 
@@ -25,10 +25,14 @@ const [loading, setLoading]= useState(false)
       setLoading(false)}
      if(state.success){
         const user = await currentUser(email)
+        console.log('u',user)
+        setLoading(false)
       Cookies.set('emailToken', user?.emailToken)
-      if(user.isAdmin ===true)setIsAuthUser(true)      
-      console.log(user)
-      setLoading(false)}
+      if(user.isAdmin ===true)setIsAuthUser(true)  
+        setUser(user)    
+      console.log('u',user)
+      setLoading(false)
+    }
     }
   getUser()
   },[state])

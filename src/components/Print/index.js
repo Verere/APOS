@@ -25,6 +25,7 @@ console.log(payments,  'pp')
         <p className="mb-1 text-center text-xs font-black">No. 200 Njamanze Enugu State. </p>
         <p className="mt-2 border-b-black border-b-4 mb-1 text-center text-xs font-black">07038327921, 08140023487 </p>    
         <h4 className="text-sm pt-1">Order : Customer</h4>
+        <h4 className="text-sm pt-1">Date : {order?.bDate}</h4>
         <p className="text-sm pb-1">Order No.: {order?.orderNum}</p>
         <hr/>
      </div>

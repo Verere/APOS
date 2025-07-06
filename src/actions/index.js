@@ -37,10 +37,8 @@ export const authenticate = async (prevState, formData) => {
   } catch (error) {
     if(!error.type){
       const user = await currentUser(email)
-      console.log('u',user)
       if(!user)return{error:"Invalid Username or Password"}
       const slogan = await fetchSlug(user._id)
-      console.log('s',slogan)
       if(slogan){  redirect(`/${slogan[0]?.slug}/pos`)}
   
 
@@ -183,23 +181,26 @@ export const addStore = async (prvState, formData) => {
 
 //add new menu
 export const addOrder= async (prvState, formData) => {
-  const {slug, soldBy, bDate, order, orderId, path} =
+  const {slug, soldBy, bDate, order, payment, orderId, path} =
     Object.fromEntries(formData);
 
   try {   
     
 if(order  ==="newOrder")updateSuspendOrder(orderId)
+  if(payment > 0){
+
     connectToDB(); 
-   const num = await fetchCountOrder(slug) +1
+    const num = await fetchCountOrder(slug) +1
     const orderNum = slug.substring(0, 3) + num 
-
-
-      const newMenu = new Order({
-        slug, orderNum, soldBy, bDate,
-      });
+    
+    
+    const newMenu = new Order({
+      slug, orderNum, soldBy, bDate,
+    });
     // if(orderName==="")return{error:`Put a name for this Order`}   
-      
-      await newMenu.save();
+    
+    await newMenu.save();
+  }
   
       // return{
       //   success:true,

@@ -21,8 +21,8 @@ export default function BarcodePrinter({ product }) {
 
   return (
     <div className='mx-auto'>
-      <div ref={printRef} style={{ padding: '16px', background: 'white' }}>
-        <h3>{product.name}</h3>
+      <div ref={printRef} style={{ padding: '16px', background: 'white', margin:"0, auto" }}>
+        {/* <h3>{product.name}</h3> */}
         <Barcode value={barcodeValue} format="CODE128" />
         {/* <p>{barcodeValue}</p> */}
       </div>

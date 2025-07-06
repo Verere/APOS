@@ -12,7 +12,7 @@ export default function Barcode({ code }) {
         bcid: 'ean13',
         text: code,
         scale: 3,
-        height: 10,
+        height:3,
         includetext: true,
         textxalign: 'center',
       });

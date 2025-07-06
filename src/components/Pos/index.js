@@ -155,9 +155,15 @@ useEffect(()=>{
     getNewOrderToState()
   })
   const handleSetOrder= async()=>{
-   await setLoading(true)
-   removeO()
-   await setCurrentOrder(true)
+    console.log("pay", payment)
+    if(payment && payment >= 0){
+      await setLoading(true)
+      removeO()
+      await setCurrentOrder(true)
+    }else{
+      toast.warn('You have not made any Payment for this order')
+      
+    }
   }
   
   const removeO = async()=>{
@@ -225,6 +231,7 @@ useEffect(()=>{
         <form action={formAction}>
        
                             <input type="hidden" name="slug" value={slug} />
+                            <input type="hidden" name="payment" value={payment} />
                             <input type="hidden" name="orderName" value={orderName} />
                             <input type="hidden" name="soldBy" value="Uz"/>
                             <input type="hidden" name="bDate" value={bDate} />
