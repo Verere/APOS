@@ -181,13 +181,13 @@ export const addStore = async (prvState, formData) => {
 
 //add new menu
 export const addOrder= async (prvState, formData) => {
-  const {slug, soldBy, bDate, order, payment, orderId, path} =
+  const {slug, soldBy, bDate, order, payment, amount, orderId, path} =
     Object.fromEntries(formData);
 
   try {   
     
 if(order  ==="newOrder")updateSuspendOrder(orderId)
-  if(payment > 0){
+  if(payment > 0 && amount >0){
 
     connectToDB(); 
     const num = await fetchCountOrder(slug) +1

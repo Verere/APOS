@@ -184,7 +184,7 @@ useEffect(()=>{
          getError()
        },[state])   
       
-
+console.log('user', cartTotal, user)
      
         const handleSearch = useDebouncedCallback((e) => {
            const params = new URLSearchParams(searchParams);
@@ -232,6 +232,7 @@ useEffect(()=>{
        
                             <input type="hidden" name="slug" value={slug} />
                             <input type="hidden" name="payment" value={payment} />
+                            <input type="hidden" name="amount" value={cartTotal} />
                             <input type="hidden" name="orderName" value={orderName} />
                             <input type="hidden" name="soldBy" value="Uz"/>
                             <input type="hidden" name="bDate" value={bDate} />
