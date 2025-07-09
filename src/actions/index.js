@@ -22,7 +22,8 @@ import { createSubAccount } from "./stack/sub";
 import { v4 as uuidv4 } from 'uuid'
 import moment from "moment";
 import { fetchCountOrder, fetchLatestStockItem, fetchPaymentByOrder, fetchProductById, fetchSalesByOrderId ,
- fetchOrderItems
+ fetchOrderItems,
+ fetchOneOrder
 } from "./fetch";
 import {updateAllPayment, updateOrderAmount, updateSalesAction, updateItemStock, updateMenuStock, updateCompletedOrderDetails, updateSuspendOrder, updateProduct } from "./update";
 import Pos from './../app/[slug]/pos/page';
@@ -190,24 +191,31 @@ if(order  ==="newOrder")updateSuspendOrder(orderId)
   if(payment > 0 && amount >0){
 
     connectToDB(); 
-    const num = await fetchCountOrder(slug) +1
-    const orderNum = slug.substring(0, 3) + num 
-    
-    
-    const newMenu = new Order({
-      slug, orderNum, soldBy, bDate,
-    });
-    // if(orderName==="")return{error:`Put a name for this Order`}   
-    
-    await newMenu.save();
-  }
-  
-      // return{
-      //   success:true,
+    const order = await fetchOneOrder(slug)
+    if(order[0]?.amount ===0 || order[0]?.amount === 'undefined'){
+      return{success:true}
+       revalidatePath(path); 
+    }else{
 
+      const num = await fetchCountOrder(slug) +1
+      const orderNum = slug.substring(0, 3) + num 
+      
+      
+      const newMenu = new Order({
+        slug, orderNum, soldBy, bDate,
+      });
+      // if(orderName==="")return{error:`Put a name for this Order`}   
+      
+      await newMenu.save();
+    }
+    
+    // return{
+      //   success:true,
+      
       // }
       revalidatePath(path); 
       return{success:true}
+    }
     } catch (err) {
       console.log(err);
       return{ error:"error in adding New Order"};
@@ -329,7 +337,7 @@ items = []
    
       
       await newMenu.save();
-  await updateCompletedOrderDetails(orderId, amountPaid, bal, items)
+  await updateCompletedOrderDetails(orderId, amountPaid, bal, items, orderAmount)
   // await updateAllPayment()
       revalidatePath(path); 
       return{success:"Payment Succesfull"}}

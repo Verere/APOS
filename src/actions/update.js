@@ -149,7 +149,7 @@ export async function updateCompletedOrder(id) {
     );
   
   }
-export async function updateCompletedOrderDetails(id, amountPaid, bal, items) {
+export async function updateCompletedOrderDetails(id, amountPaid, bal, items, orderAmount) {
     await connectToDB();
    
     await Order.findOneAndUpdate(
@@ -159,6 +159,7 @@ export async function updateCompletedOrderDetails(id, amountPaid, bal, items) {
       {
         status:"Completed",
        isCompleted: true, 
+       amount: orderAmount,
        amountPaid,
        bal, 
        items
