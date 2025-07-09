@@ -18,6 +18,7 @@ export const Cart = ({cart, slug})=>{
    const pathname = usePathname();
 const [total, setTotal] = useState(0)
 
+    console.log('item', cart)
 
 useEffect(() => {
     const getTotal = () => {  

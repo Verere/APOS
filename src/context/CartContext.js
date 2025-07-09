@@ -43,7 +43,7 @@ const [cpayment, setCPayment] = useState(0)
     }
     
     
-   const addToCart = async ({product, name, category, image, price,  qty =1, onSale}) => {
+   const addToCart = async ({product, name, category, image, price,  qty, onSale}) => {
         const item = {product, name, category, image, price, qty, amount: qty * price, onSale}
 
         const isItemExist = cart?.cartItems?.find(  
@@ -66,7 +66,7 @@ const [cpayment, setCPayment] = useState(0)
         const newData = [...cart?.cartItems?? []]
         newData.forEach(items => {
           if (items.product === item.product) {
-            items.qty += 1
+            items.qty 
             items.amount= items.qty * items.price 
           }
         })

@@ -18,17 +18,17 @@ import  Sales  from '@/models/sales';
 import Order  from '@/models/order';
 
 //update sales qty
-export async function updateSalesAction(id, qty, price, path) {
+export async function updateSalesAction(id, qty, price, stock, path) {
+  console.log('u', stock)
     await connectToDB();
-    let Qty = parseInt(qty) 
-    let newQty =  Qty += 1
     await Sales.findOneAndUpdate(
       {
         _id: id,
       },
       {
-       qty:  newQty,
-       amount: price*newQty,
+       qty:  qty,
+       stock:stock,
+       amount: price*qty,
 
       },
       { new: true }

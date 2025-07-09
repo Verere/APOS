@@ -226,7 +226,6 @@ if(order  ==="newOrder")updateSuspendOrder(orderId)
 export const addSales = async (prvState, formData) => {
   const {order, slug, orderNum, itemId, barcode, item, qty, price, amount, soldBy, stock, bDate, totalOrder, status, path} =
     Object.fromEntries(formData);
-    console.log('ss',order, slug, item, itemId)
     
      const Payments = await fetchPaymentByOrder(order)
    
@@ -235,38 +234,46 @@ export const addSales = async (prvState, formData) => {
 
 
     const  sale= sales.filter(item => item.itemId === itemId)
-    const prvSales = sale[0]?._id
-   
     const amountTotal = parseInt(totalOrder) + parseInt(price)
     
     if(status === "Completed" ){
       return{error:"This Order is Completed. Create a new Order"}
     }
+    
+    if(stock< 1 || stock=== 0){
+      return{error:"This Product has Zero Stock. Please restock"}
+    }
+    // if(sale && sale.length){
+
+      const prvSales = sale[0]?._id
+      console.log(sale)
+    // }
       
-      if(stock< 1 || stock=== 0){
-        return{error:"This Product has Zero Stock. Please restock"}
-      }
       
-      const balanceStock = stock-qty
-      const totalValue = price*balanceStock
-      
-      if(prvSales !== undefined){
-        const qtyy = sale[0]?.qty || qty
+      if(prvSales  !== undefined){
+        console.log('updating sales')
+    const qtyy = sale[0]?.qty 
+    const pStock = sale[0]?.stock
+
+    const nqty = parseInt(qtyy +1)
         
-        await  updateSalesAction(prvSales, qtyy, price, path)
+        const balanceStock = parseInt(pStock-1)
+        const totalValue = price*balanceStock
+        console.log('p qty', qtyy, 'new qty', nqty, 'p st', pStock, 'bal st', balanceStock)
+        await  updateSalesAction(prvSales, nqty, price, balanceStock, path)
         
-         console.log(itemId, balanceStock, totalValue,'d1')
         await  updateItemStock(itemId, balanceStock, totalValue, path)
-        await  updateMenuStock(itemId, qtyy, balanceStock, path)
-        
-        
-       
-        
-     await   updateOrderAmount(order, amountTotal)
+        await  updateMenuStock(itemId, nqty, balanceStock, path)       
+        await   updateOrderAmount(order, amountTotal)
+            revalidatePath(path); 
         return{success:true}
       }else{
-    try {   
-
+        try {   
+          console.log('adding sales')
+          
+          const balanceStock = stock-qty
+          console.log('qty', qty, 'p st', stock, 'bal st', balanceStock)
+          const totalValue = price*balanceStock
    // add new sales")
    const form=new FormData
    form.set("slug", slug)
@@ -282,14 +289,13 @@ export const addSales = async (prvState, formData) => {
 
    form.set("bDate", bDate)
    await addMenuStock({},form)
-  console.log(itemId, balanceStock, totalValue, path, 'r')
 await  updateItemStock(itemId, balanceStock, totalValue, path)
 
 updateOrderAmount(order, amountTotal)
     connectToDB(); 
 
       const newMenu = new Sales({
-        order,  slug, orderNum,itemId, item, qty, price, amount, soldBy, bDate,
+        order,  slug, orderNum,itemId, item, qty, stock:balanceStock, price, amount, soldBy, bDate,
       });
       
       await newMenu.save();
@@ -852,7 +858,6 @@ export async function updateStoreSub(slug, sub,starts, ends, reference) {
 export const addMenuStock= async (prevState, formData) => {
   const {slug, itemId, item,  action,  qty, balanceStock, price,  user,  bDate, path} =
     Object.fromEntries(formData);
-    console.log('p', price, path)
     const prod = await fetchProductById(itemId)
  const pStock = prod[0].qty
  const balStock = parseInt(pStock) + parseInt(qty)

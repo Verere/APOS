@@ -18,7 +18,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
  import { updateSuspendOrder } from '@/actions/update';
  import PaymentPage from '../Payment';
  import CreditSales from '../Credit';
-// import Complimentary from '../Complimentary';
  import PrintPage from '../Print';
 import MainNav from '../mainNav';
 import TopBar from '../topbar/topbar';
@@ -65,11 +64,7 @@ await   setCCanOrders(counter)
        let countCompOrder= 0
         for(const obj of cCComp)countCompOrder++
         await   setCCompOrders(countCompOrder)
-      //   const cancOr = tempOrders.filter(order=>order?.status==='Cancelled')
-      //  let countCanceledOrders= 0
-      //   for(const obj of cancOr)countCanceledOrders++
-       
-
+     
       }
       fetchOrders()
     })
@@ -119,7 +114,6 @@ useEffect(()=>{
        setPayment(paymentt)
        const t = total -payment
        setBal(t)
-//  console.log("b",bal)
   }
   getpayments()
 },[order ])
@@ -184,7 +178,7 @@ useEffect(()=>{
          getError()
        },[state])   
       
-console.log('user', cartTotal, user)
+
      
         const handleSearch = useDebouncedCallback((e) => {
            const params = new URLSearchParams(searchParams);
