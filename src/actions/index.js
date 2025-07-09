@@ -192,9 +192,8 @@ if(order  ==="newOrder")updateSuspendOrder(orderId)
 
     connectToDB(); 
     const order = await fetchOneOrder(slug)
-    if(order[0]?.amount ===0 || order[0]?.amount === 'undefined'){
+    if(order[0]?.amount ===0 || order[0]?.amount === undefined){
       return{success:true}
-       revalidatePath(path); 
     }else{
 
       const num = await fetchCountOrder(slug) +1
