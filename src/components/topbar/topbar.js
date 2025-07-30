@@ -13,6 +13,8 @@ import {
   MdPublic,
   MdSearch,
 } from "react-icons/md";
+import { GlobalContext } from "@/context";
+import { useContext, useEffect, useState, useActionState } from "react";
 
 const TopBar = ({showNav, setShowNav}) => {
   const searchParams = useSearchParams()
@@ -21,6 +23,13 @@ const TopBar = ({showNav, setShowNav}) => {
   const pathname = usePathname()
   const slug = pathname.split('/')[1]
 
+     const {user, setUser} = useContext(GlobalContext);
+     console.log('neew user', user)
+const handleLogout = ()=>{
+  setUser([])
+  replace('/login')
+  console.log(user, 'u')
+}
   return (
     <div className={`w-full mb-1 h-16 bg-black px-2 cursor-pointer flex justify-between items-center overflow-x-hidden transition-all duration-[400ms] ${showNav ? "pl-56" : ""}`}>
     <div className="font-extrabold  text-white ">
@@ -32,9 +41,12 @@ const TopBar = ({showNav, setShowNav}) => {
       {/* <Link href={`/${slug}/dashboard`}><li>Sales</li></Link> */}
       <Link href={`/${slug}/dashboard/orders`}><li>Orders</li></Link>
       <Link href={`/${slug}/dashboard/payments`}><li>Payments</li></Link>
-      {/* <Link href={`/${slug}/dashboard/products`}><li>Products</li></Link> */}
-      <Link href={`/${slug}/dashboard/categories`}><li>Categories</li></Link>
-      <li>Logout</li>
+      <Link href={`/${slug}/dashboard/payments`}><li>Expenses</li></Link>
+      <Link href={`/${slug}/dashboard/payments`}><li>EOD</li></Link>
+  {/* <Link href={`/${slug}/dashboard/products`}><li>Products</li></Link>  */}
+      {user?.role ==="admin" && <Link href={`/${slug}/dashboard/products`}><li>Products</li></Link> }
+      {/* <Link href={`/${slug}/dashboard/categories`}><li>Categories</li></Link> */}
+      <li onClick={()=>handleLogout()} className="mr-2">Logout</li>
      </ul>
      
       <div className="pl-4 md:pl-16 hidden">

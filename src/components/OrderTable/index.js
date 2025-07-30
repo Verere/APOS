@@ -27,7 +27,6 @@ useEffect(()=>{
   const getSlug=()=>{
   const slg = JSON.parse(localStorage.getItem('slug'))
 setSlug(slg)
-console.log(slug)
   }
   getSlug()
 })

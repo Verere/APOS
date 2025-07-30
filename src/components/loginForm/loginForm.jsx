@@ -15,29 +15,36 @@ const LoginForm = () => {
    const {setUser, isAuthUser,  setIsAuthUser, setShowNavModal} = useContext(GlobalContext);
   //  const {setStore} = useContext(CartContext);
    const [state, action, isPending] = useActionState(authenticate, undefined);
+   const [email, setEmail]= useState('')
 
 const [loading, setLoading]= useState(false)
 
   useEffect(()=>{
     const getUser = async() => {
      if(state.error){
+       console.log('meeeeeeeeeem')
       toast.error(state.error)
       setLoading(false)}
      if(state.success){
+       console.log('eu',email)
         const user = await currentUser(email)
-        console.log('u',user)
-        setLoading(false)
-      Cookies.set('emailToken', user?.emailToken)
-      if(user.isAdmin ===true)setIsAuthUser(true)  
+        // Cookies.set('emailToken', user?.emailToken)
+        // if(user.isAdmin ===true)setIsAuthUser(true)  
         setUser(user)    
-      console.log('u',user)
+        console.log('u',user)
       setLoading(false)
     }
     }
   getUser()
   },[state])
 
-
+const getOneUser = async()=>{
+  setLoading(true)
+  const userN = await currentUser(email );
+  setUser(userN)
+  console.log('u', user)
+    // localStorage.setItem('user', JSON.stringify(userN))
+}
   return (
     <>
     <div className="fixed top-0 left-0 w-full"> 
@@ -61,6 +68,8 @@ const [loading, setLoading]= useState(false)
                     name="email"
                     type="email"
                     autoComplete="email"
+                    value={email}
+                    onChange={(e)=>setEmail(e.target.value)}
                     required
                     className="block w-full rounded-md border-0 p-1  shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                   />
@@ -84,7 +93,7 @@ const [loading, setLoading]= useState(false)
       <div>
                     <button
                       className="flex w-full mb-5 border border-black justify-center rounded-md px-3 py-1.5 text-sm font-semibold leading-6 shadow-sm hover:bg-white transition-colors hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                      aria-disabled={isPending} onClick={()=>setLoading(true)}>
+                      aria-disabled={isPending} onClick={()=>getOneUser()}>
                      {loading ? 'loading...' : "Sign in"}
                     </button>
                   </div>

@@ -346,7 +346,6 @@ export async function fetchOneOrder(slug) {
   }
   //fetch order
 export async function fetchOrderItems(orderId) {
-  console.log(orderId)
     await connectToDB();
    
     try {

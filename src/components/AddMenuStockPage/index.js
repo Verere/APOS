@@ -27,6 +27,28 @@ import { GlobalContext } from "@/context";
 //  const user = JSON.parse(localStorage.getItem('location'))
 //  if(!user)replace("/login")
 
+
+ useEffect(()=>{
+  const getProd = async ()=>{
+    const params = new URLSearchParams(searchParams)
+    const id = params.get('id')
+      // setTotal(prod[0]?.totalValue)
+
+     if(id){
+      const prod = await fetchProductById(id)
+      console.log(prod)
+      // setName(prod[0]?.name)
+      // setPrice(prod[0]?.price)
+      // setCode(prod[0]?.barcode)
+      // setUp(true)
+      // setId(id)
+      // setQty(prod[0]?.qty)
+      // if(prod[0]?.category)setCategory(prod[0]?.category)
+     }
+}
+getProd()
+},[searchParams])
+
  useEffect(()=>{
 
 const setItems= async()=>{
