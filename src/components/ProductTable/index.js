@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Table } from "@radix-ui/themes";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { updateProd, updateProdPrice } from "@/actions";
-import { fetchSearchedProducts } from "@/actions/fetch";
+import { fetchProductById, fetchSearchedProducts } from "@/actions/fetch";
 import { FaEdit } from "react-icons/fa";
 import { useEffect, useState } from "react";
 import {
@@ -39,8 +39,12 @@ const ProductTable=({products, slug})=>{
 
    
     const searchParams = useSearchParams()
-    const  handleUpdate =async(id, path)=>{
+
+    const  handleDUpdate =async(id, path)=>{
+      console.log('de',id)
 await updateProd(id, path)
+ const del =await fetchProductById(id)
+   console.log('de',del)
     }
 
       //  const handleSearch = useDebouncedCallback((e) => {
@@ -180,7 +184,7 @@ return(
         </Table.Cell>
       
        <Table.Cell>
-                      <button onClick={()=>handleUpdate(patient._id, pathname)}  className="px-2 py-1 bg-red-500 text-white font-bold rounded-lg">
+                      <button onClick={()=>handleDUpdate(patient._id, pathname)}  className="px-2 py-1 bg-red-500 text-white font-bold rounded-lg">
                       Delete
                       </button>
                     </Table.Cell>

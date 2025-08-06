@@ -62,7 +62,7 @@ export async function fetchMenuBySku(hotelId, sku, location) {
     try {
       connectToDB();
       if(q){
-        const result = await Product.find({slug,  name: { $regex: regex }})
+        const result = await Product.find({slug, isDeleted:false, name: { $regex: regex }})
          if (!result)return {error : "Network error"}
                   return JSON.parse(JSON.stringify(result));
       }

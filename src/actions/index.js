@@ -107,7 +107,7 @@ export const addProduct = async (prvState, formData) => {
   
     try {
       if(up==="true"){
-await updateProduct(id, price, qty, category, barcode, totalValue)
+await updateProduct(id,name, price, qty, category, barcode, totalValue)
 return{success:true}
       }else{
     connectToDB();
@@ -759,6 +759,7 @@ export async function deleteProduct() {
 //update post action
 export async function updateProd(id, pathToRevalidate) {
   await connectToDB();
+  console.log('del', id)
   await Product.findOneAndUpdate(
     {
       _id: id,
@@ -766,7 +767,8 @@ export async function updateProd(id, pathToRevalidate) {
     {
       isDeleted: true,     
     },
-    { new: true }
+    { new: true },
+  
   );
   
   revalidatePath(pathToRevalidate);
