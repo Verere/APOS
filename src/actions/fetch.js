@@ -350,7 +350,7 @@ export async function fetchOrderItems(orderId) {
    
     try {
       connectToDB();
-      const result = await Order.find({orderId})
+      const result = await Order.find({orderNum:orderId})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -508,13 +508,44 @@ export async function fetchSalesByOrderId(order) {
   }
   
   //fetch sales by location
-export async function fetchAllPayments(slug) {
+export async function fetchAllPaymentsByDates(slug) {
   console.log('slug', slug)
     await connectToDB();
    
     try {
       connectToDB();
+      const result = await payments.find({slug}).sort({'createdAt':'desc'})
+  
+      return JSON.parse(JSON.stringify(result));
+    } catch (err) {
+      console.log(err);
+      return{error:"Failed to fetch Order number!"};
+    }
+  }
+  
+  //fetch sales by location
+export async function fetchAllPayments(slug) {
+    await connectToDB();
+   
+    try {
+      connectToDB();
       const result = await payments.find({slug, bDate}).sort({'createdAt':'desc'})
+  
+      return JSON.parse(JSON.stringify(result));
+    } catch (err) {
+      console.log(err);
+      return{error:"Failed to fetch Order number!"};
+    }
+  }
+  
+  //fetch sales by location
+export async function fetchAllPaymentsByDate(slug, Dte) {
+  console.log('slug', slug, Dte)
+    await connectToDB();
+   
+    try {
+      connectToDB();
+      const result = await payments.find({slug, bDate:Dte}).sort({'createdAt':'desc'})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {

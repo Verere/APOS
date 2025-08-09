@@ -201,6 +201,21 @@ export async function updateOrderAmount(idd,  amountTotal ) {
     );
   
   }
+export async function updateOrderDate() {
+  await connectToDB();
+   
+    await Order.findOneAndUpdate(
+      {
+        orderNum: 'uz-2090',
+      },
+      {
+   
+   bDate:'8/08/2025'
+      },
+      { new: true }
+    );
+  
+  }
 //update order completed
 export async function updateProduct(idd, name,  price, qty, category, barcode, totalValue ) {
   console.log('updtn',name, idd, price, totalValue)
@@ -212,7 +227,7 @@ export async function updateProduct(idd, name,  price, qty, category, barcode, t
       },
       {
    
-       name, price, qty, category, barcode, totalValue
+       name, price, qty, category, barcode, totalValue, isDeleted:false
       },
       { new: true }
     );

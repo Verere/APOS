@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Table } from "@radix-ui/themes";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { updateProd, updateProdPrice } from "@/actions";
-import { fetchProductById, fetchSearchedProducts } from "@/actions/fetch";
+import { fetchOrderItems, fetchProductById, fetchSearchedProducts, updateOrderDate } from "@/actions/fetch";
 import { FaEdit } from "react-icons/fa";
 import { useEffect, useState } from "react";
 import {
@@ -78,6 +78,9 @@ await updateProd(id, path)
     },[code])
 useEffect(()=>{
   const getTotal= async()=>{
+//  const  u = await updateOrderDate()
+//      const ord =await fetchOrderItems('uz-2090')
+//  console.log('orrd', ord)
           let tempOrders= [...products]      
         let counter = 0;
 for (const obj of tempOrders) {

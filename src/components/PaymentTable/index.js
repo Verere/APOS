@@ -15,9 +15,10 @@ import {
 import Heading from "../Heading";
 import { currencyFormat } from "@/utils/currency";
 import { formatTime } from "@/utils/date";
+import DatePicker from 'react-datepicker';
+import { format } from 'date-fns';
 
-
-const PaymentTable=({payments, slug})=>{
+const PaymentTable=({payments, allPayment, slug})=>{
  
     const { replace } = useRouter();
     const pathname = usePathname()
@@ -28,19 +29,27 @@ const PaymentTable=({payments, slug})=>{
     const  handleUpdate =async(id, path)=>{
 await updateProd(id, path)
     }
+       console.log('a',allPayment)
 
     // const { user} = useContext(GlobalContext)
     const [totalPayment, setTotalPayment] = useState(0)
     const [totalCash, setTotalCash] = useState(0)
     const [totalTransfer, setTotalTransfer] = useState(0)
     const [totalPos, setTotalPos] = useState(0)
-   
+  const [selectedDate, setSelectedDate] = useState(null);
+
+     const filteredPayments = selectedDate
+    ? allPayment.filter((order) =>
+        order.bDate === format(selectedDate, 'd/MM/yyyy')
+    )    
+    : payments;
+
     useEffect(()=>{
       const getValues = async ()=>{
-        let tempPay= payments
-        const filteredCash = payments.filter(p => p.mop==="cash")
-        const filteredPos = payments.filter(p => p.mop==="pos")
-        const filteredTransfer = payments.filter(p => p.mop==="transfer")
+        let tempPay= filteredPayments
+        const filteredCash = filteredPayments.filter(p => p.mop==="cash")
+        const filteredPos = filteredPayments.filter(p => p.mop==="pos")
+        const filteredTransfer = filteredPayments.filter(p => p.mop==="transfer")
         let allPayments=[]
             allPayments =  tempPay.map((i) => i.amountPaid)
             const amtTotal = allPayments.reduce((acc, item) => acc + (item),0)
@@ -63,7 +72,7 @@ await updateProd(id, path)
         await setTotalTransfer(tTotal)
 }
 getValues()
-},[payments])
+},[filteredPayments])
 
     const handleEdit=async(id, price, qty, path)=>{
       setLoading(true)
@@ -76,7 +85,19 @@ getValues()
 return( 
 
         <div className="w-full overflow-y-scroll -mt-[56px] overflow-x-scroll">
+          <div className="flex justify-between items-center mr-3">
             <Heading title="Payments"/>
+               <div className="mb-4">
+        <label className="block mb-2 font-semibold">Select Date:</label>
+        <DatePicker
+          selected={selectedDate}
+          onChange={(date) => setSelectedDate(date)}
+          dateFormat="dd/MM/yyyy"
+          className="border px-3 py-2 rounded w-full"
+          placeholderText="Pick a date"
+        />
+      </div>
+          </div>
               <div className="flex flex-wrap sm:flex-col justify-between px-3 my-3 uppercase font-bold" >
               <div className="flex justify-around px-2 " >
                     <p>Cash :</p>
@@ -110,7 +131,7 @@ return(
     </Table.Header>
   
     <Table.Body>
-     {payments && payments?.map((patient) => (
+     {filteredPayments && filteredPayments?.map((patient) => (
               
       <Table.Row key={patient?._id}>
         <Table.RowHeaderCell> {patient?.receipt}</Table.RowHeaderCell>
