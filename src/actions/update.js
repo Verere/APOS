@@ -149,7 +149,7 @@ export async function updateCompletedOrder(id) {
     );
   
   }
-export async function updateCompletedOrderDetails(id, amountPaid, bal, items, orderAmount) {
+export async function updateCompletedOrderDetails(id, amountPaid, bal, items, orderAmount, bDate) {
     await connectToDB();
    
     await Order.findOneAndUpdate(
@@ -162,7 +162,8 @@ export async function updateCompletedOrderDetails(id, amountPaid, bal, items, or
        amount: orderAmount,
        amountPaid,
        bal, 
-       items
+       items,
+       bDate
       },
       { new: true }
     );

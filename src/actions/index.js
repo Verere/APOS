@@ -342,7 +342,7 @@ items = []
    
       
       await newMenu.save();
-  await updateCompletedOrderDetails(orderId, amountPaid, bal, items, orderAmount)
+  await updateCompletedOrderDetails(orderId, amountPaid, bal, items, orderAmount, bDate)
   // await updateAllPayment()
       revalidatePath(path); 
       return{success:"Payment Succesfull"}}
