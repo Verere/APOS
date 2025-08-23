@@ -102,18 +102,18 @@ console.log('sub',slug, sub, startDate, endDate)
 };
 
 export const addProduct = async (prvState, formData) => {
-  const {up, id, name, barcode, price, qty, category, totalValue, slug, path } =
+  const {up, id, name, barcode, cost, price, profit, qty, reOrder, expiration, category, totalValue, slug, path } =
     Object.fromEntries(formData);
   
     try {
       if(up==="true"){
-await updateProduct(id,name, price, qty, category, barcode, totalValue)
+await updateProduct(id,name, price, qty, category, barcode, totalValue, cost, profit, reOrder, expiration)
 return{success:true}
       }else{
     connectToDB();
 
     const newProduct = new Product({
-      name, barcode, price,  qty, category,totalValue, slug, 
+      name, barcode, price,  qty, category,totalValue, cost, profit, reOrder, expiration, slug, 
     
     });
 

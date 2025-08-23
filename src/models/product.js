@@ -7,7 +7,15 @@ const productSchema = new mongoose.Schema({
         trim: true
     },
    barcode:{type:String},
+    cost: {
+        type: Number,
+        required: true,
+    },
     price: {
+        type: Number,
+        required: true,
+    },
+    profit: {
         type: Number,
         required: true,
     },
@@ -27,6 +35,9 @@ const productSchema = new mongoose.Schema({
         default: true
     },       
      category: {
+        type: String,
+    },    
+     expiration: {
         type: String,
     },    
          

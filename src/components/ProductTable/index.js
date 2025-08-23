@@ -65,6 +65,14 @@ await updateProd(id, path)
       //                 }
       //                }, 300);
     
+       const filteredProducts = code
+          ? products.filter((product) =>
+        product.name.toLowerCase().includes(code)
+  
+          )    
+          : products;
+
+   
 
     const handleEdit=async(id, price, qty, path)=>{
       setLoading(true)
@@ -73,9 +81,11 @@ await updateProd(id, path)
      setPrice(0)
      setQty(0)
     }
-    useEffect(()=>{
-      if(code!=='')setItem(initialItems)
-    },[code])
+    // useEffect(()=>{
+    //   if(code!=='')setItem(initialItems)
+    // },[code])
+
+
 useEffect(()=>{
   const getTotal= async()=>{
 //  const  u = await updateOrderDate()
@@ -96,37 +106,36 @@ await   setQty(counter)
 },[products])
 
 
-        const handleSearch = async(code) => {       
+        // const handleSearch = async(code) => {       
        
-           if (code && code.length) {
-             const items = await fetchSearchedProducts(slug, code)
-             console.log(items)
-               setItem(items)
-                      setCode("")
-                    } else{
-                      setItem(initialItems)
-                      setCode("")
-           }
+        //    if (code && code.length) {
+        //      const items = await fetchSearchedProducts(slug, code)
+        //        setItem(items)
+        //               setCode("")
+        //             } else{
+        //               setItem(initialItems)
+        //               setCode("")
+        //    }
           
-         }
-         const handleBarcode = async(patient) => {   
-          setLoading(true)
-          const {_id, barcode} = patient
-          const id= _id
-          if (barcode && barcode.length ) {
-            setLoading(false)
-            toast.warn("This Product already has a barcode")
-          }else{
-              const barcodes = generateEAN13FromUUID();
-           const items=    await updateBarcode(id, barcodes, pathname)
+        //  }
+        //  const handleBarcode = async(patient) => {   
+        //   setLoading(true)
+        //   const {_id, barcode} = patient
+        //   const id= _id
+        //   if (barcode && barcode.length ) {
+        //     setLoading(false)
+        //     toast.warn("This Product already has a barcode")
+        //   }else{
+        //       const barcodes = generateEAN13FromUUID();
+        //    const items=    await updateBarcode(id, barcodes, pathname)
 
-                setLoading(false)
-             toast.success("Barcode generated successfully")
+        //         setLoading(false)
+        //      toast.success("Barcode generated successfully")
             
 
-           }
+        //    }
           
-         }
+        //  }
 
 return(
    <>
@@ -143,9 +152,9 @@ return(
                    <input type="text" placeholder="Search Item" 
                    onChange={(e)=>setCode(e.target.value)} 
                    name="code" className="p-2 outline-none focus:border-none "/>  
-                   <button className="flex justify-between items-center bg-gray-400 p-2  rounded-r-lg"
+                   {/* <button className="flex justify-between items-center bg-gray-400 p-2  rounded-r-lg"
                    onClick={()=>handleSearch(code)}> 
-                    Search</button>  
+                    Search</button>   */}
                  </div>
                    </div>
         <div className="w-full overflow-y-scroll overflow-x-scroll uppercase font-bold">
@@ -155,27 +164,33 @@ return(
       <Table.Row>
         <Table.ColumnHeaderCell>Product</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell>Category</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Barcode</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell>Expiration</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell>Cost</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell>Price</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Stock</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Total Value</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell>Profit</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell>Qty</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell>Stock Value</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell>Re-Order</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell>Update</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell>Delete</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Stock</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Print Barcode</Table.ColumnHeaderCell>
+        {/* <Table.ColumnHeaderCell>Stock</Table.ColumnHeaderCell> */}
+        {/* <Table.ColumnHeaderCell>Print Barcode</Table.ColumnHeaderCell> */}
       </Table.Row>
     </Table.Header>
   
     <Table.Body>
-     {item && item?.map((patient) => (
+     {filteredProducts && filteredProducts?.map((patient) => (
               
       <Table.Row key={patient?._id}>
         <Table.RowHeaderCell> {patient?.name}</Table.RowHeaderCell>
         <Table.Cell>{patient?.category}</Table.Cell>
-        <Table.Cell>{patient?.barcode}</Table.Cell>
+        <Table.Cell>{patient?.expiration}</Table.Cell>
+        <Table.Cell>{patient?.cost}</Table.Cell>
         <Table.Cell> {patient.price} </Table.Cell>
+        <Table.Cell> {patient.profit} </Table.Cell>
         <Table.Cell>{patient?.qty}</Table.Cell>
         <Table.Cell>{patient?.totalValue}</Table.Cell>
+        <Table.Cell>{patient?.reOrder}</Table.Cell>
         <Table.Cell>
        
           <button   className="p-2  bg-blue-500 text-white font-bold rounded-lg" onClick={()=>replace(`/${slug}/dashboard/products?id=${patient._id}`)}>
@@ -192,10 +207,10 @@ return(
                       </button>
                     </Table.Cell>
      
-            <Table.Cell> <button className="bg-green-700 px-2 py-1 text-white font-bold rounded-lg" onClick={()=>replace(`/${slug}/dashboard/stock?id=${patient._id}`)}>Add Stock</button></Table.Cell>
-            <Table.Cell> <button className="bg-gray-700 px-2 py-1 text-white font-bold rounded-lg" onClick={()=>handleBarcode(patient)}>{loading? 'Generating...' :  'Generate Barcode'}</button></Table.Cell>
+            {/* <Table.Cell> <button className="bg-green-700 px-2 py-1 text-white font-bold rounded-lg" onClick={()=>replace(`/${slug}/dashboard/stock?id=${patient._id}`)}>Add Stock</button></Table.Cell> */}
+            {/* <Table.Cell> <button className="bg-gray-700 px-2 py-1 text-white font-bold rounded-lg" onClick={()=>handleBarcode(patient)}>{loading? 'Generating...' :  'Generate Barcode'}</button></Table.Cell> */}
           
-            <Table.Cell> 
+            {/* <Table.Cell> 
              
                      
                             
@@ -210,7 +225,7 @@ return(
               <BarcodePrinter product={patient}/>
                             </PopoverContent>
                       </Popover>
-              </Table.Cell>
+              </Table.Cell> */}
        
       </Table.Row>
     ))} 

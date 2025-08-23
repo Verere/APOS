@@ -218,8 +218,8 @@ export async function updateOrderDate() {
   
   }
 //update order completed
-export async function updateProduct(idd, name,  price, qty, category, barcode, totalValue ) {
-  console.log('updtn',name, idd, price, totalValue)
+export async function updateProduct(idd, name,  price, qty, category, barcode, totalValue , cost, profit, reOrder, expiration) {
+  console.log('updtn',cost, profit, reOrder, expiration)
   await connectToDB();
    
     await Product.findOneAndUpdate(
@@ -228,7 +228,7 @@ export async function updateProduct(idd, name,  price, qty, category, barcode, t
       },
       {
    
-       name, price, qty, category, barcode, totalValue, isDeleted:false
+       name, price, qty, category, barcode, totalValue, isDeleted:false, cost, profit, reOrder, expiration
       },
       { new: true }
     );
