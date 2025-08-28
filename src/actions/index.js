@@ -16,7 +16,7 @@ import Sales from '@/models/sales'
 import StoreSub from '@/models/storesub'
 import { revalidatePath } from "next/cache";
 import { signIn } from "@/auth";
-import { hash } from "bcryptjs";
+import { hash, compare  } from "bcryptjs";
 import User  from '@/models/user';
 import { createSubAccount } from "./stack/sub";
 import { v4 as uuidv4 } from 'uuid'
@@ -38,9 +38,18 @@ export const authenticate = async (prevState, formData) => {
   } catch (error) {
     if(!error.type){
       const user = await currentUser(email)
-      if(!user)return{error:"Invalid Username or Password"}
-      const slogan = await fetchSlug(user._id)
-      if(slogan){  redirect(`/${slogan[0]?.slug}/pos`)}
+      if(user){
+        const  hashedPassword= user?.password
+        console.log('u', hashedPassword, password)
+        const isMatch = await compare(password, hashedPassword);
+        if (!isMatch) {
+         return{error:"Invalid Username or Password"}
+        } else {
+          
+            const slogan = await fetchSlug(user._id)
+          if(slogan){  redirect(`/${slogan[0]?.slug}/pos`)}
+        }
+      }
   
 
     } 

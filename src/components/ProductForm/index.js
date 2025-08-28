@@ -26,7 +26,9 @@ const {user} = useContext(GlobalContext)
  const [state, formAction, isPending] = useActionState(addProduct, {});
 const [loading, setLoading] = useState(false)
 const [category, setCategory] = useState([])
-
+console.log(
+  'user', user
+)
 const {
   files,
   setFiles,

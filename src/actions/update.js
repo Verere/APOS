@@ -217,6 +217,24 @@ export async function updateOrderDate() {
     );
   
   }
+export async function updatePassword(email, password) {
+  console.log('pass', email, password)
+   const hashPasswrd = await hash(password, 12)
+  await connectToDB();
+  // const user = await User.findOne({ email: email });
+   
+    await User.findOneAndUpdate(
+      {
+        email
+      },
+      {
+   
+   password:hashPasswrd
+      },
+      { new: true }
+    );
+  
+  }
 //update order completed
 export async function updateProduct(idd, name,  price, qty, category, barcode, totalValue , cost, profit, reOrder, expiration) {
   console.log('updtn',cost, profit, reOrder, expiration)
