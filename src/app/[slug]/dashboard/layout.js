@@ -35,7 +35,7 @@ useEffect(()=>{
            <TopBar showNav={showNav} setShowNav={setShowNav}/>
             {/* <div className="flex h-screen overflow-hidden bg-slate-400"> */}
             <Transition
-            as={Fragment}
+            as="div"
             show={showNav}
             enter="transform transition duration-[400ms]"
             enterFrom="-translate-x-full"
@@ -44,7 +44,6 @@ useEffect(()=>{
             leaveFrom="translate-x-0"
             leaveTo="-translate-x-full"
             >
-
             </Transition>
           
              <div className={`transition-all  duration-[400ms]  ${showNav && !isMobile ? "pl-42": ''}`}>

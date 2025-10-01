@@ -397,7 +397,7 @@ export async function fetchAllOrders(slug) {
    
     try {
       connectToDB();
-      const result = await Order.find({slug, bDate}).sort({createdAt:"desc"})
+      const result = await Order.find({slug}).sort({createdAt:"desc"})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {

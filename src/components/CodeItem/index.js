@@ -62,9 +62,7 @@ useEffect(()=>{
              
                  if (e.target.value) {
                       let tempOrders= [...menus]   
-                 console.log(tempOrders,'tord')
                 const items = tempOrders.filter(product=>product?.barcode===e.target.value)  
-                console.log(items,'it')
                 if (items && items.length) {                 
                   setItem(items)
                   e.target.value=""
@@ -75,29 +73,6 @@ useEffect(()=>{
                  }
                 }
                }, 300);
-
-      // useEffect(()=>{
-      //        const getError = async()=>{
-      //          if(code && code.length){
-                 
-      //            let tempOrders= [...menus]   
-      //            console.log(tempOrders,'tord')
-      //           const items = tempOrders.filter(product=>product?.barcode===code)  
-      //           console.log(items,'it')
-      //           //  const items = await fetchCodeProduct(slug, code)
-      //           if (items && items.length) {
-                 
-      //           await  setItem(items)
-
-      //         }else{
-      //           toast.warn('no item with this barcode')
-      //           await setCode('')
-      //       await setItem([])
-      //         }
-                
-      //        }}
-      //        getError()
-      //      },[code]) 
 
      
     

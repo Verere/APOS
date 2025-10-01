@@ -37,6 +37,8 @@ const PosPage=({slug, menus, orderRcpt, sales, orders, getHotel, pays, categorie
       } = useContext(CartContext)
     const [orderName, setOrderName]= useState("")
     const [loading, setLoading]= useState(false)
+   const [code, setCode]=useState('')
+   const [item, setItem]=useState('')
 
     var date = moment();
 const bDate = date.format('D/MM/YYYY')
@@ -45,7 +47,15 @@ const bDate = date.format('D/MM/YYYY')
   const router = useRouter()
     const [state, formAction, isPending] = useActionState(addOrder, {});
     const pathname = usePathname();
+  const inputRef = useRef(null);
 
+  const filteredProducts = item
+          ? menus.filter((menu) =>
+        menu.name.toLowerCase().includes(item) || menu.barcode === item
+  
+          )    
+          : menus;
+ 
     useEffect(()=>{
       const fetchOrders = async()=>{
         let tempOrders= [...orders]      
@@ -179,23 +189,36 @@ useEffect(()=>{
          getError()
        },[state])   
       
+const handleSearchBarcode = useDebouncedCallback((e) => {
+             
+              
+                   if (e.target.value) {
+             e.target.value.length > 2 && setCode(e.target.value)
+           } else {
+            setCode("");
+           }
+                // else {
+                //    toast.warn('no item with this barcode')
+                //  setCode('')
+                // }
+               }, 300);
 
      
         const handleSearch = useDebouncedCallback((e) => {
-           const params = new URLSearchParams(searchParams);
-       params.set("o", orderRcpt[0]._id)
+      //      const params = new URLSearchParams(searchParams);
+      //  params.set("o", orderRcpt[0]._id)
        
            if (e.target.value) {
-             e.target.value.length > 2 && params.set("q", e.target.value) 
+             e.target.value.length > 2 && setItem(e.target.value)
            } else {
-             params.delete("q");
+            setItem("");
            }
-           if(pathname){
+          //  if(pathname){
        
-             replace(`${pathname}?${params}`);
-           }else{
-             replace(`/?${params}`);
-           }
+          //    replace(`${pathname}?${params}`);
+          //  }else{
+          //    replace(`/?${params}`);
+          //  }
          }, 300);
 
     return(
@@ -278,7 +301,10 @@ useEffect(()=>{
       <input type="text" placeholder="Search Item" onChange={(e)=>handleSearch(e)} name="name" className=" outline-none focus:border-none "/>     
     </div>
     <CodeItem order={orderRcpt} slug={slug} menus={menus} />
+ {/* <div className="flex items-center border border-gray-400 w-1/3 rounded-lg p-2 mr-3 ">
 
+                  <input ref={inputRef} type="text" name="code" autoFocus placeholder="scan barcode" onChange={(e)=>handleSearchBarcode(e)} className=" outline-none focus:border-none "/>     
+      </div> */}
                 {/* <Flex direction="column"  >
                 <div className="uppercase text-sm font-bold mb-2 pl-1">
                      Categories
@@ -298,7 +324,7 @@ useEffect(()=>{
                     </Heading>
     <ScrollArea type="always" scrollbars="vertical" style={{ height: 500 }}> 
 
-<CommonListing data={menus} orderRcpt={orderRcpt}/>
+<CommonListing data={filteredProducts} orderRcpt={orderRcpt} />
 
     </ScrollArea>
     </Box> 

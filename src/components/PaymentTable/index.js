@@ -29,7 +29,6 @@ const PaymentTable=({payments, allPayment, slug})=>{
     const  handleUpdate =async(id, path)=>{
 await updateProd(id, path)
     }
-       console.log('a',allPayment)
 
     // const { user} = useContext(GlobalContext)
     const [totalPayment, setTotalPayment] = useState(0)

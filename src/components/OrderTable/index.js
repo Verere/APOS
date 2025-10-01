@@ -5,23 +5,33 @@ import { Table } from "@radix-ui/themes";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { GlobalContext } from "@/context";
 import {useEffect,  useContext, useState, useActionState } from "react";
-
+import { format } from 'date-fns';
 import Search from "../search/search";
 import { addOrder } from "@/actions";
 import { toast } from "react-toastify";
 import { fetchPatientListByLab } from "@/actions/fetch";
 import { currencyFormat } from '@/utils/currency';
 import { formatTime } from "@/utils/date";
+import DatePicker from "react-datepicker";
+   import moment from 'moment'
 
 const OrderTable = ({patients}) => {
   const [slug, setSlug]=useState(null)
   const {user }= useContext(GlobalContext)
   const [state, formAction, isPending] = useActionState(addOrder, {});
      const { replace } = useRouter();
-   const pat="patient"
-   const pathname = usePathname();
-   console.log('p', user)
 
+   
+       var date = moment();
+       const [selectedDate, setSelectedDate] = useState(null);
+   const bDate = date.format('D/MM/YYYY')
+
+const filteredOrders = selectedDate
+    ? patients.filter((order) =>
+        order.bDate === format(selectedDate, 'd/MM/yyyy')
+    )    
+    : patients.filter((order) =>
+        order.bDate === bDate);
 
 useEffect(()=>{
   const getSlug=()=>{
@@ -42,10 +52,11 @@ setSlug(slg)
   }
   getState()
    },[state])
-  const initialTests = [...patients]
+  
  
-    const [item, setItem] = useState([...initialTests])
+    // const [item, setItem] = useState([...initialTests])
     const [code, setCode]= useState('')
+    
 
     useEffect(()=>{
       if(code!=='')setItem(initialTests)
@@ -65,7 +76,18 @@ setSlug(slg)
       }
 
     return (
-    <div className="overflow-x-auto p-6">
+    <div className="overflow-x-auto p-6 -mt-[56px]">
+
+           <div className="my-2">
+              <label className="block mb-2 font-semibold">Select Date:</label>
+              <DatePicker
+                selected={selectedDate}
+                onChange={(date) => setSelectedDate(date)}
+                dateFormat="dd/MM/yyyy"
+                className="border px-3 py-2 rounded w-full"
+                placeholderText="Pick a date"
+              />
+            </div>
        
        <Table.Root layout="auto" variant="surface">
           <Table.Header>
@@ -82,16 +104,14 @@ setSlug(slg)
           </Table.Header>
         
           <Table.Body>
-           {patients && patients?.map((patient) => (
+           {filteredOrders && filteredOrders?.map((patient) => (
                     
             <Table.Row key={patient?._id}>
               <Table.RowHeaderCell> {patient?.orderNum}</Table.RowHeaderCell>
                   <Table.Cell>
                 <ul className="list-disc pl-5">
                   {patient.items.map((item, i) => (
-                    <>
                     <li className="list-none uppercase" key={i}>{item.qty} * {item.item}</li>
-                    </>
                   ))}
                 </ul>
 

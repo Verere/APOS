@@ -24,6 +24,7 @@ useEffect(()=>{
     setOrd()
 })
 
+  
     return(
         <section className="bg-white w-full">
                 <div className="grid grid-cols-2 gap-2 px-2 ">
