@@ -51,7 +51,8 @@ const bDate = date.format('D/MM/YYYY')
 
   const filteredProducts = item
           ? menus.filter((menu) =>
-        menu.name.toLowerCase().includes(item) || menu.barcode === item
+        menu.name.toLowerCase().includes(item) 
+          // || menu.barcode === item
   
           )    
           : menus;
