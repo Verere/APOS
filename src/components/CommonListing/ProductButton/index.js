@@ -91,7 +91,7 @@ const id = item._id
     
         <div>
           <form action={formAction}>  
-          <input type="hidden" name="slug" value={order?.slug || orderRcpt.slug} />
+          <input type="hidden" name="slug" value={order?.slug || "uzmall"}/>
                     <input type="hidden" name="order" value={order?._id} />
                     <input type="hidden" name="orderNum" value={order?.orderNum} />
                     <input type="hidden" name="itemId" value={item._id} />
