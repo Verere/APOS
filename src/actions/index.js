@@ -115,11 +115,11 @@ export const addProduct = async (prvState, formData) => {
     Object.fromEntries(formData);
   
     try {
+      connectToDB();
       if(up==="true"){
 await updateProduct(id,name, price, qty, category, barcode, totalValue, cost, profit, reOrder, expiration)
 return{success:true}
       }else{
-    connectToDB();
 
     const newProduct = new Product({
       name, barcode, price,  qty, category,totalValue, cost, profit, reOrder, expiration, slug, 
@@ -235,9 +235,10 @@ export const addSales = async (prvState, formData) => {
   const {order, slug, orderNum, itemId, barcode, item, qty, price, amount, soldBy, stock, bDate, totalOrder, status, path} =
     Object.fromEntries(formData);
     
-     const Payments = await fetchPaymentByOrder(order)
+    //  const Payments = await fetchPaymentByOrder(order)
+    const payment = 0
    
-    if(Payments.length !== 0)return{error:"Payment has been taken for this order. Please create a new order"}
+    if(payment !== 0)return{error:"Payment has been taken for this order. Please create a new order"}
     const sales = await fetchSalesByOrderId(order)
 
 
@@ -254,12 +255,10 @@ export const addSales = async (prvState, formData) => {
     // if(sale && sale.length){
 
       const prvSales = sale[0]?._id
-      console.log(sale)
     // }
       
       
       if(prvSales  !== undefined){
-        console.log('updating sales')
     const qtyy = sale[0]?.qty 
     const pStock = sale[0]?.stock
 
@@ -277,10 +276,8 @@ export const addSales = async (prvState, formData) => {
         return{success:true}
       }else{
         try {   
-          console.log('adding sales')
           
           const balanceStock = stock-qty
-          console.log('qty', qty, 'p st', stock, 'bal st', balanceStock)
           const totalValue = price*balanceStock
    // add new sales")
    const form=new FormData

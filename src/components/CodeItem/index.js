@@ -61,8 +61,7 @@ useEffect(()=>{
        const handleSearch = useDebouncedCallback((e) => {
              
                  if (e.target.value) {
-                      let tempOrders= [...menus]   
-                const items = tempOrders.filter(product=>product?.barcode===e.target.value)  
+                const items = menus.filter(product=>product?.barcode===e.target.value)  
                 if (items && items.length) {                 
                   setItem(items)
                   e.target.value=""

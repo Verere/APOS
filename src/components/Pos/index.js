@@ -52,7 +52,7 @@ const bDate = date.format('D/MM/YYYY')
   const filteredProducts = item
           ? menus.filter((menu) =>
         menu.name.toLowerCase().includes(item) 
-          // || menu.barcode === item
+        || menu.barcode === item
   
           )    
           : menus;
@@ -189,37 +189,34 @@ useEffect(()=>{
          }
          getError()
        },[state])   
-      
-const handleSearchBarcode = useDebouncedCallback((e) => {
+
+// const handleSearchBarcode = useDebouncedCallback((e) => {
              
               
-                   if (e.target.value) {
-             e.target.value.length > 2 && setCode(e.target.value)
-           } else {
-            setCode("");
-           }
-                // else {
-                //    toast.warn('no item with this barcode')
-                //  setCode('')
-                // }
-               }, 300);
+//                    if (e.target.value) {
+//              e.target.value.length > 2 && setCode(e.target.value)
+//            } else {
+//             setCode("");
+//            }
+//                 // else {
+//                 //    toast.warn('no item with this barcode')
+//                 //  setCode('')
+//                 // }
+//                }, 300);
 
      
         const handleSearch = useDebouncedCallback((e) => {
-      //      const params = new URLSearchParams(searchParams);
-      //  params.set("o", orderRcpt[0]._id)
-       
+          // setCode("");
+              // e.preventDefault()
+       console.log(e.target.value, "val")
            if (e.target.value) {
+
              e.target.value.length > 2 && setItem(e.target.value)
            } else {
+             e.target.value === "" 
             setItem("");
            }
-          //  if(pathname){
-       
-          //    replace(`${pathname}?${params}`);
-          //  }else{
-          //    replace(`/?${params}`);
-          //  }
+   
          }, 300);
 
     return(
@@ -299,10 +296,10 @@ const handleSearchBarcode = useDebouncedCallback((e) => {
 
                 <div className="flex items-center border border-gray-400 w-2/3  rounded-lg p-2 mx-auto ">
       <MdSearch />
-      <input type="text" placeholder="Search Item" onChange={(e)=>handleSearch(e)} name="name" className=" outline-none focus:border-none "/>     
+      <input type="text" placeholder="Search Item or scan code" name="code" onChange={(e)=>handleSearch(e)}   className=" outline-none focus:border-none "/>     
     </div>
     <CodeItem order={orderRcpt} slug={slug} menus={menus} />
- {/* <div className="flex items-center border border-gray-400 w-1/3 rounded-lg p-2 mr-3 ">
+ {/* <div className="flex items-center border border-gray-400 w-1/3 rounded-lg p-2 mr-3 ">   value={code} onChange={async (e)=>await setCode(e.target.value)}
 
                   <input ref={inputRef} type="text" name="code" autoFocus placeholder="scan barcode" onChange={(e)=>handleSearchBarcode(e)} className=" outline-none focus:border-none "/>     
       </div> */}
