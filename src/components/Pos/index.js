@@ -204,6 +204,15 @@ useEffect(()=>{
 //                 // }
 //                }, 300);
 
+    useEffect(() => {
+      const submitForm = async()=>{
+        inputRef.current.focus();
+
+
+      }
+      submitForm()
+    }, []);
+  
      
         const handleSearch = useDebouncedCallback((e) => {
           // setCode("");
@@ -296,9 +305,9 @@ useEffect(()=>{
 
                 <div className="flex items-center border border-gray-400 w-2/3  rounded-lg p-2 mx-auto ">
       <MdSearch />
-      <input type="text" placeholder="Search Item or scan code" name="code" onChange={(e)=>handleSearch(e)}   className=" outline-none focus:border-none "/>     
+      <input type="text" ref={inputRef} placeholder="Search Item or scan barcode" name="code" onChange={(e)=>handleSearch(e)}   className="w-full outline-none focus:border-none "/>     
     </div>
-    <CodeItem order={orderRcpt} slug={slug} menus={menus} />
+    {/* <CodeItem order={orderRcpt} slug={slug} menus={menus} /> */}
  {/* <div className="flex items-center border border-gray-400 w-1/3 rounded-lg p-2 mr-3 ">   value={code} onChange={async (e)=>await setCode(e.target.value)}
 
                   <input ref={inputRef} type="text" name="code" autoFocus placeholder="scan barcode" onChange={(e)=>handleSearchBarcode(e)} className=" outline-none focus:border-none "/>     
