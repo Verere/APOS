@@ -77,6 +77,7 @@ export async function sendVerificationEmail(toEmail, token) {
       <h2>Verify your email</h2>
       <p>Click the link below to verify your email address:</p>
       <p><a href="${verifyLink}" target="_blank" rel="noopener">Verify Email</a></p>
+      <p style="word-break: break-all;">Or open this URL in your browser: <a href="${verifyLink}" target="_blank" rel="noopener">${verifyLink}</a></p>
       <p>If the above link doesn't work, copy-paste this token into the app: ${token}</p>
     </div>
   `
@@ -95,7 +96,8 @@ export function buildInviteHtml({ inviterName, storeName, inviteLink, role, note
       <p>Role: <strong>${role}</strong></p>
       ${note ? `<p>Note: ${note}</p>` : ''}
       <p><a href="${inviteLink}" target="_blank" rel="noopener">Accept invite</a></p>
-      <p>If the link doesn't work, copy-paste this token into the app: ${inviteLink}</p>
+      <p style="word-break: break-all;">Or open this URL in your browser: <a href="${inviteLink}" target="_blank" rel="noopener">${inviteLink}</a></p>
+      <p>If the link doesn't work, copy the above link into your browser to accept the invite.</p>
     </div>
   `
 }
