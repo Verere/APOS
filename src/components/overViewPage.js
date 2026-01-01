@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Sidebar from '@/components/dashboard/Sidebar'
-import TopBar from '@/components/dashboard/TopBar'
+import TopBar from '@/components/dashboard/Topbar'
 import DashboardContent from '@/components/dashboard/DashboardContent'
 
 const OverViewPage = ({ slug, user, stats, recentOrders }) => {

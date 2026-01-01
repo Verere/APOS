@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Sidebar from '@/components/dashboard/Sidebar'
-import TopBar from '@/components/dashboard/TopBar'
+import TopBar from '@/components/dashboard/Topbar'
 
 const DashboardLayoutClient = ({ children, slug, user }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
