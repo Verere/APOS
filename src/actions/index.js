@@ -561,11 +561,22 @@ export const addUser= async (prvState,formData) => {
       });
       
       await newUser.save();
-      await sendVerificationEmail(email, plainEmailToken);
+      
+      // Send verification email
+      const emailResult = await sendVerificationEmail(email, plainEmailToken);
+      
+      if (!emailResult.ok) {
+        console.error('Failed to send verification email:', emailResult.error);
+        return { 
+          success: true, 
+          warning: 'User created but verification email failed to send. Please check your email configuration.' 
+        };
+      }
+      
       return { success: true, message: 'User has been created and verification email sent.' };
      
   } catch (err) {
-    console.log(err);
+    console.error('addUser error:', err);
     return{error:"Failed to create user!"};
   }
 

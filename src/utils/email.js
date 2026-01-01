@@ -19,21 +19,28 @@ export async function sendEmail({ to, subject, text, html }) {
   const transporter = getTransporter()
   if (!transporter) {
     // fallback for dev: log the message
-    console.log('sendEmail (skipped - no SMTP configured):', { to, subject, text, html })
-    return { ok: true, info: null }
+    console.warn('⚠️ sendEmail (skipped - no SMTP configured):', { to, subject })
+    console.warn('Missing env vars: SMTP_HOST, SMTP_PORT, SMTP_USER, or SMTP_PASS')
+    return { ok: false, error: 'SMTP not configured' }
   }
 
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER
 
-  const info = await transporter.sendMail({
-    from,
-    to,
-    subject,
-    text,
-    html,
-  })
-
-  return { ok: true, info }
+  try {
+    const info = await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html,
+    })
+    
+    console.log('✅ Email sent successfully to:', to)
+    return { ok: true, info }
+  } catch (error) {
+    console.error('❌ Email send failed:', error.message)
+    return { ok: false, error }
+  }
 }
 
 export async function sendVerificationEmail(toEmail, token) {
