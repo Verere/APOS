@@ -52,14 +52,14 @@ const [showSuccess, setShowSuccess] = useState(false)
                   <div className="mb-4 text-6xl">✉️</div>
                   <p className="text-3xl font-medium text-green-600 mb-4">Check Your Email!</p>
                   <p className="text-lg text-gray-700 mb-2">
-                    We've sent a verification email to:
+                    We&apos;ve sent a verification email to:
                   </p>
                   <p className="text-lg font-semibold text-blue-600 mb-4">{email}</p>
                   <p className="text-gray-600 mb-6">
                     Please click the link in the email to verify your account and complete the registration.
                   </p>
                   <p className="text-sm text-gray-500">
-                    Didn't receive the email? Check your spam folder or contact support.
+                    Didn&apos;t receive the email? Check your spam folder or contact support.
                   </p>
                   <Link href="/login" className="inline-flex mt-6 items-center justify-center bg-black text-white px-6 py-3 rounded
                     text-base transition-all duration-200 ease-in-out focus:shadow font-medium uppercase tracking-wide">
