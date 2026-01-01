@@ -44,8 +44,32 @@ export async function sendEmail({ to, subject, text, html }) {
 }
 
 export async function sendVerificationEmail(toEmail, token) {
-  const base = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ''
+  // Normalize and validate base URL for verification links
+  const rawBase = (process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || '').toString().trim()
+  let base = rawBase.replace(/\/$/, '') // remove trailing slash
+
+  // If base exists but doesn't include protocol, assume https
+  if (base && !/^https?:\/\//i.test(base)) {
+    base = `https://${base}`
+  }
+
+  // If the value looks invalid (e.g. 'http://auth' or empty), try sensible fallbacks
+  const invalidHostPattern = /(^https?:\/\/(auth|localhost:?\d*$)|^auth$)/i
+  if (!base || invalidHostPattern.test(base)) {
+    const fallback = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '').toString().trim().replace(/\/$/, '')
+    if (fallback && /^https?:\/\//i.test(fallback)) {
+      base = fallback
+    } else if (fallback) {
+      base = `https://${fallback}`
+    } else {
+      // final fallback to a well-known value from .env during development
+      base = 'https://apos-one.vercel.app'
+    }
+  }
+
   const verifyLink = `${base}/auth/verify?token=${encodeURIComponent(token)}`
+  console.log('Verification link built:', verifyLink)
+
   const subject = 'Verify your email'
   const text = `Please verify your email by visiting: ${verifyLink}`
   const html = `

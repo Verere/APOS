@@ -37,8 +37,18 @@ export async function POST(req) {
       return invite.toObject()
     })
 
-    // build invite link — frontend accept page expects a token POST, but provide a web link to a small page or API
-    const base = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ''
+    // build invite link — normalize base URL and provide sensible fallbacks
+    const rawBase = (process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || '').toString().trim()
+    let base = rawBase.replace(/\/$/, '')
+    if (base && !/^https?:\/\//i.test(base)) base = `https://${base}`
+    const invalidHostPattern = /(^https?:\/\/(auth|localhost:?\d*$)|^auth$)/i
+    if (!base || invalidHostPattern.test(base)) {
+      const fallback = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '').toString().trim().replace(/\/$/, '')
+      if (fallback && /^https?:\/\//i.test(fallback)) base = fallback
+      else if (fallback) base = `https://${fallback}`
+      else base = 'https://apos-one.vercel.app'
+    }
+
     const inviteLink = `${base}/api/stores/invite/accept?token=${created.token}`
 
     // send email (best-effort)
