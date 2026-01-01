@@ -1,6 +1,7 @@
 import connectToDB from '@/utils/connectDB'
 import User from '@/models/user'
 import bcrypt from 'bcryptjs'
+import Link from 'next/link'
 import VerifyClient from '@/app/auth/VerifyClient'
 
 export default async function VerifyPage({ searchParams }){
@@ -61,7 +62,7 @@ export default async function VerifyPage({ searchParams }){
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="w-full max-w-md bg-white rounded-lg shadow p-6 text-center">
           <h1 className="text-2xl font-semibold mb-2">Email Verified</h1>
-          <p className="text-sm text-gray-600 mb-4">Your email has been successfully verified. You can now <a href="/login" className="text-blue-600">log in</a> or return to the <a href="/" className="text-blue-600">homepage</a>.</p>
+          <p className="text-sm text-gray-600 mb-4">Your email has been successfully verified. You can now <Link href="/login" className="text-blue-600">log in</Link> or return to the <Link href="/" className="text-blue-600">homepage</Link>.</p>
         </div>
       </div>
     )
