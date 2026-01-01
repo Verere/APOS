@@ -1,105 +1,79 @@
-"use client"
+import connectToDB from '@/utils/connectDB'
+import User from '@/models/user'
+import bcrypt from 'bcryptjs'
+import VerifyClient from '@/app/auth/VerifyClient'
 
-import React, { useEffect, useState, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+export default async function VerifyPage({ searchParams }){
+  const token = (searchParams && (searchParams.token || searchParams.t)) || ''
 
-function VerifyContent(){
-  const search = useSearchParams()
-  const router = useRouter()
-  const tokenFromQuery = search?.get('token') || search?.get('t') || ''
-  const [token, setToken] = useState(tokenFromQuery || '')
-  const [status, setStatus] = useState('idle') // idle|loading|success|error
-  const [message, setMessage] = useState('')
-
-  useEffect(()=>{
-    if(tokenFromQuery){
-      submitToken(tokenFromQuery)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[tokenFromQuery])
-
-  useEffect(() => {
-    let t;
-    if (status === 'success') {
-      t = setTimeout(() => router.push('/store'), 2500);
-    }
-    return () => {
-      if (t) clearTimeout(t);
-    };
-  }, [status, router]);
-
-  async function submitToken(value){
-    if(!value) return setMessage('Please provide a verification token')
-    try{
-      setStatus('loading')
-      setMessage('Verifying...')
-      const res = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: value })
-      })
-      const data = await res.json()
-      if(res.ok){
-        setStatus('success')
-        setMessage(data.message || 'Email verified successfully')
-      } else {
-        setStatus('error')
-        setMessage(data.error || 'Verification failed')
-      }
-    }catch(err){
-      console.error(err)
-      setStatus('error')
-      setMessage('Network error, please try again')
-    }
+  if (!token) {
+    // No token in URL — render client verification UI
+    return <VerifyClient />
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
-        <h1 className="text-2xl font-semibold mb-2 text-center">Email Verification</h1>
-        <p className="text-sm text-gray-600 mb-4 text-center">Confirm your email address to activate your account.</p>
+  // Server-side verification flow when token is present
+  try {
+    await connectToDB()
 
-        {status === 'success' ? (
-          <div className="text-center">
-            <p className="text-green-600 font-medium mb-4">{message}</p>
-            <button onClick={()=>router.push('/store')} className="px-4 py-2 bg-black text-white rounded">Create Store</button>
+    // Try legacy plain token
+    let user = await User.findOne({ emailToken: token })
+
+    if (!user) {
+      const now = new Date()
+      const candidates = await User.find({ emailVerificationToken: { $exists: true, $ne: null }, emailVerificationExpires: { $gt: now } }).lean()
+      if (candidates && candidates.length > 0) {
+        for (const cand of candidates) {
+          if (!cand.emailVerificationToken) continue
+          const match = await bcrypt.compare(token, cand.emailVerificationToken)
+          if (match) {
+            user = await User.findById(cand._id)
+            break
+          }
+        }
+      }
+    }
+
+    if (!user) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+          <div className="w-full max-w-md bg-white rounded-lg shadow p-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Invalid or expired token</h2>
+            <p className="text-sm text-gray-600">The verification link is invalid or has expired.</p>
           </div>
-        ) : (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Verification Token</label>
-            <input
-              value={token}
-              onChange={(e)=>setToken(e.target.value)}
-              placeholder="Paste your verification token here"
-              className="w-full border rounded p-2 mb-3"
-            />
+        </div>
+      )
+    }
 
-            {status === 'error' && <p className="text-sm text-red-600 mb-2">{message}</p>}
-
-            <div className="flex gap-2">
-              <button onClick={()=>submitToken(token)} className="flex-1 px-4 py-2 bg-black text-white rounded">Verify Email</button>
-              <button onClick={()=>router.push('/')} className="px-4 py-2 border rounded">Home</button>
-            </div>
-
-            {status === 'loading' && <p className="text-sm text-gray-500 mt-3">{message}</p>}
+    if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+          <div className="w-full max-w-md bg-white rounded-lg shadow p-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Token expired</h2>
+            <p className="text-sm text-gray-600">The verification link has expired.</p>
           </div>
-        )}
-      </div>
-    </div>
-  )
-}
+        </div>
+      )
+    }
 
-export default function VerifyPage(){
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading verification page...</p>
+    await User.updateOne({ _id: user._id }, { $set: { emailVerified: new Date() }, $unset: { emailVerificationToken: '', emailVerificationExpires: '', emailToken: '' } })
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md bg-white rounded-lg shadow p-6 text-center">
+          <h1 className="text-2xl font-semibold mb-2">Email Verified</h1>
+          <p className="text-sm text-gray-600 mb-4">Your email has been successfully verified. You can now <a href="/login" className="text-blue-600">log in</a> or return to the <a href="/" className="text-blue-600">homepage</a>.</p>
         </div>
       </div>
-    }>
-      <VerifyContent />
-    </Suspense>
-  )
+    )
+  } catch (err) {
+    console.error('email verify server error', err)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md bg-white rounded-lg shadow p-6 text-center">
+          <h2 className="text-xl font-semibold mb-2">Server error</h2>
+          <p className="text-sm text-gray-600">Please try again later.</p>
+        </div>
+      </div>
+    )
+  }
 }
