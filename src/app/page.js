@@ -12,7 +12,7 @@ export default function Home() {
         <section className="w-full lg:w-1/2 flex flex-col px-3 py-3 lg:p-10 order-2 lg:order-1">
           <div className="w-full flex justify-center align-middle flex-col h-auto lg:pt-7">
             <span className="flex space-x-2 items-end">
-              <span className="block w-14 mb-2 dark:border-white border-b-2 border-gray-700"></span>
+              <span className="block w-12 mb-2 dark:border-white border-b-2 border-gray-700"></span>
               <span className="text-xl md:text-2xl font-bold dark:text-white text-blue-600 uppercase">
                 Get the Job done with...
               </span>
