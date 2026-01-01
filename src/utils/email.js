@@ -67,7 +67,7 @@ export async function sendVerificationEmail(toEmail, token) {
     }
   }
 
-  const verifyLink = `${base}/api/auth/verify?token=${encodeURIComponent(token)}`
+  const verifyLink = `${base}/auth/verify?token=${encodeURIComponent(token)}`
   console.log('Verification link built:', verifyLink)
 
   const subject = 'Verify your email'

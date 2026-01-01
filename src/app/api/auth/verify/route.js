@@ -1,7 +1,6 @@
 import connectToDB from '@/utils/connectDB'
 import User from '@/models/user'
 import bcrypt from 'bcryptjs'
-import { redirect } from 'next/navigation'
 
 async function verifyToken(token) {
   if (!token) return { error: 'token is required' }
@@ -48,15 +47,15 @@ export async function GET(req) {
     const url = new URL(req.url)
     const token = url.searchParams.get('token') || url.searchParams.get('t')
     
-    // Redirect to the page-based verification for GET requests
-    if (token) {
-      redirect(`/auth/verify?token=${encodeURIComponent(token)}`)
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'token is required' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
     }
     
-    return new Response(JSON.stringify({ error: 'token is required' }), { status: 400 })
+    // Redirect to the page-based verification for GET requests
+    return Response.redirect(new URL(`/auth/verify?token=${encodeURIComponent(token)}`, url.origin), 302)
   } catch (err) {
     console.error('email verify GET error', err)
-    return new Response(JSON.stringify({ error: 'server error' }), { status: 500 })
+    return new Response(JSON.stringify({ error: 'server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
   }
 }
 
