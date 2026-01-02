@@ -106,4 +106,45 @@ export function buildInviteText({ inviterName, storeName, inviteLink, role, note
   return `${inviterName} invited you to join ${storeName}\nRole: ${role}\n${note ? note + '\n' : ''}Accept using: ${inviteLink}`
 }
 
-export default { sendEmail, buildInviteHtml, buildInviteText }
+export async function sendPasswordResetEmail(toEmail, resetLink, userName = '') {
+  const subject = 'Reset your password'
+  const text = `Reset your password by visiting: ${resetLink}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.`
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #111;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+        <h1 style="color: #fff; margin: 0; font-size: 28px;">Password Reset</h1>
+      </div>
+      <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+        ${userName ? `<p style="font-size: 16px;">Hi ${userName},</p>` : '<p style="font-size: 16px;">Hi,</p>'}
+        <p style="font-size: 16px; line-height: 1.6;">We received a request to reset your password. Click the button below to create a new password:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" 
+             target="_blank" 
+             rel="noopener"
+             style="background: #667eea; color: #fff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+            Reset Password
+          </a>
+        </div>
+        <p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+          Or copy and paste this link into your browser:
+        </p>
+        <p style="word-break: break-all; font-size: 13px; color: #6b7280; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb;">
+          <a href="${resetLink}" target="_blank" rel="noopener" style="color: #667eea;">${resetLink}</a>
+        </p>
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+          <p style="font-size: 13px; color: #9ca3af; margin: 5px 0;">⏰ This link will expire in 1 hour</p>
+          <p style="font-size: 13px; color: #9ca3af; margin: 5px 0;">🔒 If you didn't request this, please ignore this email</p>
+        </div>
+      </div>
+    </div>
+  `
+  
+  try {
+    return await sendEmail({ to: toEmail, subject, text, html })
+  } catch (e) {
+    console.error('sendPasswordResetEmail error', e)
+    return { ok: false, error: e }
+  }
+}
+
+export default { sendEmail, buildInviteHtml, buildInviteText, sendPasswordResetEmail }

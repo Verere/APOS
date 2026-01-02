@@ -1,8 +1,8 @@
 import { addCategory, } from '@/actions'
 import {  FetchCategory, fetchProducts, FetchProductsByMenu} from '@/actions/fetch'
-import ProductTable from '@/components/ProductTable'
 import Heading from '@/components/Heading'
 import React from 'react'
+import ProductTableWrapper from '@/components/ProductTable/ProductTableWrapper'
 
 const ProductPage = async({params}) => {
     // const groups = await fetchGroupsByLab(params.slug) 
@@ -10,8 +10,8 @@ const ProductPage = async({params}) => {
 
      const patientList = await fetchProducts(slug) 
   return (
-    <div className='-mt-[56px]'>      
-    <ProductTable products={patientList} slug={slug}/>
+    <div className='-mt-[6px]'>      
+    <ProductTableWrapper products={patientList} slug={slug}/>
     </div>
   )
 }

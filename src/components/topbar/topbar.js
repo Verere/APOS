@@ -2,9 +2,10 @@
 import styles from "./navbar.module.css";
 import { Menu, Transition, Popover } from "@headlessui/react";
 import { FaBarsStaggered, FaPencil } from "react-icons/fa6";
-import { FaCheckSquare } from "react-icons/fa";
+import { FaCheckSquare, FaShoppingCart } from "react-icons/fa";
 import { Fragment } from "react";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -15,8 +16,9 @@ import {
 } from "react-icons/md";
 import { GlobalContext } from "@/context";
 import { useContext, useEffect, useState, useActionState } from "react";
+import { currencyFormat } from '@/utils/currency';
 
-const TopBar = ({showNav, setShowNav}) => {
+const TopBar = ({showNav, setShowNav, showCart, setShowCart}) => {
   const searchParams = useSearchParams()
   const {replace}= useRouter()
   const router = useRouter()
@@ -24,12 +26,10 @@ const TopBar = ({showNav, setShowNav}) => {
   const slug = pathname.split('/')[1]
   const [mobileOpen, setMobileOpen] = useState(false)
 
-     const {user, setUser} = useContext(GlobalContext);
+     const {user, setUser, cartValue, cartTotal} = useContext(GlobalContext);
      console.log('neew user', user)
-const handleLogout = ()=>{
-  setUser([])
-  replace('/login')
-  console.log(user, 'u')
+const handleLogout = async ()=>{
+  await signOut({ callbackUrl: '/login' });
 }
   return (
     <div className={`w-full mb-1 h-16 bg-black px-3 cursor-pointer flex justify-between items-center overflow-x-visible transition-all duration-[400ms] ${showNav ? "pl-56" : ""}`}>
@@ -49,6 +49,28 @@ const handleLogout = ()=>{
         <Link href={`/${slug}/dashboard`}><button className="hover:underline bg-transparent p-0 m-0 border-0">Admin</button></Link>
         <button onClick={()=>handleLogout()} className="ml-2">Logout</button>
       </nav>
+
+      {/* Cart icon with value - only show on POS page */}
+      {pathname.includes('/pos') && setShowCart && (
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setShowCart(!showCart)} 
+            className="relative bg-transparent border-0 p-2 hover:bg-gray-800 rounded-md transition-colors"
+          >
+            <FaShoppingCart className="w-6 h-6 text-white" />
+            {cartTotal > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {cartTotal}
+              </span>
+            )}
+            {cartValue > 0 && (
+              <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-white text-xs font-semibold whitespace-nowrap">
+                {currencyFormat(cartValue)}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Current user display */}
       <div className="hidden md:flex items-center gap-3 text-white ml-4">

@@ -1,10 +1,32 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useContext } from 'react'
+import { GlobalContext } from '@/context'
 import Sidebar from '@/components/dashboard/Sidebar'
 import TopBar from '@/components/dashboard/Topbar'
 
-const DashboardLayoutClient = ({ children, slug, user }) => {
+const DashboardLayoutClient = ({ children, slug, user, store, membership }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const { setStore, setMembership } = useContext(GlobalContext)
+
+  useEffect(() => {
+    if (store) {
+      // Save store to global context
+      setStore(store)
+      
+      // Persist to localStorage
+      localStorage.setItem('store', JSON.stringify(store))
+    }
+  }, [store])
+
+  useEffect(() => {
+    if (membership) {
+      // Save membership to global context
+      setMembership(membership)
+      
+      // Persist to localStorage
+      localStorage.setItem('membership', JSON.stringify(membership))
+    }
+  }, [membership])
 
   return (
     <div className="flex min-h-screen bg-gray-50 overflow-hidden">

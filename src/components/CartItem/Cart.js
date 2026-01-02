@@ -42,11 +42,9 @@ const [total, setTotal] = useState(0)
 return(
 
 <>
-<div className="relative w-full h-full py-1 mb-3">
-  
-
-    <div className="w-full  h-full py-1 flex flex-col relative px-3  mb-3 ">
-      <main className="w-full bg-slate-600 pr-1 p-1">
+<div className="relative w-full h-full">
+    <div className="w-full h-full flex flex-col">
+      <main className="w-full bg-slate-50 p-1 sm:p-2">
       
       {items && items.map((item) => (
 

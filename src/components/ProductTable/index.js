@@ -32,7 +32,7 @@ import StockAdjustmentForm from "../StockAdjustmentForm";
 
 
 
-const ProductTable=({products, slug})=>{
+const ProductTable=({products, slug, userRole})=>{
 
   const initialItems=[...products]
  
@@ -141,58 +141,79 @@ await   setQty(counter)
 },[products])
 
 
-        // const handleSearch = async(code) => {       
-       
-        //    if (code && code.length) {
-        //      const items = await fetchSearchedProducts(slug, code)
-        //        setItem(items)
-        //               setCode("")
-        //             } else{
-        //               setItem(initialItems)
-        //               setCode("")
-        //    }
-          
-        //  }
-        //  const handleBarcode = async(patient) => {   
-        //   setLoading(true)
-        //   const {_id, barcode} = patient
-        //   const id= _id
-        //   if (barcode && barcode.length ) {
-        //     setLoading(false)
-        //     toast.warn("This Product already has a barcode")
-        //   }else{
-        //       const barcodes = generateEAN13FromUUID();
-        //    const items=    await updateBarcode(id, barcodes, pathname)
 
-        //         setLoading(false)
-        //      toast.success("Barcode generated successfully")
-            
-
-        //    }
-          
-        //  }
 
 return(
    <>
- <div className="flex  sm:flex-col justify-between items-center px-3 my-3 uppercase font-bold" >
-              <div className="flex justify-around px-2 " >
-                    <p>Total Stock Value :</p>
-                   <p> {currencyFormat(total)}</p>
-                   </div>
-              <div className="flex justify-around px-2 " >
-                    <p>Total Product :</p>
-                   <p> {qty}</p>
-                   </div>
-                <div className="flex justify-between items-center border border-gray-400 w-1/3  pl-2 rounded-lg ">
-                   <input type="text" placeholder="Search Item" 
-                   onChange={(e)=>setCode(e.target.value)} 
-                   name="code" className="p-2 outline-none focus:border-none "/>  
-                   {/* <button className="flex justify-between items-center bg-gray-400 p-2  rounded-r-lg"
-                   onClick={()=>handleSearch(code)}> 
-                    Search</button>   */}
-                 </div>
-                   </div>
-        <div className="w-full overflow-y-scroll overflow-x-scroll uppercase font-bold">
+ {/* Stats and Search Section - Mobile Responsive */}
+ <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+   <div className="flex flex-col md:flex-row md:items-start lg:items-center lg:justify-between gap-4">
+     
+     {/* Stats Cards - Only visible to owners */}
+     {userRole === 'owner' && (
+     <div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:gap-4 gap-3 md:flex-1">
+       {/* Total Stock Value Card */}
+       <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 shadow-sm">
+         <div className="flex items-center gap-3">
+           <div className="bg-blue-600 rounded-lg p-3 shadow-md">
+             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
+           </div>
+           <div className="flex-1 min-w-0">
+             <p className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">Total Stock Value</p>
+             <p className="text-xl sm:text-2xl font-bold text-blue-900 truncate">{currencyFormat(total)}</p>
+           </div>
+         </div>
+       </div>
+
+       {/* Total Products Card */}
+       <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200 shadow-sm">
+         <div className="flex items-center gap-3">
+           <div className="bg-green-600 rounded-lg p-3 shadow-md">
+             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+             </svg>
+           </div>
+           <div className="flex-1 min-w-0">
+             <p className="text-xs font-medium text-green-600 uppercase tracking-wide mb-1">Total Products</p>
+             <p className="text-xl sm:text-2xl font-bold text-green-900">{qty}</p>
+           </div>
+         </div>
+       </div>
+     </div>
+     )}
+
+     {/* Search Input */}
+     <div className={userRole === 'owner' ? 'w-full lg:w-80' : 'w-full'}>
+       <div className="relative">
+         <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+           <MdSearch className="w-5 h-5 text-gray-400" />
+         </div>
+         <input
+           type="text"
+           placeholder="Search products..."
+           onChange={(e) => setCode(e.target.value)}
+           name="code"
+           className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base placeholder:text-gray-400"
+         />
+         {code && (
+           <button
+             onClick={() => setCode('')}
+             className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-gray-600"
+           >
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+             </svg>
+           </button>
+         )}
+       </div>
+     </div>
+   </div>
+ </div>
+
+ {/* Table Section */}
+        <div className="w-full overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">{/*  uppercase font-bold */}
         <Table.Root layout="auto" variant="surface">
     <Table.Header>
       

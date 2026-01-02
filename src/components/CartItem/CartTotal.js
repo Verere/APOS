@@ -60,14 +60,22 @@ useEffect(() => {
 return(
 
 <>
-<div className=" w-full border flex  sm:flex-col justify-between px-2 border-gray-200 bg-white  mt-5 shadow-sm rounded text-sm font-bold border-t ">
-        <h3 className='flex'>Order :
-        <span> {"  "}{currencyFormat(total)}</span> </h3>
-        <h3 className='flex text-green-700'>Paid :
-        <span> {"  "}{currencyFormat(payment)}</span> </h3>
-        <h3 className='flex text-orange-500'>Balance :
-        <span> {"  "}{currencyFormat(bal)}</span> </h3>
-      </div>      
+<div className="w-full border-t border-gray-200 bg-white shadow-sm">
+      <div className="grid grid-cols-3 gap-2 p-3 sm:p-4 text-xs sm:text-sm font-bold">
+        <div className='flex flex-col sm:flex-row sm:gap-2'>
+          <span className="text-gray-600">Order:</span>
+          <span className="text-gray-900">{currencyFormat(total)}</span>
+        </div>
+        <div className='flex flex-col sm:flex-row sm:gap-2 text-green-700'>
+          <span>Paid:</span>
+          <span>{currencyFormat(payment || 0)}</span>
+        </div>
+        <div className='flex flex-col sm:flex-row sm:gap-2 text-orange-500'>
+          <span>Balance:</span>
+          <span>{currencyFormat(bal|| 0)}</span>
+        </div>
+      </div>
+    </div>      
   </>
 );
 };

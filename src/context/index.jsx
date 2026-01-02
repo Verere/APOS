@@ -40,6 +40,7 @@ export default function GlobalState({ children }) {
 const [bal, setBal] = useState(0)
 const [slug, setSlug] = useState(null)
 const [store, setStore] = useState([]);
+const [membership, setMembership] = useState(null);
   const [addressFormData, setAddressFormData] = useState([
     {
       fullName: "",
@@ -62,18 +63,28 @@ const [store, setStore] = useState([]);
   useEffect(() => {
     if(busDate !==null)  localStorage.setItem('bDate', JSON.stringify(busDate))
 },[busDate])
+  useEffect(() => {
+    if(store !==null)  localStorage.setItem('store', JSON.stringify(store))
+},[store])
 
 
 useEffect(() => {
- 
   setLocationToState()
-})
+  setStoreToState()
+}, [])
 
 
 const setLocationToState = () => {
   setLocation (
     localStorage.getItem('location')
     ? JSON.parse(localStorage.getItem('location')) : null
+  )
+}
+
+const setStoreToState = () => {
+  setStore (
+    localStorage.getItem('store')
+    ? JSON.parse(localStorage.getItem('store')) : null
   )
 }
 
@@ -141,7 +152,9 @@ const setLocationToState = () => {
        bal, setBal,
        slug, setSlug,         
        store, 
-       setStore
+       setStore,
+       membership,
+       setMembership
       }}
     >
       {children}

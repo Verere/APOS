@@ -5,6 +5,7 @@ import connectDB from '@/utils/connectDB'
 import StoreMembership from '@/models/storeMembership'
 import Store from '@/models/store'
 import DashboardLayoutClient from '@/components/dashboard/DashboardLayoutClient'
+import { syncProductsWithInventory } from '@/actions/fetch'
 
 export default async function DashboardLayout({ children, params }) {
   const { slug } = await params
@@ -32,6 +33,20 @@ export default async function DashboardLayout({ children, params }) {
     redirect('/dashboard')
   }
 
+  // Authorization: Only owner and manager can access dashboard
+  const allowedRoles = ['OWNER', 'MANAGER']
+  if (!allowedRoles.includes(membership.role)) {
+    redirect(`/${slug}`)
+  }
+
+  // Sync products with inventory transactions after login
+  try {
+    await syncProductsWithInventory(slug)
+  } catch (error) {
+    console.error('Error syncing inventory:', error)
+    // Don't block page load if sync fails
+  }
+
   // Prepare user data for client component
   const userData = {
     id: session.user.id,
@@ -40,8 +55,25 @@ export default async function DashboardLayout({ children, params }) {
     image: session.user.image,
   }
 
+  // Prepare store data for client component
+  const storeData = {
+    _id: store._id.toString(),
+    name: store.name,
+    slug: store.slug,
+    email: store.email,
+    address: store.address,
+    number: store.number,
+    whatsapp: store.whatsapp,
+    logo: store.logo,
+  }
+
+  // Prepare membership data
+  const membershipData = {
+    role: membership.role,
+  }
+
   return (
-    <DashboardLayoutClient slug={slug} user={userData}>
+    <DashboardLayoutClient slug={slug} user={userData} store={storeData} membership={membershipData}>
       {children}
     </DashboardLayoutClient>
   )

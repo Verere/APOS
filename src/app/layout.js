@@ -24,7 +24,7 @@ export const metadata = {
   applicationName: 'ABMS',
   referrer: 'origin-when-cross-origin',
   authors:[
-    {name: 'Averit Technology Limited', url:"https://quickordering.online"}
+    {name: 'Averit Technology Limited', url:"https://apos-one.vercel.app/"}
   ],
   formatDetection:{
     email: false,

@@ -538,9 +538,16 @@ export async function fetchCancelledOrders(hotelId, location, bDate) {
     return [];
   }
 
-  export async function fetchSalesByOrderId(order) {
+  export async function fetchSalesByOrderId(orderId) {
     await connectToDB();
-    return [];
+    try {
+      const Sales = await import('@/models/sales').then(m => m.default || m);
+      const result = await Sales.find({ order: orderId, isCancelled: { $ne: true } }).lean();
+      return JSON.parse(JSON.stringify(result));
+    } catch (err) {
+      console.error('fetchSalesByOrderId error:', err);
+      return [];
+    }
   }
   
   //fetch sales by location
@@ -635,5 +642,61 @@ export async function fetchSlug(slug) {
   } catch (err) {
     console.log(err);
     return{error:"Failed to fetch Store!"};
+  }
+}
+
+// Sync products with inventory transactions - creates initial transaction for products without any
+export async function syncProductsWithInventory(slug) {
+  if (!slug) {
+    return { error: "Slug is required" };
+  }
+
+  await connectToDB();
+
+  try {
+    const InventoryTransaction = (await import('@/models/models/InventoryTransaction')).default;
+    const Product = (await import('@/models/product')).default;
+
+    // Fetch all products for the slug
+    const products = await Product.find({ slug, isDeleted: false }).lean();
+
+    if (!products || products.length === 0) {
+      return { success: true, message: "No products found for this store", synced: 0 };
+    }
+
+    let syncedCount = 0;
+
+    for (const product of products) {
+      // Check if product already has inventory transactions
+      const existingTransaction = await InventoryTransaction.findOne({ 
+        productId: product._id 
+      });
+
+      // If no transaction exists, create initial inventory transaction
+      if (!existingTransaction && product.qty !== undefined) {
+        await new InventoryTransaction({
+          productId: product._id,
+          slug,
+          type: 'RESTOCK',
+          quantity: product.qty || 0,
+          previousStock: 0,
+          newStock: product.qty || 0,
+          notes: 'Initial inventory sync after login',
+        }).save();
+
+        syncedCount++;
+      }
+    }
+
+    return { 
+      success: true, 
+      message: `Successfully synced ${syncedCount} products with inventory`,
+      synced: syncedCount,
+      total: products.length
+    };
+
+  } catch (err) {
+    console.error('syncProductsWithInventory error:', err);
+    return { error: "Failed to sync products with inventory!" };
   }
 }

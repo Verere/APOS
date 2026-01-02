@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Bell, User, Settings, LogOut, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { signOut } from 'next-auth/react'
 
 const TopBar = ({ user, slug }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -31,8 +32,8 @@ const TopBar = ({ user, slug }) => {
     }
   }
 
-  const handleLogout = () => {
-    window.location.href = '/api/auth/signout'
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: '/login' })
   }
 
   const handleSettings = () => {

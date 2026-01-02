@@ -42,9 +42,7 @@ export default function ProductButton({ item, orderRcpt}) {
   const handleCart = async(item) => {
     setAdding(true)
     const res = await addToCart({ product: item._id, name: item.name, category: item.category, image: item.image, price: item.price, qty: 1, onSale: item.onSale })
-    if(res && res.success){
-      toast.success('Item added to cart')
-    }else{
+    if(res && !res.success){
       toast.warn(res?.message || 'Failed to add item')
     }
     setAdding(false)

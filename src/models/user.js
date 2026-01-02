@@ -29,6 +29,13 @@ const userSchema = new mongoose.Schema({
     emailVerificationExpires: {
         type: Date
     },
+    // password reset fields
+    passwordResetToken: {
+        type: String
+    },
+    passwordResetExpiry: {
+        type: Date
+    },
     role: {
         type: String,
         default: 'user'

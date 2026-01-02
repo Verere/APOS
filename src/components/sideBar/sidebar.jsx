@@ -14,7 +14,7 @@ import {
   MdHelpCenter,
   MdLogout,
 } from "react-icons/md";
-import { auth, signOut } from "@/auth";
+import { signOut } from "next-auth/react";
 import { GlobalContext } from "@/context";
 
 
@@ -210,9 +210,12 @@ const {sub}=store
             ))}
       </ul> }
       <form
-        action=""
+        action={async () => {
+          'use server'
+          await signOut({ callbackUrl: '/login' })
+        }}
       >
-        <button className="flex space-x-4 items-center px-2">
+        <button type="submit" className="flex space-x-4 items-center px-2">
           <MdLogout className="mr-2"/>
           Logout
         </button>

@@ -35,37 +35,37 @@ const {_id}= item
 
   return (
    <>
-<article key={item._id} className="border border-gray-200 bg-white shadow-sm rounded mb-1 p-2">
-  <div className="flex flex-col lg:flex-row gap-2 justify-between items-start lg:items-center">
-    <div className="flex-1 w-full">
-      <p className="font-bold hover:text-blue-600 truncate">{item.name || item.item}</p>
-      <div className="text-xs text-gray-600">{currencyFormat(item.price)} / item</div>
+<article key={item._id} className="border border-gray-200 bg-white shadow-sm rounded-md mb-2 p-2 sm:p-3">
+  <div className="flex flex-col gap-2">
+    {/* Item name and price */}
+    <div className="flex justify-between items-start">
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm sm:text-base hover:text-blue-600 truncate">{item.name || item.item}</p>
+        <div className="text-xs text-gray-600 mt-0.5">{currencyFormat(item.price)} / item</div>
+      </div>
+      <div className="font-semibold text-blue-600 text-sm sm:text-base ml-2">{currencyFormat(item.amount)}</div>
     </div>
 
-    <div className="flex items-center gap-2">
+    {/* Quantity controls and remove button */}
+    <div className="flex items-center justify-between gap-2">
       <div className="flex items-center bg-gray-100 rounded-md">
         <button
           onClick={async () => { await decr(cart, item) }}
-          className="px-3 py-2 text-lg bg-gray-200 hover:bg-gray-300 rounded-l"
+          className="px-2 sm:px-3 py-1.5 sm:py-2 text-lg bg-gray-200 hover:bg-gray-300 rounded-l active:bg-gray-400"
           aria-label="decrease"
         >−</button>
-        <div className="px-4 text-center font-semibold">{item.qty}</div>
+        <div className="px-3 sm:px-4 text-center font-semibold text-sm sm:text-base min-w-[40px]">{item.qty}</div>
         <button
           onClick={async () => { await incr(cart, item) }}
-          className="px-3 py-2 text-lg bg-gray-200 hover:bg-gray-300 rounded-r"
+          className="px-2 sm:px-3 py-1.5 sm:py-2 text-lg bg-gray-200 hover:bg-gray-300 rounded-r active:bg-gray-400"
           aria-label="increase"
         >+</button>
       </div>
 
-      <div className="flex flex-col items-end">
-        <div className="font-semibold text-blue-600">{currencyFormat(item.amount)}</div>
-        <div className="mt-2 flex gap-2">
-          <button
-            onClick={async () => { await deleteItem(cart, item) }}
-            className="px-3 py-1 text-sm text-red-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
-          >Remove</button>
-        </div>
-      </div>
+      <button
+        onClick={async () => { await deleteItem(cart, item) }}
+        className="px-3 py-1.5 text-xs sm:text-sm text-red-600 bg-white border border-red-200 rounded-md hover:bg-red-50 active:bg-red-100 whitespace-nowrap"
+      >Remove</button>
     </div>
   </div>
 </article>

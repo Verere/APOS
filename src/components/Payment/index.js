@@ -2,19 +2,42 @@
 
 import { addPaymentWithOrder } from "@/actions"
 import { GlobalContext } from "@/context"
-import { useContext, useEffect, useState, useActionState } from "react"
+import { useContext, useEffect, useState, useActionState, useRef } from "react"
 import { toast } from "react-toastify"
 import { useFormState } from 'react-dom';
 import { CartContext } from "@/context/CartContext"
+import { useReactToPrint } from 'react-to-print';
+import { currencyFormat } from '@/utils/currency'
 
 const PaymentPage=({slug, order, location, busDate, pathname})=>{
-    const {cartValue,bal, user, cartTotal} = useContext(GlobalContext)
+    const {cartValue,bal, user, cartTotal, store} = useContext(GlobalContext)
     const {cpayment, setCPayment, cart, setCart} = useContext(CartContext)
     const [payment, setPayment]= useState(null)
     const [amount, setAmount]=useState(cartValue)
     const [cash, setCash] = useState(cartValue)
     const [pos, setPos] = useState(0)
     const [transfer, setTransfer] = useState(0)
+    const [showPrintModal, setShowPrintModal] = useState(false)
+    const [completedOrder, setCompletedOrder] = useState(null)
+    const [paymentsData, setPaymentsData] = useState([])
+    const [orderItems, setOrderItems] = useState([])
+    const printRef = useRef(null)
+    const reactToPrintFn = useReactToPrint({ 
+        contentRef: printRef,
+        pageStyle: `
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          @media print {
+            body {
+              margin: 0;
+              padding: 0;
+            }
+          }
+        `
+      })
+    
     const totalPayment = (parseFloat(cash || 0) || 0) + (parseFloat(pos || 0) || 0) + (parseFloat(transfer || 0) || 0)
     const orderTotal = parseFloat(cartValue || 0) || 0
     const rawBalance = Number((orderTotal - totalPayment).toFixed(2))
@@ -70,6 +93,47 @@ const PaymentPage=({slug, order, location, busDate, pathname})=>{
             }
             if(state.success){
                 toast.success(state.success)
+                
+                // Prepare payment data for receipt
+                const paymentsList = []
+                if(cash > 0) paymentsList.push({ mop: 'Cash', amount: parseFloat(cash) })
+                if(pos > 0) paymentsList.push({ mop: 'POS', amount: parseFloat(pos) })
+                if(transfer > 0) paymentsList.push({ mop: 'Transfer', amount: parseFloat(transfer) })
+                
+                setPaymentsData(paymentsList)
+                setCompletedOrder({
+                    ...order,
+                    bDate: busDate,
+                    amount: cartValue,
+                    amountPaid: totalPayment,
+                    bal: balance
+                })
+                
+                // Fetch order items from sales
+                if(order?._id) {
+                    fetch(`/api/sales/order/${order._id}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if(data.sales && Array.isArray(data.sales)) {
+                                setOrderItems(data.sales)
+                            } else {
+                                // Fallback to cart items if fetch fails
+                                setOrderItems(cart?.cartItems || cart || [])
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error fetching order items:', err)
+                            // Fallback to cart items
+                            setOrderItems(cart?.cartItems || cart || [])
+                        })
+                } else {
+                    // Use cart items if no order ID
+                    setOrderItems(cart?.cartItems || cart || [])
+                }
+                
+                // Show print modal
+                setShowPrintModal(true)
+                
                 // clear cart after successful payment/checkout
                 try{ setCart([]) }catch(e){}
                 setLoading(false)
@@ -165,6 +229,142 @@ const PaymentPage=({slug, order, location, busDate, pathname})=>{
                  {isPending ? "Making Payment...": "Make Payment"}  
                      </button>
         </form>
+
+        {/* Print Modal */}
+        {showPrintModal && completedOrder && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                    <h2 className="text-xl font-semibold mb-4 text-center">Payment Successful!</h2>
+                    <p className="text-center text-gray-600 mb-6">Would you like to print the receipt?</p>
+                    
+                    {/* Hidden print content */}
+                    <div style={{display: 'none'}}>
+                        <div ref={printRef} style={{ width: '80mm', fontFamily: 'monospace', fontSize: '12px', padding: '5mm' }}>
+                            {/* Header */}
+                            <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                                <h2 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>
+                                    {store?.name || 'STORE NAME'}
+                                </h2>
+                                <p style={{ margin: '2px 0', fontSize: '11px' }}>
+                                    {store?.address || 'Store Address'}
+                                </p>
+                                <p style={{ margin: '2px 0', fontSize: '11px' }}>
+                                    {store?.number && `Tel: ${store.number}`}
+                                    {store?.number && store?.whatsapp && ' | '}
+                                    {store?.whatsapp && `WhatsApp: ${store.whatsapp}`}
+                                </p>
+                                {store?.email && (
+                                    <p style={{ margin: '2px 0', fontSize: '11px' }}>{store.email}</p>
+                                )}
+                                <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>
+                            </div>
+
+                            {/* Order Info */}
+                            <div style={{ marginBottom: '10px', fontSize: '11px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Date:</span>
+                                    <span>{completedOrder?.bDate || new Date().toLocaleString()}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Receipt #:</span>
+                                    <span>{completedOrder?.orderNum || 'N/A'}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Cashier:</span>
+                                    <span>{user?.name || 'N/A'}</span>
+                                </div>
+                                <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>
+                            </div>
+
+                            {/* Items */}
+                            <div style={{ marginBottom: '10px' }}>
+                                <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid #000' }}>
+                                            <th style={{ textAlign: 'left', padding: '4px 0' }}>ITEM</th>
+                                            <th style={{ textAlign: 'center', padding: '4px 0' }}>QTY</th>
+                                            <th style={{ textAlign: 'right', padding: '4px 0' }}>AMOUNT</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {orderItems.map((item, index) => (
+                                            <tr key={item?._id || index} style={{ borderBottom: '1px dotted #ccc' }}>
+                                                <td style={{ padding: '4px 0', wordBreak: 'break-word', maxWidth: '40mm' }}>
+                                                    {item?.item || item?.name}
+                                                </td>
+                                                <td style={{ textAlign: 'center', padding: '4px 0' }}>{item?.qty}</td>
+                                                <td style={{ textAlign: 'right', padding: '4px 0' }}>
+                                                    {currencyFormat(item?.amount || (item?.price * item?.qty))}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <div style={{ borderTop: '2px solid #000', margin: '8px 0' }}></div>
+                            </div>
+
+                            {/* Totals */}
+                            <div style={{ fontSize: '12px', marginBottom: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', padding: '4px 0' }}>
+                                    <span>TOTAL:</span>
+                                    <span>{currencyFormat(completedOrder?.amount)}</span>
+                                </div>
+                                
+                                {/* Payment Details */}
+                                {paymentsData && paymentsData.length > 0 && (
+                                    <>
+                                        <div style={{ borderTop: '1px dashed #000', margin: '8px 0' }}></div>
+                                        {paymentsData.map((p, index) => (
+                                            <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+                                                <span>{p.mop}:</span>
+                                                <span>{currencyFormat(p.amount)}</span>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                                
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontWeight: 'bold' }}>
+                                    <span>PAID:</span>
+                                    <span>{currencyFormat(completedOrder?.amountPaid)}</span>
+                                </div>
+                                
+                                {completedOrder?.bal > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                                        <span>BALANCE:</span>
+                                        <span>{currencyFormat(completedOrder?.bal)}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div style={{ borderTop: '2px dashed #000', margin: '10px 0' }}></div>
+                            <div style={{ textAlign: 'center', fontSize: '12px', marginTop: '10px' }}>
+                                <p style={{ margin: '5px 0', fontWeight: 'bold' }}>Thank You!</p>
+                                <p style={{ margin: '5px 0', fontSize: '10px' }}>Please come again</p>
+                                {store?.whatsapp && (
+                                    <p style={{ margin: '5px 0', fontSize: '10px' }}>
+                                        Questions? WhatsApp: {store.whatsapp}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-3 justify-center">
+                        <button 
+                            onClick={reactToPrintFn} 
+                            className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800">
+                            Print Receipt
+                        </button>
+                        <button 
+                            onClick={() => setShowPrintModal(false)} 
+                            className="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
         </div>
     )
 }

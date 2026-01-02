@@ -12,7 +12,9 @@ import { Princess_Sofia } from "next/font/google";
 import Link from "next/link";
 import Heading from "../Heading";
 import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { format } from 'date-fns';
+import { FaCalendarAlt } from 'react-icons/fa';
 
  
 
@@ -126,7 +128,7 @@ useEffect(()=>{
       <input type="text" placeholder="Enter Product Name" name="name" value={name} onChange={async (e)=>await setName(e.target.value)} className="border mb-1 border-gray-400 p-2 w-full " required />
      
       <div className="flex justify-between items-center">
-            <select name="category" id="cat"  value={category} className="mx-auto mb-1 p-2 w-full " onChange={async (e)=>await setCategory(e.target.value)}>
+            <select name="category" id="cat"  value={category} className="mx-auto mb-1 p-2 w-full border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onChange={async (e)=>await setCategory(e.target.value)}>
           <option value="">Choose Category</option>
             {
                 categories?.map(location=>(
@@ -134,15 +136,24 @@ useEffect(()=>{
                 ))
             }
         </select>
-        <div className="flex items-center font-semibold w-full p-2 mb-1">
-         <label className="block  mr-2">Expiration Date:</label>
-                <DatePicker
-                  selected={selectedDate}
-                  onChange={(date) => setSelectedDate(date)}
-                  dateFormat="dd/MM/yyyy"
-                  className="border px-3 py-2 rounded w-full"
-                  placeholderText="Pick a date"
-                />
+        <div className="flex flex-col w-full p-2 mb-1">
+         <label className="block text-sm font-semibold text-gray-700 mb-2">Expiration Date</label>
+                <div className="relative">
+                  <DatePicker
+                    selected={selectedDate}
+                    onChange={(date) => setSelectedDate(date)}
+                    dateFormat="dd/MM/yyyy"
+                    className="border border-gray-400 px-4 py-2 pr-10 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholderText="Select expiration date"
+                    showMonthDropdown
+                    showYearDropdown
+                    dropdownMode="select"
+                    minDate={new Date()}
+                    calendarClassName="custom-datepicker"
+                    wrapperClassName="w-full"
+                  />
+                  <FaCalendarAlt className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
                 </div>
                 </div>
       <div className="flex justify-between flex-wrap">
@@ -166,7 +177,7 @@ useEffect(()=>{
         
        
        <input type="hidden"  name="slug" value={slug} /> 
-       <input type="hidden"  name="expiration" value={format(selectedDate, 'd/MM/yyyy')} /> 
+       <input type="hidden"  name="expiration" value={selectedDate ? format(selectedDate, 'd/MM/yyyy') : ''} /> 
       <input type="hidden"  name="path" value={pathname} />
           
       <button onClick={()=>setLoading(true)}  className="border border-gray-400 rounded-md bg-black text-white p-2 w-full">
@@ -174,9 +185,6 @@ useEffect(()=>{
       </div>
     
       </form>
-          
-     <Link href={`/${slug}/dashboard/products/product-table`}> <button onClick={()=>setLoading(true)}  className="border border-gray-400 rounded-md mt-2 bg-black/80 text-white p-2 w-full">
-        View Products</button></Link>
     </>
   );
 };

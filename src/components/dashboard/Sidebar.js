@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
@@ -21,12 +21,19 @@ import {
   List,
   FolderTree,
   ShoppingBag,
+  Loader2,
 } from 'lucide-react'
 
 const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
   const pathname = usePathname()
   const router = useRouter()
   const [productsExpanded, setProductsExpanded] = useState(true)
+  const [loadingItem, setLoadingItem] = useState(null)
+
+  // Reset loading state when pathname changes (navigation completed)
+  useEffect(() => {
+    setLoadingItem(null)
+  }, [pathname])
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: `/${slug}/dashboard` },
@@ -53,11 +60,17 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
   ]
 
   const handleNavigation = (item) => {
+    setLoadingItem(item.path)
     if (item.isAction) {
       window.location.href = item.path
     } else {
       router.push(item.path)
     }
+  }
+
+  const handleSubmenuNavigation = (subItem) => {
+    setLoadingItem(subItem.path)
+    router.push(subItem.path)
   }
 
   return (
@@ -140,17 +153,23 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                           return (
                             <li key={subItem.label}>
                               <button
-                                onClick={() => router.push(subItem.path)}
+                                onClick={() => handleSubmenuNavigation(subItem)}
+                                disabled={loadingItem === subItem.path}
                                 className={cn(
                                   'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm',
                                   isSubActive
                                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
-                                    : 'hover:bg-gray-800 text-gray-400 hover:text-white'
+                                    : 'hover:bg-gray-800 text-gray-400 hover:text-white',
+                                  loadingItem === subItem.path && 'opacity-75 cursor-wait'
                                 )}
                               >
-                                <SubIcon size={16} className="flex-shrink-0" />
+                                {loadingItem === subItem.path ? (
+                                  <Loader2 size={16} className="flex-shrink-0 animate-spin" />
+                                ) : (
+                                  <SubIcon size={16} className="flex-shrink-0" />
+                                )}
                                 <span className="font-medium">{subItem.label}</span>
-                                {isSubActive && (
+                                {isSubActive && loadingItem !== subItem.path && (
                                   <div className="ml-auto w-1 h-4 bg-white rounded-full" />
                                 )}
                               </button>
@@ -163,20 +182,26 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                 ) : (
                   <button
                     onClick={() => handleNavigation(item)}
+                    disabled={loadingItem === item.path}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200',
                       isActive
                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
                         : 'hover:bg-gray-800 text-gray-300 hover:text-white',
-                      isCollapsed && 'justify-center px-0'
+                      isCollapsed && 'justify-center px-0',
+                      loadingItem === item.path && 'opacity-75 cursor-wait'
                     )}
                     title={isCollapsed ? item.label : ''}
                   >
-                    <Icon size={20} className="flex-shrink-0" />
+                    {loadingItem === item.path ? (
+                      <Loader2 size={20} className="flex-shrink-0 animate-spin" />
+                    ) : (
+                      <Icon size={20} className="flex-shrink-0" />
+                    )}
                     {!isCollapsed && (
                       <span className="font-medium text-sm">{item.label}</span>
                     )}
-                    {!isCollapsed && isActive && (
+                    {!isCollapsed && isActive && loadingItem !== item.path && (
                       <div className="ml-auto w-1 h-6 bg-white rounded-full" />
                     )}
                   </button>

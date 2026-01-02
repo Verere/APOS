@@ -27,7 +27,7 @@ export default function CommonListing({data}){
   
     return(
         <section className="bg-white w-full">
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-2">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 px-2">
                     {
                     data && data.length ?
                     data.map(item =>(
