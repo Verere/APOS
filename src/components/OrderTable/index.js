@@ -108,7 +108,7 @@ setSlug(slg)
           
           {!selectedDate && (
             <div className="flex items-center gap-2 bg-green-50 px-4 py-3 rounded-lg border border-green-200">
-              <span className="text-sm text-gray-600">Showing today's orders:</span>
+              <span className="text-sm text-gray-600">Showing today&apos;s orders:</span>
               <span className="font-semibold text-green-600">{bDate}</span>
             </div>
           )}
