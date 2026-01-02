@@ -31,6 +31,14 @@ const DashboardContent = ({ stats, recentOrders }) => {
       color: 'bg-green-500',
     },
     {
+      title: 'Total Profit',
+      value: currencyFormat(stats?.totalProfit || 0),
+      change: '+15.3%',
+      isPositive: true,
+      icon: TrendingUp,
+      color: 'bg-emerald-500',
+    },
+    {
       title: 'Total Users',
       value: stats?.totalUsers || 0,
       change: '+5.1%',
@@ -43,48 +51,71 @@ const DashboardContent = ({ stats, recentOrders }) => {
       value: '23.5%',
       change: '-2.4%',
       isPositive: false,
-      icon: TrendingUp,
+      icon: Activity,
       color: 'bg-orange-500',
     },
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
         {kpiCards.map((kpi, index) => {
           const Icon = kpi.icon
           return (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">
-                      {kpi.title}
-                    </p>
-                    <h3 className="text-2xl font-bold mt-2">{kpi.value}</h3>
-                    <div className="flex items-center mt-2">
+            <Card 
+              key={index} 
+              className="hover:shadow-xl transition-all duration-300 border-l-4 hover:scale-105"
+              style={{ borderLeftColor: kpi.color.replace('bg-', '#') }}
+            >
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col space-y-3">
+                  {/* Icon and Title Row */}
+                  <div className="flex items-center justify-between">
+                    <div
+                      className={`${kpi.color} p-2.5 sm:p-3 rounded-xl shadow-md flex items-center justify-center`}
+                    >
+                      <Icon className="text-white" size={20} />
+                    </div>
+                    <div className="flex items-center gap-1">
                       {kpi.isPositive ? (
-                        <ArrowUpRight className="text-green-500" size={16} />
+                        <div className="bg-green-100 p-1 rounded-full">
+                          <ArrowUpRight className="text-green-600" size={14} />
+                        </div>
                       ) : (
-                        <ArrowDownRight className="text-red-500" size={16} />
+                        <div className="bg-red-100 p-1 rounded-full">
+                          <ArrowDownRight className="text-red-600" size={14} />
+                        </div>
                       )}
-                      <span
-                        className={`text-sm ml-1 ${
-                          kpi.isPositive ? 'text-green-500' : 'text-red-500'
-                        }`}
-                      >
-                        {kpi.change}
-                      </span>
-                      <span className="text-xs text-gray-500 ml-2">
-                        vs last month
-                      </span>
                     </div>
                   </div>
-                  <div
-                    className={`${kpi.color} p-3 rounded-lg bg-opacity-10 flex items-center justify-center`}
-                  >
-                    <Icon className={kpi.color.replace('bg-', 'text-')} size={24} />
+
+                  {/* Title */}
+                  <div>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                      {kpi.title}
+                    </p>
+                  </div>
+
+                  {/* Value */}
+                  <div>
+                    <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 break-words">
+                      {kpi.value}
+                    </h3>
+                  </div>
+
+                  {/* Change Indicator */}
+                  <div className="flex flex-wrap items-center gap-1 pt-2 border-t border-gray-100">
+                    <span
+                      className={`text-xs sm:text-sm font-bold ${
+                        kpi.isPositive ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {kpi.change}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      vs last month
+                    </span>
                   </div>
                 </div>
               </CardContent>

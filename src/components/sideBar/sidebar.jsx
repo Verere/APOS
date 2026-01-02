@@ -152,6 +152,16 @@ const {sub}=store
           path: `/${slug}/dashboard/account`,
           icon: <MdAttachMoney />,
         },     
+        {
+          title: "Expense",
+          path: `/${slug}/dashboard/expense`,
+          icon: <MdAttachMoney />,
+        },     
+        {
+          title: "End of day",
+          path: `/${slug}/dashboard/eod`,
+          icon: <MdAnalytics />,
+        },     
            
         {
           title: "Subscribe",

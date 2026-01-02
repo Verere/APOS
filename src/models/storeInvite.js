@@ -22,6 +22,10 @@ const StoreInviteSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    defaultPassword: {
+        type: String,
+        required: true
+    },
     expiresAt: {
         type: Date,
         required: true

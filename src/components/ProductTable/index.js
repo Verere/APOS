@@ -150,7 +150,7 @@ return(
    <div className="flex flex-col md:flex-row md:items-start lg:items-center lg:justify-between gap-4">
      
      {/* Stats Cards - Only visible to owners */}
-     {userRole === 'owner' && (
+     {userRole === 'OWNER' && (
      <div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:gap-4 gap-3 md:flex-1">
        {/* Total Stock Value Card */}
        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 shadow-sm">

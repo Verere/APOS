@@ -7,7 +7,6 @@ import {
   Package,
   ShoppingCart,
   CreditCard,
-  Warehouse,
   Users,
   FileText,
   Settings,
@@ -22,6 +21,8 @@ import {
   FolderTree,
   ShoppingBag,
   Loader2,
+  DollarSign,
+  Calendar,
 } from 'lucide-react'
 
 const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
@@ -51,7 +52,8 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
     },
     { icon: ShoppingCart, label: 'Sales', path: `/${slug}/dashboard/orders` },
     { icon: CreditCard, label: 'Payments', path: `/${slug}/dashboard/payments` },
-    { icon: Warehouse, label: 'Inventory', path: `/${slug}/dashboard/inventory` },
+    { icon: DollarSign, label: 'Expense', path: `/${slug}/dashboard/expense` },
+    { icon: Calendar, label: 'End of Day', path: `/${slug}/dashboard/eod` },
     { icon: Users, label: 'Users', path: `/${slug}/dashboard/users` },
     { icon: FileText, label: 'Reports', path: `/${slug}/reports` },
     { icon: Settings, label: 'Settings', path: `/${slug}/settings` },
