@@ -35,37 +35,48 @@ const {_id}= item
 
   return (
    <>
-<article key={item._id} className="border border-gray-200 bg-white shadow-sm rounded-md mb-2 p-2 sm:p-3">
-  <div className="flex flex-col gap-2">
+<article className="border border-gray-200 bg-white shadow-sm rounded-lg hover:shadow-md transition-shadow mb-2 overflow-hidden">
+  <div className="p-3 sm:p-4">
     {/* Item name and price */}
-    <div className="flex justify-between items-start">
+    <div className="flex justify-between items-start gap-3 mb-3">
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm sm:text-base hover:text-blue-600 truncate">{item.name || item.item}</p>
-        <div className="text-xs text-gray-600 mt-0.5">{currencyFormat(item.price)} / item</div>
+        <p className="font-bold text-sm sm:text-base text-gray-900 line-clamp-2 leading-tight">
+          {item.name || item.item}
+        </p>
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="text-xs sm:text-sm text-gray-500">{currencyFormat(item.price)}</span>
+          <span className="text-xs text-gray-400">× {item.qty}</span>
+        </div>
       </div>
-      <div className="font-semibold text-blue-600 text-sm sm:text-base ml-2">{currencyFormat(item.amount)}</div>
+      <div className="flex flex-col items-end gap-1">
+        <div className="font-bold text-base sm:text-lg text-blue-600">{currencyFormat(item.amount)}</div>
+        <button
+          onClick={async () => { await deleteItem(cart, item) }}
+          className="text-xs text-red-500 hover:text-red-700 hover:underline"
+        >
+          Remove
+        </button>
+      </div>
     </div>
 
-    {/* Quantity controls and remove button */}
+    {/* Quantity controls */}
     <div className="flex items-center justify-between gap-2">
-      <div className="flex items-center bg-gray-100 rounded-md">
+      <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg shadow-sm">
         <button
           onClick={async () => { await decr(cart, item) }}
-          className="px-2 sm:px-3 py-1.5 sm:py-2 text-lg bg-gray-200 hover:bg-gray-300 rounded-l active:bg-gray-400"
+          className="px-3 sm:px-4 py-2 text-lg font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-l-lg active:bg-gray-200 transition-colors"
           aria-label="decrease"
         >−</button>
-        <div className="px-3 sm:px-4 text-center font-semibold text-sm sm:text-base min-w-[40px]">{item.qty}</div>
+        <div className="px-4 sm:px-6 py-2 text-center font-bold text-sm sm:text-base text-gray-900 min-w-[50px] border-x border-gray-200">{item.qty}</div>
         <button
           onClick={async () => { await incr(cart, item) }}
-          className="px-2 sm:px-3 py-1.5 sm:py-2 text-lg bg-gray-200 hover:bg-gray-300 rounded-r active:bg-gray-400"
+          className="px-3 sm:px-4 py-2 text-lg font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-r-lg active:bg-gray-200 transition-colors"
           aria-label="increase"
         >+</button>
       </div>
-
-      <button
-        onClick={async () => { await deleteItem(cart, item) }}
-        className="px-3 py-1.5 text-xs sm:text-sm text-red-600 bg-white border border-red-200 rounded-md hover:bg-red-50 active:bg-red-100 whitespace-nowrap"
-      >Remove</button>
+      <div className="text-xs sm:text-sm text-gray-500 font-medium">
+        Subtotal: <span className="text-gray-900 font-semibold">{currencyFormat(item.amount)}</span>
+      </div>
     </div>
   </div>
 </article>

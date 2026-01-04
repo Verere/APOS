@@ -11,6 +11,7 @@ import Order from "@/models/order"
 // Sales model is retained (src/models/sales.js) but fetch helpers for sales are deprecated.
 import Credits from "@/models/credit"
 import Complimentary from "@/models/complimentary"
+import Customer from "@/models/customer"
 
 import User  from '@/models/user';
 // import businessDate from '@/models/businessDate';
@@ -38,6 +39,32 @@ const bDate = date.format('D/MM/YYYY')
       return{error:"Failed to fetch Category!"};
     }
   }
+
+  //fetch customers by store
+  export async function fetchCustomers(slug) {
+    try {
+      await connectToDB();
+      
+      const store = await Store.findOne({ slug });
+      if (!store) {
+        return [];
+      }
+
+      const customers = await Customer.find({ 
+        storeId: store._id,
+        isDeleted: false 
+      })
+        .select('name email phone address totalSpent')
+        .sort({ name: 1 })
+        .lean();
+  
+      return JSON.parse(JSON.stringify(customers));
+    } catch (err) {
+      console.log('Error fetching customers:', err);
+      return [];
+    }
+  }
+
 // fetch One menu by sku
 export async function fetchMenuBySku(hotelId, sku, location) {
     await connectToDB();

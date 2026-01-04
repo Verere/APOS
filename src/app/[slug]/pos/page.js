@@ -1,4 +1,4 @@
-import { FetchCategory, fetchOneOrder, fetchSearchedProducts, fetchSalesByOrderId, fetchBDate, fetchPaymentByOrder, fetchSlug, fetchAllOrders, fetchCategory, fetchProducts } from '@/actions/fetch';
+import { FetchCategory, fetchOneOrder, fetchSearchedProducts, fetchSalesByOrderId, fetchBDate, fetchPaymentByOrder, fetchSlug, fetchAllOrders, fetchCategory, fetchProducts, fetchCustomers } from '@/actions/fetch';
 import { updatePassword } from '@/actions/update';
 import PosPage from '@/components/Pos';
 
@@ -11,6 +11,7 @@ const Pos = async({params, searchParams})=>{
        
   
     const    menus = await fetchProducts(slug)
+    const customers = await fetchCustomers(slug)
 
       
 
@@ -19,7 +20,8 @@ const Pos = async({params, searchParams})=>{
              <PosPage 
                  menus={menus} 
                  getHotel={getHotel}
-                 slug={slug} 
+                 slug={slug}
+                 customers={customers}
              />
             </>
         )

@@ -3,7 +3,7 @@ import { CartContext } from '@/context/CartContext'
 import { currencyFormat } from '@/utils/currency'
  import { GlobalContext } from '@/context'
 
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import { fetchPaymentByOrder } from '@/actions/fetch'
 
 export const CartTotal = ({pays})=>{
@@ -16,7 +16,9 @@ const [total, setTotal] = useState(0)
 
 
 // normalize cart to always be an array of items
-const items = Array.isArray(cart) ? cart : (cart?.cartItems || [])
+const items = useMemo(() => 
+  Array.isArray(cart) ? cart : (cart?.cartItems || [])
+, [cart]);
 
 
 useEffect(()=>{
@@ -30,12 +32,16 @@ useEffect(()=>{
        acc + (item)
        ,0)
        setPayment(paymentt)
-       const t = total -payment
-       setBal(t)
   
   }
   getPayment()
-},[payment, cpayment])
+},[cpayment, pays, setPayment])
+
+// Calculate balance whenever total or payment changes
+useEffect(() => {
+  const balance = total - (payment || 0)
+  setBal(balance)
+}, [total, payment, setBal])
 
 useEffect(() => {
     const getTotal = () => {     
@@ -54,25 +60,30 @@ useEffect(() => {
 
     }
     getTotal()
-},[cart, setCartTotal, setCartValue])
+},[items, setCartTotal, setCartValue])
 
 
 return(
 
 <>
-<div className="w-full border-t border-gray-200 bg-white shadow-sm">
-      <div className="grid grid-cols-3 gap-2 p-3 sm:p-4 text-xs sm:text-sm font-bold">
-        <div className='flex flex-col sm:flex-row sm:gap-2'>
-          <span className="text-gray-600">Order:</span>
-          <span className="text-gray-900">{currencyFormat(total)}</span>
+<div className="w-full border-t-2 border-gray-300 bg-gradient-to-br from-gray-50 to-white shadow-lg">
+      <div className="p-3 sm:p-4 space-y-2">
+        {/* Order Amount */}
+        <div className='flex justify-between items-center py-1.5 border-b border-gray-200'>
+          <span className="text-xs sm:text-sm font-semibold text-gray-600 uppercase tracking-wide">Order Total:</span>
+          <span className="text-base sm:text-lg font-bold text-gray-900">{currencyFormat(total)}</span>
         </div>
-        <div className='flex flex-col sm:flex-row sm:gap-2 text-green-700'>
-          <span>Paid:</span>
-          <span>{currencyFormat(payment || 0)}</span>
+        
+        {/* Paid Amount */}
+        <div className='flex justify-between items-center py-1.5'>
+          <span className="text-xs sm:text-sm font-semibold text-green-600 uppercase tracking-wide">Amount Paid:</span>
+          <span className="text-base sm:text-lg font-bold text-green-700">{currencyFormat(payment || 0)}</span>
         </div>
-        <div className='flex flex-col sm:flex-row sm:gap-2 text-orange-500'>
-          <span>Balance:</span>
-          <span>{currencyFormat(bal|| 0)}</span>
+        
+        {/* Balance */}
+        <div className='flex justify-between items-center py-2 px-2 bg-orange-50 rounded-lg border border-orange-200'>
+          <span className="text-sm sm:text-base font-bold text-orange-700 uppercase tracking-wide">Balance Due:</span>
+          <span className="text-lg sm:text-xl font-extrabold text-orange-600">{currencyFormat(bal|| 0)}</span>
         </div>
       </div>
     </div>      

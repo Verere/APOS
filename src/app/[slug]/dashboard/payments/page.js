@@ -13,6 +13,7 @@ const Payment = async({params})=>{
        <PaymentTable
        payments={payment} 
       allPayment={allPayment}
+      slug={slug}
        />
         </>
     )

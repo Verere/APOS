@@ -2,7 +2,7 @@
 "use client"
 import { GlobalContext } from "@/context";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {useEffect, useContext, useState, useActionState } from "react";
+import {useEffect, useContext, useState, useActionState, useMemo, useCallback } from "react";
 import { toast } from "react-toastify";
 import { useFormState } from 'react-dom';
 import { addProduct} from "@/actions";
@@ -102,33 +102,36 @@ getState()
 getProd()
 },[searchParams])
 
+// Auto-calculate total based on qty and price
 useEffect(()=>{
-  const getTotal = async()=>{
-    if(qty &&  price && price.length && qty.length ){
-      const totals = parseInt(qty)* parseInt(price)
-      setTotal(totals)
-    }
+  if(qty && price && qty.length && price.length ){
+    const totals = parseInt(qty) * parseInt(price)
+    setTotal(totals)
   }
-  getTotal()
 },[qty,price])
 
+// Auto-calculate profit from price and cost
 useEffect(()=>{
-  // Auto-calculate profit from price and cost
   if(cost && price && cost.length && price.length) {
     const calculatedProfit = parseFloat(price) - parseFloat(cost)
     setProfit(calculatedProfit.toString())
   }
 },[cost, price])
 
+  // Memoize formatted expiration date
+  const formattedExpiration = useMemo(() => 
+    selectedDate ? format(selectedDate, 'd/MM/yyyy') : ''
+  , [selectedDate]);
+
   return (
     <>
       <form action={formAction} className="w-full -mt-[56px]">
    <Heading title="Product Entry"/>
     <div className="flex flex-col justify-around w-full mx-auto">
-      <input type="text" placeholder="Enter Product Name" name="name" value={name} onChange={async (e)=>await setName(e.target.value)} className="border mb-1 border-gray-400 p-2 w-full " required />
+      <input type="text" placeholder="Enter Product Name" name="name" value={name} onChange={(e)=>setName(e.target.value)} className="border mb-1 border-gray-400 p-2 w-full " required />
      
       <div className="flex justify-between items-center">
-            <select name="category" id="cat"  value={category} className="mx-auto mb-1 p-2 w-full border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onChange={async (e)=>await setCategory(e.target.value)}>
+            <select name="category" id="cat"  value={category} className="mx-auto mb-1 p-2 w-full border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onChange={(e)=>setCategory(e.target.value)}>
           <option value="">Choose Category</option>
             {
                 categories?.map(location=>(
@@ -160,15 +163,15 @@ useEffect(()=>{
       <div className="flex justify-between w-full">
       
       
-            <input type="number" placeholder="Enter Cost Price" name="cost" value= {cost}  onChange={async (e)=>await setCost(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
-            <input type="number" placeholder="Enter Selling Price" name="price" value= {price}  onChange={async (e)=>await setPrice(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
+            <input type="number" placeholder="Enter Cost Price" name="cost" value= {cost}  onChange={(e)=>setCost(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
+            <input type="number" placeholder="Enter Selling Price" name="price" value= {price}  onChange={(e)=>setPrice(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
             <input type="number" placeholder="Profit (Auto-calculated)" name="profit" value= {profit} readOnly className="border mx-auto mb-1 border-gray-300 bg-gray-50 p-2 w-full"  required />
            </div>
-            <input type="number" placeholder="Enter Qty" name="qty" value ={qty} onChange={async (e)=>await setQty(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
-            <input type="text" placeholder="Total Value" name="totalValue" value ={total} onChange={async (e)=>await setTotal(e.target.value)}  className="border mx-auto mb-1 border-gray-400 p-2 w-full "/>
-            <input type="number" placeholder="Enter reOrder Qty" name="reOrder" value ={reOrder} onChange={async (e)=>await setReOrder(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
+            <input type="number" placeholder="Enter Qty" name="qty" value ={qty} onChange={(e)=>setQty(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
+            <input type="text" placeholder="Total Value" name="totalValue" value ={total} onChange={(e)=>setTotal(e.target.value)}  className="border mx-auto mb-1 border-gray-400 p-2 w-full "/>
+            <input type="number" placeholder="Enter reOrder Qty" name="reOrder" value ={reOrder} onChange={(e)=>setReOrder(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
 
-  <input name="barcode" placeholder="Enter Barcode" value={code} onChange={async (e)=>await setCode(e.target.value)} className="border mb-1 border-gray-400 p-2 w-full "/>
+  <input name="barcode" placeholder="Enter Barcode" value={code} onChange={(e)=>setCode(e.target.value)} className="border mb-1 border-gray-400 p-2 w-full "/>
   <input name="up" type="hidden" value={up} />
   <input name="id" type="hidden" value={id} />
         </div>
@@ -177,7 +180,7 @@ useEffect(()=>{
         
        
        <input type="hidden"  name="slug" value={slug} /> 
-       <input type="hidden"  name="expiration" value={selectedDate ? format(selectedDate, 'd/MM/yyyy') : ''} /> 
+       <input type="hidden"  name="expiration" value={formattedExpiration} /> 
       <input type="hidden"  name="path" value={pathname} />
           
       <button onClick={()=>setLoading(true)}  className="border border-gray-400 rounded-md bg-black text-white p-2 w-full">

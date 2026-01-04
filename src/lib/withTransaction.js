@@ -19,7 +19,8 @@ export default async function withTransaction(callback){
 	// ensure DB connection
 	await connectToDB()
 
-	const session = await mongoose.startSession()
+	// Start session from the mongoose connection to ensure same MongoClient
+	const session = await mongoose.connection.startSession()
 	try{
 		session.startTransaction()
 		const result = await callback(session)

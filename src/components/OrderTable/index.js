@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Table } from "@radix-ui/themes";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { GlobalContext } from "@/context";
-import {useEffect,  useContext, useState, useActionState } from "react";
+import {useEffect,  useContext, useState, useActionState, useMemo, useCallback } from "react";
 import { format } from 'date-fns';
 import Search from "../search/search";
 import { addOrder } from "@/actions";
@@ -22,16 +22,16 @@ const OrderTable = ({patients}) => {
      const { replace } = useRouter();
 
    
-       var date = moment();
+       const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
        const [selectedDate, setSelectedDate] = useState(null);
-   const bDate = date.format('D/MM/YYYY')
 
-const filteredOrders = selectedDate
-    ? patients.filter((order) =>
-        order.bDate === format(selectedDate, 'd/MM/yyyy')
-    )    
-    : patients.filter((order) =>
-        order.bDate === bDate);
+const filteredOrders = useMemo(() => {
+  if (selectedDate) {
+    const targetDate = format(selectedDate, 'd/MM/yyyy');
+    return patients.filter((order) => order.bDate === targetDate);
+  }
+  return patients.filter((order) => order.bDate === bDate);
+}, [selectedDate, patients, bDate]);
 
 useEffect(()=>{
   const getSlug=()=>{
@@ -58,11 +58,7 @@ setSlug(slg)
     const [code, setCode]= useState('')
     
 
-    useEffect(()=>{
-      if(code!=='')setItem(initialTests)
-    },[code])
-
-      const handleSearch = async(code) => {       
+    const handleSearch = useCallback(async(code) => {       
         
         if (code && code.length) {
           const items = await fetchPatientListByLab(slug, code)
@@ -73,7 +69,7 @@ setSlug(slg)
           setCode("")
         }
         
-      }
+      }, [slug])
 
     return (
     <div className="p-6 -mt-[6px]">

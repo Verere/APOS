@@ -7,7 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { updateProd, updateProdPrice } from "@/actions";
 import { fetchOrderItems, fetchProductById, fetchSearchedProducts, updateOrderDate } from "@/actions/fetch";
 import { FaEdit } from "react-icons/fa";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Popover,
   PopoverContent,
@@ -33,8 +33,6 @@ import StockAdjustmentForm from "../StockAdjustmentForm";
 
 
 const ProductTable=({products, slug, userRole})=>{
-
-  const initialItems=[...products]
  
     const { replace } = useRouter();
     const pathname = usePathname()
@@ -44,7 +42,6 @@ const ProductTable=({products, slug, userRole})=>{
     const [total, setTotal] = useState(0)
     const [prod, setProd]= useState([])
      const [code, setCode]=useState('')
-     const [item, setItem]=useState(initialItems)
      const [selectedProduct, setSelectedProduct] = useState(null)
      const [inventoryTransactions, setInventoryTransactions] = useState([])
      const [loadingTransactions, setLoadingTransactions] = useState(false)
@@ -53,12 +50,12 @@ const ProductTable=({products, slug, userRole})=>{
    
     const searchParams = useSearchParams()
 
-    const  handleDUpdate =async(id, path)=>{
+    const  handleDUpdate = useCallback(async(id, path)=>{
       console.log('de',id)
 await updateProd(id, path)
  const del =await fetchProductById(id)
    console.log('de',del)
-    }
+    }, [])
 
       //  const handleSearch = useDebouncedCallback((e) => {
                    
@@ -78,24 +75,27 @@ await updateProd(id, path)
       //                 }
       //                }, 300);
     
-       const filteredProducts = code
-          ? products.filter((product) =>
-        product.name.toLowerCase().includes(code)
-  
-          )    
-          : products;
+       const filteredProducts = useMemo(() => {
+          if (!code) return products;
+          const searchTerm = code.toLowerCase();
+          return products.filter((product) =>
+            product.name.toLowerCase().includes(searchTerm) ||
+            product.barcode?.toLowerCase().includes(searchTerm) ||
+            product.category?.toLowerCase().includes(searchTerm)
+          );
+       }, [code, products]);
 
    
 
-    const handleEdit=async(id, price, qty, path)=>{
+    const handleEdit = useCallback(async(id, price, qty, path)=>{
       setLoading(true)
      const update = await updateProdPrice(id, price, qty, path)
      setLoading(false)
      setPrice(0)
      setQty(0)
-    }
+    }, [])
 
-    const handleViewInventory = async (product) => {
+    const handleViewInventory = useCallback(async (product) => {
       setSelectedProduct(product)
       setLoadingTransactions(true)
       try {
@@ -110,12 +110,12 @@ await updateProd(id, path)
       } finally {
         setLoadingTransactions(false)
       }
-    }
+    }, [])
 
-    const handleStockAdjustmentSuccess = () => {
+    const handleStockAdjustmentSuccess = useCallback(() => {
       // Refresh the page to show updated stock
       window.location.reload()
-    }
+    }, [])
     // useEffect(()=>{
     //   if(code!=='')setItem(initialItems)
     // },[code])
@@ -146,38 +146,38 @@ await   setQty(counter)
 return(
    <>
  {/* Stats and Search Section - Mobile Responsive */}
- <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
-   <div className="flex flex-col md:flex-row md:items-start lg:items-center lg:justify-between gap-4">
+ <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 p-4 sm:p-6 mb-6">
+   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
      
      {/* Stats Cards - Only visible to owners */}
      {userRole === 'OWNER' && (
-     <div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:gap-4 gap-3 md:flex-1">
+     <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:gap-4 gap-3 lg:flex-1">
        {/* Total Stock Value Card */}
-       <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 shadow-sm">
+       <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border-2 border-blue-200 shadow-md hover:shadow-lg transition-shadow">
          <div className="flex items-center gap-3">
-           <div className="bg-blue-600 rounded-lg p-3 shadow-md">
-             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-3 shadow-lg">
+             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
              </svg>
            </div>
            <div className="flex-1 min-w-0">
-             <p className="text-xs font-medium text-blue-600 uppercase tracking-wide mb-1">Total Stock Value</p>
-             <p className="text-xl sm:text-2xl font-bold text-blue-900 truncate">{currencyFormat(total)}</p>
+             <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Total Stock Value</p>
+             <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-900 truncate">{currencyFormat(total)}</p>
            </div>
          </div>
        </div>
 
        {/* Total Products Card */}
-       <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200 shadow-sm">
+       <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border-2 border-green-200 shadow-md hover:shadow-lg transition-shadow">
          <div className="flex items-center gap-3">
-           <div className="bg-green-600 rounded-lg p-3 shadow-md">
-             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-3 shadow-lg">
+             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
              </svg>
            </div>
            <div className="flex-1 min-w-0">
-             <p className="text-xs font-medium text-green-600 uppercase tracking-wide mb-1">Total Products</p>
-             <p className="text-xl sm:text-2xl font-bold text-green-900">{qty}</p>
+             <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Total Products</p>
+             <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-900">{qty}</p>
            </div>
          </div>
        </div>
@@ -185,27 +185,34 @@ return(
      )}
 
      {/* Search Input */}
-     <div className={userRole === 'owner' ? 'w-full lg:w-80' : 'w-full'}>
-       <div className="relative">
+     <div className={userRole === 'OWNER' ? 'w-full lg:w-96' : 'w-full max-w-2xl mx-auto'}>
+       <div className="relative group">
          <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-           <MdSearch className="w-5 h-5 text-gray-400" />
+           <MdSearch className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
          </div>
          <input
            type="text"
-           placeholder="Search products..."
+           placeholder="Search by name, category, or barcode..."
            onChange={(e) => setCode(e.target.value)}
+           value={code}
            name="code"
-           className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base placeholder:text-gray-400"
+           className="w-full pl-12 sm:pl-14 pr-12 py-3 sm:py-4 text-sm sm:text-base bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all placeholder:text-gray-400 shadow-sm hover:shadow-md font-medium"
          />
          {code && (
            <button
              onClick={() => setCode('')}
-             className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-gray-600"
+             className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-red-500 transition-colors group"
+             aria-label="Clear search"
            >
-             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
              </svg>
            </button>
+         )}
+         {code && (
+           <div className="absolute -bottom-8 left-0 text-xs sm:text-sm text-gray-600 font-medium">
+             Found {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
+           </div>
          )}
        </div>
      </div>
@@ -213,44 +220,45 @@ return(
  </div>
 
  {/* Table Section */}
-        <div className="w-full overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">{/*  uppercase font-bold */}
+        <div className="w-full overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
         <Table.Root layout="auto" variant="surface">
     <Table.Header>
-      
-      <Table.Row>
-        <Table.ColumnHeaderCell>Product</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Category</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Expiration</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Cost</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Price</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Profit</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Qty</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Stock Value</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Re-Order</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Stock</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Update</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell>Delete</Table.ColumnHeaderCell>
-        {/* <Table.ColumnHeaderCell>Stock</Table.ColumnHeaderCell> */}
-        {/* <Table.ColumnHeaderCell>Print Barcode</Table.ColumnHeaderCell> */}
+      <Table.Row className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide py-4">Product</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Category</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Expiration</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Cost</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Price</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Profit</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Qty</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Stock Value</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Re-Order</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Stock</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Update</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Delete</Table.ColumnHeaderCell>
       </Table.Row>
     </Table.Header>
   
     <Table.Body>
-     {filteredProducts && filteredProducts?.map((patient) => (
+     {filteredProducts && filteredProducts?.map((patient, index) => (
               
-      <Table.Row key={patient?._id}>
-        <Table.RowHeaderCell> {patient?.name}</Table.RowHeaderCell>
-        <Table.Cell>{patient?.category}</Table.Cell>
-        <Table.Cell>{patient?.expiration}</Table.Cell>
-        <Table.Cell>{patient?.cost}</Table.Cell>
-        <Table.Cell> {patient.price} </Table.Cell>
-        <Table.Cell> {patient.profit} </Table.Cell>
+      <Table.Row key={patient?._id} className={`border-b border-gray-100 hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+        <Table.RowHeaderCell className="font-semibold text-gray-900 py-4">{patient?.name}</Table.RowHeaderCell>
+        <Table.Cell className="text-gray-700">
+          <span className="inline-block px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+            {patient?.category}
+          </span>
+        </Table.Cell>
+        <Table.Cell className="text-gray-600 text-sm">{patient?.expiration}</Table.Cell>
+        <Table.Cell className="text-gray-700 font-medium">{currencyFormat(patient?.cost)}</Table.Cell>
+        <Table.Cell className="text-blue-600 font-semibold">{currencyFormat(patient.price)}</Table.Cell>
+        <Table.Cell className="text-green-600 font-semibold">{currencyFormat(patient.profit)}</Table.Cell>
         <Table.Cell>
           <Dialog>
             <DialogTrigger asChild>
               <button
                 onClick={() => handleViewInventory(patient)}
-                className="px-3 py-1 bg-blue-100 text-blue-700 font-bold rounded hover:bg-blue-200 transition-colors cursor-pointer"
+                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm hover:shadow-md"
               >
                 {patient?.qty}
               </button>
@@ -274,8 +282,16 @@ return(
             </DialogContent>
           </Dialog>
         </Table.Cell>
-        <Table.Cell>{patient?.totalValue}</Table.Cell>
-        <Table.Cell>{patient?.reOrder}</Table.Cell>
+        <Table.Cell className="font-bold text-gray-900">{currencyFormat(patient?.totalValue)}</Table.Cell>
+        <Table.Cell>
+          <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+            patient?.qty <= patient?.reOrder 
+              ? 'bg-red-100 text-red-700' 
+              : 'bg-green-100 text-green-700'
+          }`}>
+            {patient?.reOrder}
+          </span>
+        </Table.Cell>
         <Table.Cell>
           <Dialog open={showStockAdjustment && productToAdjust?._id === patient._id} onOpenChange={(open) => {
             if (!open) {
@@ -289,7 +305,7 @@ return(
                   setProductToAdjust(patient)
                   setShowStockAdjustment(true)
                 }}
-                className="px-3 py-1 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors"
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-sm hover:shadow-md"
               >
                 Adjust
               </button>
@@ -313,20 +329,16 @@ return(
           </Dialog>
         </Table.Cell>
         <Table.Cell>
-       
-          <button   className="p-2  bg-blue-500 text-white font-bold rounded-lg" onClick={()=>replace(`/${slug}/dashboard/products?id=${patient._id}`)}>
-                      <FaEdit/>
-
-                      </button>
-
-           
+          <button className="p-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm hover:shadow-md" onClick={()=>replace(`/${slug}/dashboard/products?id=${patient._id}`)}>
+            <FaEdit className="w-4 h-4"/>
+          </button>
         </Table.Cell>
       
-       <Table.Cell>
-                      <button onClick={()=>handleDUpdate(patient._id, pathname)}  className="px-2 py-1 bg-red-500 text-white font-bold rounded-lg">
-                      Delete
-                      </button>
-                    </Table.Cell>
+        <Table.Cell>
+          <button onClick={()=>handleDUpdate(patient._id, pathname)} className="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold rounded-lg hover:from-red-600 hover:to-red-700 transition-all shadow-sm hover:shadow-md">
+            Delete
+          </button>
+        </Table.Cell>
      
             {/* <Table.Cell> <button className="bg-green-700 px-2 py-1 text-white font-bold rounded-lg" onClick={()=>replace(`/${slug}/dashboard/stock?id=${patient._id}`)}>Add Stock</button></Table.Cell> */}
             {/* <Table.Cell> <button className="bg-gray-700 px-2 py-1 text-white font-bold rounded-lg" onClick={()=>handleBarcode(patient)}>{loading? 'Generating...' :  'Generate Barcode'}</button></Table.Cell> */}

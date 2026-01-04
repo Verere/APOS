@@ -8,6 +8,7 @@ const OrderSchema = new mongoose.Schema({
    orderNum:{type: String},
    items:{type: Array},
    amount: {type: Number}, 
+   profit: {type: Number, default: 0},
    amountPaid: {type: Number, default:0}, 
    bal: {type: Number}, 
    bDate: {type: String},

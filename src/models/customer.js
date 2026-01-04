@@ -79,7 +79,7 @@ const customerSchema = new mongoose.Schema({
     },
     preferredPaymentMethod: {
         type: String,
-        enum: ['cash', 'card', 'mobile', 'bank_transfer', 'credit'],
+        enum: ['cash', 'pos', 'transfer', 'credit', 'other'],
         default: 'cash'
     },
     creditLimit: {

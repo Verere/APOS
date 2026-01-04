@@ -23,12 +23,15 @@ import {
   Loader2,
   DollarSign,
   Calendar,
+  UserPlus,
+  UserCheck,
 } from 'lucide-react'
 
 const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
   const pathname = usePathname()
   const router = useRouter()
   const [productsExpanded, setProductsExpanded] = useState(true)
+  const [customersExpanded, setCustomersExpanded] = useState(true)
   const [loadingItem, setLoadingItem] = useState(null)
 
   // Reset loading state when pathname changes (navigation completed)
@@ -50,8 +53,19 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
         { icon: FolderTree, label: 'Categories', path: `/${slug}/dashboard/categories` },
       ]
     },
+    {
+      icon: Users,
+      label: 'Customers',
+      path: `/${slug}/dashboard/customers`,
+      hasSubmenu: true,
+      submenu: [
+        { icon: List, label: 'Customers', path: `/${slug}/dashboard/customers` },
+        { icon: UserPlus, label: 'Add New Customer', path: `/${slug}/dashboard/customers/new` },
+      ]
+    },
     { icon: ShoppingCart, label: 'Sales', path: `/${slug}/dashboard/orders` },
     { icon: CreditCard, label: 'Payments', path: `/${slug}/dashboard/payments` },
+    { icon: UserCheck, label: 'Who Owe Me', path: `/${slug}/dashboard/credits` },
     { icon: DollarSign, label: 'Expense', path: `/${slug}/dashboard/expense` },
     { icon: Calendar, label: 'End of Day', path: `/${slug}/dashboard/eod` },
     { icon: Users, label: 'Users', path: `/${slug}/dashboard/users` },
@@ -84,20 +98,21 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
     >
       {/* Sidebar Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-800 h-16">
-        {!isCollapsed && (
-          <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            APOS
-          </h2>
-        )}
+        <h2 className={cn(
+          "text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent transition-all duration-300",
+          isCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
+        )}>
+          APOS
+        </h2>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 rounded-lg hover:bg-gray-800 transition-colors ml-auto"
+          className="p-2 rounded-lg hover:bg-gray-800 transition-all duration-200 ml-auto"
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? (
-            <ChevronRight size={20} />
+            <ChevronRight size={20} className="transition-transform duration-300" />
           ) : (
-            <ChevronLeft size={20} />
+            <ChevronLeft size={20} className="transition-transform duration-300" />
           )}
         </button>
       </div>
@@ -119,7 +134,11 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                         if (isCollapsed) {
                           setIsCollapsed(false)
                         }
-                        setProductsExpanded(!productsExpanded)
+                        if (item.label === 'Products') {
+                          setProductsExpanded(!productsExpanded)
+                        } else if (item.label === 'Customers') {
+                          setCustomersExpanded(!customersExpanded)
+                        }
                       }}
                       className={cn(
                         'w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200',
@@ -133,12 +152,12 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                       <Icon size={20} className="flex-shrink-0" />
                       {!isCollapsed && (
                         <>
-                          <span className="font-medium text-sm">{item.label}</span>
-                          <div className="ml-auto">
-                            {productsExpanded ? (
-                              <ChevronUp size={16} />
+                          <span className="font-medium text-sm transition-all duration-300 opacity-100">{item.label}</span>
+                          <div className="ml-auto transition-all duration-300">
+                            {((item.label === 'Products' && productsExpanded) || (item.label === 'Customers' && customersExpanded)) ? (
+                              <ChevronUp size={16} className="transition-transform duration-300" />
                             ) : (
-                              <ChevronDown size={16} />
+                              <ChevronDown size={16} className="transition-transform duration-300" />
                             )}
                           </div>
                         </>
@@ -146,8 +165,8 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                     </button>
                     
                     {/* Submenu */}
-                    {!isCollapsed && productsExpanded && (
-                      <ul className="mt-1 ml-3 space-y-1 border-l-2 border-gray-700 pl-3">
+                    {!isCollapsed && ((item.label === 'Products' && productsExpanded) || (item.label === 'Customers' && customersExpanded)) && (
+                      <ul className="mt-1 ml-3 space-y-1 border-l-2 border-gray-700 pl-3 animate-in fade-in slide-in-from-top-2 duration-300">
                         {item.submenu.map((subItem) => {
                           const SubIcon = subItem.icon
                           const isSubActive = pathname === subItem.path
@@ -170,9 +189,9 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                                 ) : (
                                   <SubIcon size={16} className="flex-shrink-0" />
                                 )}
-                                <span className="font-medium">{subItem.label}</span>
+                                <span className="font-medium transition-all duration-300">{subItem.label}</span>
                                 {isSubActive && loadingItem !== subItem.path && (
-                                  <div className="ml-auto w-1 h-4 bg-white rounded-full" />
+                                  <div className="ml-auto w-1 h-4 bg-white rounded-full transition-all duration-300" />
                                 )}
                               </button>
                             </li>
@@ -201,10 +220,10 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                       <Icon size={20} className="flex-shrink-0" />
                     )}
                     {!isCollapsed && (
-                      <span className="font-medium text-sm">{item.label}</span>
+                      <span className="font-medium text-sm transition-all duration-300 opacity-100">{item.label}</span>
                     )}
                     {!isCollapsed && isActive && loadingItem !== item.path && (
-                      <div className="ml-auto w-1 h-6 bg-white rounded-full" />
+                      <div className="ml-auto w-1 h-6 bg-white rounded-full transition-all duration-300" />
                     )}
                   </button>
                 )}
@@ -215,13 +234,14 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
       </nav>
 
       {/* Footer */}
-      {!isCollapsed && (
-        <div className="p-4 border-t border-gray-800">
-          <div className="text-xs text-gray-400 text-center">
-            © 2025 APOS Dashboard
-          </div>
+      <div className={cn(
+        "p-4 border-t border-gray-800 transition-all duration-300",
+        isCollapsed ? "opacity-0 h-0 p-0 overflow-hidden" : "opacity-100"
+      )}>
+        <div className="text-xs text-gray-400 text-center">
+          © 2025 APOS Dashboard
         </div>
-      )}
+      </div>
     </aside>
   )
 }

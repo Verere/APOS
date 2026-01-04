@@ -11,6 +11,8 @@ export const CartProvider = ({ children }) => {
   const [prvOrder, setPrvOrder] = useState([]);
   const [currentOrder, setCurrentOrder]= useState(true)
 const [cpayment, setCPayment] = useState(0)
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [creditSale, setCreditSale] = useState(false);
   
 
        
@@ -133,7 +135,9 @@ const [cpayment, setCPayment] = useState(0)
         prvOrder, setPrvOrder,
         currentOrder, setCurrentOrder,
         cpayment, setCPayment,
-        codeItems, setCodeItems
+        codeItems, setCodeItems,
+        selectedCustomer, setSelectedCustomer,
+        creditSale, setCreditSale
       }}
       >        
       <div >{children}</div>

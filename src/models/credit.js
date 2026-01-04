@@ -1,16 +1,26 @@
 import mongoose from "mongoose";
 
 const CreditSchema = new mongoose.Schema({
-    hotelId:{
+  storeId:{
         type: mongoose.Types.ObjectId,
-        ref: 'hotel'
+        ref: 'store',
+        required: true
     },
-   orderName:{type: String},
-   orderNum:{type: String},
-   location:{type: String},
-   amount: {type: Number}, 
+  customerId:{
+        type: mongoose.Types.ObjectId,
+        ref: 'customer',
+        required: true
+    },
+  orderId:{
+        type: mongoose.Types.ObjectId,
+        ref: 'order',
+        required: true
+    },
+
+   amount: {type: Number, required: true}, 
+   amountPaid: {type: Number, default: 0},
    bDate: {type: Date},
-   soldBy:{type: String,   required: true},
+   soldBy:{type: String, required: true},
    isPaid:{type: Boolean, default:false},
    isCancelled:{type: Boolean, default:false},
    updatedBy:{type: String},
@@ -25,4 +35,9 @@ const CreditSchema = new mongoose.Schema({
    
 })
 
-export default mongoose.models.credit || mongoose.model('credit', CreditSchema) 
+// Clear cached model to ensure schema changes are picked up
+if (mongoose.models.credit) {
+  delete mongoose.models.credit
+}
+
+export default mongoose.model('credit', CreditSchema) 

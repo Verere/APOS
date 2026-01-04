@@ -16,7 +16,7 @@ const DashboardLayoutClient = ({ children, slug, user, store, membership }) => {
       // Persist to localStorage
       localStorage.setItem('store', JSON.stringify(store))
     }
-  }, [store])
+  }, [store, setStore])
 
   useEffect(() => {
     if (membership) {
@@ -26,7 +26,7 @@ const DashboardLayoutClient = ({ children, slug, user, store, membership }) => {
       // Persist to localStorage
       localStorage.setItem('membership', JSON.stringify(membership))
     }
-  }, [membership])
+  }, [membership, setMembership])
 
   return (
     <div className="flex min-h-screen bg-gray-50 overflow-hidden">

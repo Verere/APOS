@@ -344,7 +344,7 @@ if(order  ==="newOrder")updateSuspendOrder(orderId)
 // Sales functionality removed — sales model retained but application no longer creates Sales documents.
 //add new payment
 export const addPayment = async (prvState, formData) => {
-  const {slug, orderId, orderNum, orderAmount,amountPaid, bal, mop, user, bDate, path} =
+  const {slug, orderId, orderNum, orderAmount,amountPaid, bal, mop, user, bDate, path, storeId, recordedBy} =
     Object.fromEntries(formData);
     let items;
   try {   
@@ -363,8 +363,32 @@ items = []
   if(amtTotal===0 && amountPaid <= orderAmount || amountPaid <= (orderAmount - amtTotal)){
      connectToDB(); 
 
+      // Get store ID if not provided
+      let finalStoreId = storeId;
+      if (!finalStoreId && slug) {
+        const store = await getStoreBySlug(slug);
+        finalStoreId = store?._id;
+      }
+
       const newMenu = new payments({
-        slug, orderId, receipt:orderNum, orderAmount, amountPaid, mop, user, bDate
+        storeId: finalStoreId,
+        slug, 
+        orderId, 
+        orderNum: orderNum,
+        receiptNumber: orderNum || `${slug?.substring(0, 3)}-${Date.now()}`,
+        orderAmount: Number(orderAmount),
+        amountPaid: Number(amountPaid),
+        balance: Number(bal || 0),
+        status: 'COMPLETED',
+        paymentType: 'FULL',
+        recordedBy: recordedBy || user,
+        user, 
+        bDate,
+        paymentMethods: [{ method: mop?.toUpperCase() || 'CASH', amount: Number(amountPaid) }],
+        // Legacy fields
+        cash: mop === 'cash' ? Number(amountPaid) : 0,
+        pos: mop === 'pos' ? Number(amountPaid) : 0,
+        transfer: mop === 'transfer' ? Number(amountPaid) : 0
       });
    
       
@@ -397,7 +421,7 @@ items = []
 
 // add payment and create order from cart items atomically
 export const addPaymentWithOrder = async (prvState, formData) => {
-  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid } = Object.fromEntries(formData);
+  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, customerId, customerName } = Object.fromEntries(formData);
   try {
     await connectToDB();
     const items = cartItems ? JSON.parse(cartItems) : [];
@@ -462,7 +486,14 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           });
           await inv.save({ session });
 
-          updatedProducts.push({ id: p._id, qty: qtyToTake, price: updated.price, newQty: updated.qty });
+          updatedProducts.push({ 
+            id: p._id, 
+            qty: qtyToTake, 
+            price: updated.price, 
+            cost: updated.cost || 0,
+            newQty: updated.qty,
+            profit: (updated.price - (updated.cost || 0)) * qtyToTake
+          });
         }
 
         // create order
@@ -471,23 +502,39 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         const newOrder = new Order({ slug, orderNum, soldBy, bDate });
         await newOrder.save({ session });
 
-        // compute total order amount using authoritative DB prices
+        // compute total order amount and profit using authoritative DB prices
         let totalOrderAmount = 0;
+        let totalOrderProfit = 0;
+        const itemsWithCostProfit = [];
+        
         for (const it of items) {
           const upd = updatedProducts.find(u => String(u.id) === String(it.product));
           const price = (upd && upd.price) || 0;
+          const cost = (upd && upd.cost) || 0;
           const qty = Number(it.qty || 0);
           const amount = Number(qty * price) || 0;
+          const profit = Number((price - cost) * qty) || 0;
+          
           totalOrderAmount += amount;
+          totalOrderProfit += profit;
+          
+          itemsWithCostProfit.push({
+            ...it,
+            price,
+            cost,
+            amount,
+            profit
+          });
         }
 
         // payment amount sanity
         const paid = Number(amountPaid || 0);
         if (paid > totalOrderAmount) throw Object.assign(new Error('Payment amount exceeds order total based on current prices'), { code: 'BAD_PAYMENT' });
 
-        // finalize order with items and amount
-        newOrder.items = items;
+        // finalize order with items, amount, and profit
+        newOrder.items = itemsWithCostProfit;
         newOrder.amount = totalOrderAmount;
+        newOrder.profit = totalOrderProfit;
         newOrder.status = 'Completed';
         newOrder.isCompleted = true;
         newOrder.bDate = bDate;
@@ -496,9 +543,68 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         // update inventory transactions to reference orderId
         await InventoryTransaction.updateMany({ orderId: null, productId: { $in: ids } }, { $set: { orderId: newOrder._id } }, { session });
 
-        // save payment
-        const newPay = new payments({ slug, orderId: newOrder._id, receipt: orderNum, orderAmount: orderAmount || totalOrderAmount, amountPaid, mop, user: soldBy, bDate, cashPaid, posPaid, transferPaid });
+        // save payment with new schema
+        const paymentMethodsArray = [];
+        const methods = (mop || '').split(',').filter(Boolean);
+        
+        // Build paymentMethods array
+        if (methods.includes('CASH') && Number(cashPaid || 0) > 0) {
+          paymentMethodsArray.push({ method: 'CASH', amount: Number(cashPaid) });
+        }
+        if (methods.includes('POS') && Number(posPaid || 0) > 0) {
+          paymentMethodsArray.push({ method: 'POS', amount: Number(posPaid) });
+        }
+        if (methods.includes('TRANSFER') && Number(transferPaid || 0) > 0) {
+          paymentMethodsArray.push({ method: 'TRANSFER', amount: Number(transferPaid) });
+        }
+
+        // If no payment methods array built, use default CASH
+        if (paymentMethodsArray.length === 0) {
+          paymentMethodsArray.push({ method: 'CASH', amount: Number(amountPaid || 0) });
+        }
+
+        // Ensure all required fields are present
+        if (!store || !store._id) {
+          throw new Error('Store ID is required');
+        }
+        if (!orderNum) {
+          throw new Error('Order number is required');
+        }
+        if (!soldBy) {
+          throw new Error('Recorded by is required');
+        }
+
+        const newPay = new payments({ 
+          storeId: store._id,
+          slug, 
+          orderId: newOrder._id, 
+          orderNum: orderNum,
+          receiptNumber: orderNum, // Use orderNum as receipt number
+          paymentMethods: paymentMethodsArray,
+          orderAmount: Number(orderAmount) || totalOrderAmount, 
+          amountPaid: Number(amountPaid || 0),
+          balance: 0,
+          change: Math.max(0, Number(amountPaid || 0) - (Number(orderAmount) || totalOrderAmount)),
+          status: 'COMPLETED',
+          paymentType: 'FULL',
+          recordedBy: soldBy,
+          user: soldBy, 
+          bDate: bDate,
+          // Legacy fields for backward compatibility
+          cash: Number(cashPaid || 0),
+          pos: Number(posPaid || 0),
+          transfer: Number(transferPaid || 0),
+          // Customer info if provided
+          ...(customerId && { customerId: customerId }),
+          ...(customerName && { customerName: customerName }),
+          customerType: customerId ? 'REGISTERED' : 'WALK_IN'
+        });
         await newPay.save({ session });
+
+        // Update order with amount paid
+        newOrder.amountPaid = Number(amountPaid || 0);
+        newOrder.bal = Math.max(0, totalOrderAmount - Number(amountPaid || 0));
+        await newOrder.save({ session });
 
         return { success: true, orderId: newOrder._id };
       });
@@ -509,6 +615,13 @@ export const addPaymentWithOrder = async (prvState, formData) => {
       }
     }catch(err){
       console.log('transaction error', err);
+      console.log('Error details:', {
+        store: store?._id,
+        orderNum: err.message.includes('orderNum'),
+        receiptNumber: err.message.includes('receiptNumber'),
+        recordedBy: err.message.includes('recordedBy'),
+        storeId: err.message.includes('storeId')
+      });
       // If insufficient stock or other known error, return current DB stock snapshot to client
       if(err && err.code === 'INSUFFICIENT'){
         const ids = items.map(i=>i.product)
@@ -519,7 +632,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
       if(err && err.code === 'BAD_PAYMENT'){
         return { error: err.message };
       }
-      return { error: 'Failed to create order and payment' };
+      return { error: err.message || 'Failed to create order and payment' };
     }
   } catch (err) {
     console.log(err);
