@@ -66,7 +66,7 @@ const DashboardContent = ({ stats, recentOrders }) => {
               Dashboard Overview
             </h1>
             <p className="text-blue-100 text-sm sm:text-base">
-              Welcome back! Here's what's happening today.
+              Welcome back! Here&apos;s what&apos;s happening today.
             </p>
           </div>
           <div className="flex items-center gap-2 text-white bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 w-fit">
