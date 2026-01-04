@@ -109,6 +109,22 @@ const [cpayment, setCPayment] = useState(0)
         setCartToState()
    }
         
+      const updateQty = async (cart, item, newQty) => {
+        const qty = parseInt(newQty) || 0
+        if (qty < 0) return
+        
+        const newData = [...cart?.cartItems ?? []]
+        newData.forEach(items => {
+          if (String(items.product) === String(item.product)) {
+            items.qty = qty
+            items.amount = items.qty * items.price
+            if(!items._id) items._id = items.product
+          }
+        })
+        localStorage.setItem('cart', JSON.stringify({cartItems: newData}))
+        setCartToState()
+      }
+
       const deleteItem = (cart, item) => {
 
         const newData = (cart?.cartItems || []).filter(items => String(items.product) !== String(item.product))
@@ -126,6 +142,7 @@ const [cpayment, setCPayment] = useState(0)
         addToCart,
         decr,
        incr,
+       updateQty,
        setCartToState,
         setCart,
         deleteItem,

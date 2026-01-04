@@ -468,7 +468,10 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           // decrement
           const updated = await Product.findOneAndUpdate(
             { _id: p._id, qty: { $gte: qtyToTake } },
-            { $inc: { qty: -qtyToTake } },
+            { 
+              $inc: { qty: -qtyToTake },
+              $set: { totalValue: (p.qty - qtyToTake) * p.price }
+            },
             { new: true, session }
           );
           if (!updated) throw Object.assign(new Error(`Insufficient stock for ${it.name || it.item || it.product}`), { code: 'INSUFFICIENT', product: it.product });
@@ -1070,13 +1073,18 @@ export async function updateProd(id, pathToRevalidate) {
 export async function updateProdPrice(id, price, qty, pathToRevalidate) {
   console.log('up',id, price, qty)
   await connectToDB();
+  
+  // Calculate totalValue
+  const totalValue = Number(qty) * Number(price);
+  
   await Product.findOneAndUpdate(
     {
       _id: id,
     },
     {
       price,    
-      qty 
+      qty,
+      totalValue
     },
     { new: true }
   );

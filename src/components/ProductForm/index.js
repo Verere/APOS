@@ -105,7 +105,7 @@ getProd()
 // Auto-calculate total based on qty and price
 useEffect(()=>{
   if(qty && price && qty.length && price.length ){
-    const totals = parseInt(qty) * parseInt(price)
+    const totals = parseInt(qty) * parseFloat(price)
     setTotal(totals)
   }
 },[qty,price])

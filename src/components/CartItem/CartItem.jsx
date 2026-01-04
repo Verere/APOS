@@ -14,11 +14,16 @@ const CartItemPanel = ({item}) => {
   const [state, formAction, isPending] = useActionState(addMenuStock, {});
   const { replace } = useRouter();
 const {_id}= item
-    const {cart, incr, decr, deleteItem} = useContext(CartContext)  
+    const {cart, incr, decr, deleteItem, updateQty} = useContext(CartContext)  
    const[loading, setLoading] = useState(false)
+   const [qtyInput, setQtyInput] = useState(item.qty)
     const { user, payment, setPayment, setBal} = useContext(GlobalContext)
     const pathname = usePathname()
     // if(!user)replace("/login")
+
+    useEffect(()=>{
+      setQtyInput(item.qty)
+    },[item.qty])
 
     useEffect(()=>{
       const getError = async()=>{
@@ -60,21 +65,35 @@ const {_id}= item
     </div>
 
     {/* Quantity controls */}
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg shadow-sm">
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
+      <div className="flex items-center bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-300 rounded-xl shadow-sm overflow-hidden">
         <button
           onClick={async () => { await decr(cart, item) }}
-          className="px-3 sm:px-4 py-2 text-lg font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-l-lg active:bg-gray-200 transition-colors"
+          className="px-3 sm:px-4 py-2.5 text-xl font-bold text-red-600 hover:text-red-700 hover:bg-red-50 active:bg-red-100 transition-all"
           aria-label="decrease"
         >−</button>
-        <div className="px-4 sm:px-6 py-2 text-center font-bold text-sm sm:text-base text-gray-900 min-w-[50px] border-x border-gray-200">{item.qty}</div>
+        <input
+          type="number"
+          value={qtyInput}
+          onChange={(e) => {
+            setQtyInput(e.target.value)
+            updateQty(cart, item, e.target.value)
+          }}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              e.target.blur()
+            }
+          }}
+          min="0"
+          className="w-16 sm:w-20 px-2 py-2.5 text-center font-bold text-sm sm:text-base text-gray-900 bg-white border-x-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
         <button
           onClick={async () => { await incr(cart, item) }}
-          className="px-3 sm:px-4 py-2 text-lg font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-r-lg active:bg-gray-200 transition-colors"
+          className="px-3 sm:px-4 py-2.5 text-xl font-bold text-green-600 hover:text-green-700 hover:bg-green-50 active:bg-green-100 transition-all"
           aria-label="increase"
         >+</button>
       </div>
-      <div className="text-xs sm:text-sm text-gray-500 font-medium">
+      <div className="text-xs sm:text-sm text-gray-500 font-medium text-center sm:text-left">
         Subtotal: <span className="text-gray-900 font-semibold">{currencyFormat(item.amount)}</span>
       </div>
     </div>
