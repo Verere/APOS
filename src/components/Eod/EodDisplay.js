@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, TrendingUp, DollarSign, CreditCard, Smartphone, Receipt, Clock, CheckCircle, Printer } from "lucide-react";
+import { Calendar, TrendingUp, DollarSign, CreditCard, Smartphone, Receipt, Clock, CheckCircle, Printer, ArrowDownCircle } from "lucide-react";
 import { currencyFormat } from "@/utils/currency";
 import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
@@ -41,7 +41,7 @@ export default function EodDisplay({ eodData, slug }) {
         {/* Printable Content */}
         <div ref={printRef} className="space-y-8">
           {/* Primary Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {/* Total Revenue */}
             <div className="bg-white rounded-xl shadow-lg border-2 border-green-200 p-6 hover:shadow-xl transition-shadow">
               <div className="flex items-center gap-3 mb-3">
@@ -87,6 +87,17 @@ export default function EodDisplay({ eodData, slug }) {
               </div>
               <p className="text-3xl font-bold text-indigo-700 mb-2">{currencyFormat(eodData.totalProfit)}</p>
               <p className="text-sm text-gray-600">{eodData.transactionCount} orders</p>
+            </div>
+
+            {/* Total Expenses */}
+            <div className="bg-white rounded-xl shadow-lg border-2 border-amber-200 p-6 hover:shadow-xl transition-shadow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-amber-100 p-3 rounded-lg">
+                  <ArrowDownCircle className="w-6 h-6 text-amber-600" />
+                </div>
+                <h3 className="text-sm font-semibold text-gray-700">Total Expenses</h3>
+              </div>
+              <p className="text-3xl font-bold text-amber-700">{currencyFormat(eodData.totalExpenses || 0)}</p>
             </div>
           </div>
 

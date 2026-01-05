@@ -8,11 +8,13 @@ import {
   DollarSign,
   ArrowUpRight,
   ArrowDownRight,
+  ArrowDownCircle,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { currencyFormat } from '@/utils/currency'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
-const DashboardContent = ({ stats, recentOrders }) => {
+const DashboardContent = ({ stats, recentOrders, salesData }) => {
   const kpiCards = [
     {
       title: 'Total Revenue',
@@ -38,6 +40,14 @@ const DashboardContent = ({ stats, recentOrders }) => {
       isPositive: true,
       icon: TrendingUp,
       color: 'bg-emerald-500',
+    },
+    {
+      title: 'Total Expenses',
+      value: currencyFormat(stats?.totalExpenses || 0),
+      change: '+5.2%',
+      isPositive: false,
+      icon: ArrowDownCircle,
+      color: 'bg-amber-500',
     },
     {
       title: 'Total Users',
@@ -156,17 +166,65 @@ const DashboardContent = ({ stats, recentOrders }) => {
           <CardHeader className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-purple-50">
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-800">
               <TrendingUp className="text-blue-600" size={24} />
-              Sales Over Time
+              Daily Sales - Current Month
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <div className="h-64 sm:h-72 lg:h-80 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-dashed border-blue-200">
-              <div className="bg-blue-100 p-4 rounded-full mb-3">
-                <TrendingUp className="text-blue-600" size={32} />
+            {salesData && salesData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={salesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#666"
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    stroke="#666"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '1px solid #ccc',
+                      borderRadius: '8px',
+                      padding: '10px'
+                    }}
+                    formatter={(value, name) => {
+                      if (name === 'revenue') return [currencyFormat(value), 'Revenue']
+                      return [value, 'Orders']
+                    }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }}
+                    formatter={(value) => value === 'revenue' ? 'Revenue' : 'Orders'}
+                  />
+                  <Bar 
+                    dataKey="revenue" 
+                    fill="url(#colorRevenue)" 
+                    radius={[8, 8, 0, 0]}
+                  />
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.9}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.7}/>
+                    </linearGradient>
+                  </defs>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-64 sm:h-72 lg:h-80 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-dashed border-blue-200">
+                <div className="bg-blue-100 p-4 rounded-full mb-3">
+                  <TrendingUp className="text-blue-600" size={32} />
+                </div>
+                <p className="text-gray-600 font-semibold text-sm sm:text-base">No sales data</p>
+                <p className="text-gray-400 text-xs sm:text-sm mt-1">Sales will appear here</p>
               </div>
-              <p className="text-gray-600 font-semibold text-sm sm:text-base">Sales Chart</p>
-              <p className="text-gray-400 text-xs sm:text-sm mt-1">Coming soon...</p>
-            </div>
+            )}
           </CardContent>
         </Card>
 

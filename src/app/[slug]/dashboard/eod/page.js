@@ -7,6 +7,7 @@ import Payment from "@/models/payments";
 import Order from "@/models/order";
 import Credit from "@/models/credit";
 import CreditPayment from "@/models/creditPayment";
+import Expense from "@/models/expense";
 import EodDisplay from "@/components/Eod/EodDisplay";
 import moment from 'moment';
 
@@ -78,6 +79,14 @@ async function getEodData(slug) {
       console.log('Sample credit payment:', JSON.stringify(creditPayments[0], null, 2));
     }
 
+    // Fetch all expenses for today
+    const expenses = await Expense.find({
+      slug: slug,
+      bDate,
+      isCancelled: { $ne: true }
+    }).lean();
+    console.log('Expenses found:', expenses.length);
+
     // Calculate totals
     let totalCash = 0;
     let totalPos = 0;
@@ -132,6 +141,10 @@ async function getEodData(slug) {
     // Calculate total credit paid
     const totalCreditPaid = creditPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
 
+    // Calculate total expenses
+    const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+    console.log('Total Expenses calculated:', totalExpenses, 'from', expenses.length, 'expenses');
+
     // Verify the relationship: Total Revenue should equal Total Payment + Total Credit
     const calculatedRevenue = totalPayment + totalCredit;
     const difference = totalRevenue - calculatedRevenue;
@@ -167,6 +180,7 @@ async function getEodData(slug) {
       totalCredit,
       totalCreditPaid,
       totalProfit,
+      totalExpenses,
       transactionCount,
       creditCount
     };

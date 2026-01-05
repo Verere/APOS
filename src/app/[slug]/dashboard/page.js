@@ -4,6 +4,9 @@ import { authOptions } from '@/auth'
 import { redirect } from 'next/navigation'
 import OverViewPage from '@/components/overViewPage.js'
 import { fetchAllOrders, fetchAllstoreMembers, fetchProducts } from '@/actions/fetch'
+import connectDB from '@/utils/connectDB'
+import Expense from '@/models/expense'
+import moment from 'moment'
 
 const DashBoardPage = async ({params}) => {
   const session = await getServerSession(authOptions)
@@ -21,10 +24,23 @@ const DashBoardPage = async ({params}) => {
   const users = await fetchAllstoreMembers(slug) || []
   const products = await fetchProducts(slug) || []
 
-  // Get current month date range
+  // Fetch expenses for the current month
+  await connectDB()
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+  
+  // Query expenses for current month using bDate format
+  const monthExpenses = await Expense.find({
+    slug: slug,
+    isCancelled: { $ne: true },
+    createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+  }).lean()
+  
+  const totalExpenses = monthExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
+  console.log('Total Monthly Expenses:', totalExpenses, 'from', monthExpenses.length, 'expenses')
+
+  // Get current month date range
 
   // Debug logging
   console.log('Total orders fetched:', orders.length)
@@ -92,19 +108,43 @@ const DashBoardPage = async ({params}) => {
     totalRevenue,
     totalOrders,
     totalProfit,
+    totalExpenses,
     totalUsers: Array.isArray(users) ? users.length : 0,
     totalProducts: Array.isArray(products) ? products.length : 0,
   }
-    // Get recent orders (last 5) - Add Array.isArray() check
+
+  // Prepare daily sales data for chart (current month)
+  const dailySalesData = []
+  const daysInMonth = endOfMonth.getDate()
+  
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayOrders = monthlyOrders.filter(order => {
+      const orderDate = new Date(order.createdAt)
+      return orderDate.getDate() === day
+    })
+    
+    const dayRevenue = dayOrders.reduce((sum, order) => {
+      return sum + (order.totalAmount || order.amount || 0)
+    }, 0)
+    
+    dailySalesData.push({
+      day: day.toString(),
+      date: `${day}/${now.getMonth() + 1}`,
+      revenue: dayRevenue,
+      orders: dayOrders.length
+    })
+  }
+
+    // Get recent orders (last 5) - Sort by createdAt descending to get most recent orders
   const recentOrders = Array.isArray(orders)
     ? orders
-    .slice(-5)
-    .reverse()
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // Sort by date, newest first
+    .slice(0, 5) // Take first 5 (most recent)
     .map(order => ({
       id: order._id.toString(),
-      customer: order.customerName || 'Guest',
+      customer: order.orderName || order.customerName || 'Walk-in-Customer',
       date: new Date(order.createdAt).toLocaleDateString(),
-      amount: order.totalAmount || 0,
+      amount: order.totalAmount || order.amount || 0,
       status: order.status || 'pending',
     }))
 :[]
@@ -114,6 +154,7 @@ const DashBoardPage = async ({params}) => {
       user={session.user} 
       stats={stats} 
       recentOrders={recentOrders}
+      salesData={dailySalesData}
     />
   )
 }
