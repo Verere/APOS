@@ -4,6 +4,7 @@ import Order from '@/models/order'
 import Customer from '@/models/customer'
 import Credit from '@/models/credit'
 import Product from '@/models/product'
+import Payment from '@/models/payments'
 import InventoryTransaction from '@/models/models/InventoryTransaction'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
@@ -19,7 +20,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { slug, customerId, cartItems, bDate } = await req.json()
+    const { slug, customerId, cartItems, bDate, paymentAmount = 0, creditAmount, paymentMethod = 'CASH' } = await req.json()
 
     if (!slug || !customerId || !cartItems || !cartItems.length) {
       return NextResponse.json(
@@ -140,6 +141,18 @@ export async function POST(req) {
       const orderCount = await Order.countDocuments({ slug })
       const orderNum = slug.substring(0, 3).toUpperCase() + (orderCount + 1)
 
+      // Generate receipt number for payment if any
+      let receiptNumber = null
+      if (paymentAmount > 0) {
+        const paymentCount = await Payment.countDocuments({ storeId: store._id })
+        receiptNumber = `RCP-${slug.toUpperCase()}-${paymentCount + 1}`
+      }
+
+      // Determine order status based on payment
+      const actualCreditAmount = creditAmount || (totalAmount - paymentAmount)
+      const isPaidInFull = paymentAmount >= totalAmount
+      const orderStatus = isPaidInFull ? 'Paid' : (paymentAmount > 0 ? 'Partial' : 'Credit')
+
       // Create order with cost and profit stored
       const newOrder = new Order({
         slug,
@@ -156,13 +169,14 @@ export async function POST(req) {
           }
         }),
         amount: totalAmount,
+        totalAmount: totalAmount, // Add totalAmount for consistency with other order endpoints
         profit: totalProfit,
-        amountPaid: 0,
-        bal: totalAmount,
+        amountPaid: paymentAmount,
+        bal: actualCreditAmount,
         bDate,
         soldBy,
-        status: 'Credit',
-        isCompleted: false,
+        status: orderStatus,
+        isCompleted: isPaidInFull,
       })
       await newOrder.save({ session: transactionSession })
 
@@ -173,18 +187,42 @@ export async function POST(req) {
         { session: transactionSession }
       )
 
-      // Create credit record
-      const newCredit = new Credit({
-        storeId: store._id,
-        customerId: customer._id,
-        orderId: newOrder._id,
-        amount: totalAmount,
-        bDate: new Date(bDate),
-        soldBy,
-        isPaid: false,
-        isCancelled: false,
-      })
-      await newCredit.save({ session: transactionSession })
+      // If partial payment is made, create payment record
+      if (paymentAmount > 0) {
+        const paymentRecord = new Payment({
+          storeId: store._id,
+          orderId: newOrder._id,
+          orderNum,
+          receiptNumber,
+          bDate,
+          orderAmount: totalAmount,
+          amountPaid: paymentAmount,
+          paymentMethods: [
+            {
+              method: paymentMethod || 'CASH',
+              amount: paymentAmount
+            }
+          ],
+          recordedBy: soldBy,
+        })
+        await paymentRecord.save({ session: transactionSession })
+      }
+
+      // Create credit record only if there's remaining balance
+      let newCredit = null
+      if (actualCreditAmount > 0) {
+        newCredit = new Credit({
+          storeId: store._id,
+          customerId: customer._id,
+          orderId: newOrder._id,
+          amount: actualCreditAmount,
+          bDate: new Date(),
+          soldBy,
+          isPaid: false,
+          isCancelled: false,
+        })
+        await newCredit.save({ session: transactionSession })
+      }
 
       // Update customer total purchases, spent, and outstanding balance
       await Customer.findByIdAndUpdate(
@@ -193,7 +231,7 @@ export async function POST(req) {
           $inc: {
             totalPurchases: 1,
             totalSpent: totalAmount,
-            outstandingBalance: totalAmount
+            outstandingBalance: actualCreditAmount
           }
         },
         { session: transactionSession }
@@ -203,8 +241,11 @@ export async function POST(req) {
         success: true,
         orderId: newOrder._id,
         orderNum,
-        creditId: newCredit._id,
+        creditId: newCredit?._id,
+        receiptNumber,
         totalAmount,
+        paymentAmount,
+        creditAmount: actualCreditAmount,
         items: updatedProducts,
         customer: {
           name: customer.name,
@@ -217,7 +258,9 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      message: 'Credit sale completed successfully',
+      message: paymentAmount > 0 
+        ? `Payment of ${paymentAmount} received. Credit of ${result.creditAmount} recorded.`
+        : 'Credit sale completed successfully',
       ...result
     })
 

@@ -17,6 +17,7 @@ const DashboardContent = ({ stats, recentOrders }) => {
     {
       title: 'Total Revenue',
       value: currencyFormat(stats?.totalRevenue || 0),
+      subtitle: `${stats?.totalOrders || 0} orders`,
       change: '+12.5%',
       isPositive: true,
       icon: DollarSign,
@@ -119,6 +120,11 @@ const DashboardContent = ({ stats, recentOrders }) => {
                     <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 break-words">
                       {kpi.value}
                     </h3>
+                    {kpi.subtitle && (
+                      <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
+                        {kpi.subtitle}
+                      </p>
+                    )}
                   </div>
 
                   {/* Change Indicator */}

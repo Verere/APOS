@@ -51,7 +51,7 @@ export default function EodDisplay({ eodData, slug }) {
                 <h3 className="text-sm font-semibold text-gray-700">Total Revenue</h3>
               </div>
               <p className="text-3xl font-bold text-green-700 mb-2">{currencyFormat(eodData.totalRevenue)}</p>
-              <p className="text-sm text-gray-600">{eodData.transactionCount} transactions</p>
+              <p className="text-sm text-gray-600">{eodData.transactionCount} orders</p>
             </div>
 
             {/* Total Credit */}

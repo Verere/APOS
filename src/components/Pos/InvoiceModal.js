@@ -142,8 +142,8 @@ ${invoiceData.items?.map((item, i) =>
 
 ━━━━━━━━━━━━━━━━━━━━
 *Total Amount:* ${currencyFormat(invoiceData.totalAmount)}
-*Amount Paid:* ${currencyFormat(0)}
-*Balance Due:* ${currencyFormat(invoiceData.totalAmount)}
+*Amount Paid:* ${currencyFormat(invoiceData.paymentAmount || 0)}
+*Balance Due:* ${currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}
 
 Thank you for your business!
     `.trim()
@@ -267,11 +267,11 @@ Thank you for your business!
                     </tr>
                     <tr className="bg-gradient-to-r from-green-50 to-green-100 font-bold">
                       <td colSpan="3" className="p-3 text-right text-sm text-gray-700">AMOUNT PAID:</td>
-                      <td className="p-3 text-right text-base text-green-600">{currencyFormat(0)}</td>
+                      <td className="p-3 text-right text-base text-green-600">{currencyFormat(invoiceData.paymentAmount || 0)}</td>
                     </tr>
                     <tr className="bg-gradient-to-r from-yellow-50 to-yellow-100 font-bold border-t-2 border-yellow-400">
                       <td colSpan="3" className="p-3 text-right text-sm text-gray-700">BALANCE DUE:</td>
-                      <td className="p-3 text-right text-lg text-red-600">{currencyFormat(invoiceData.totalAmount)}</td>
+                      <td className="p-3 text-right text-lg text-red-600">{currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -308,11 +308,11 @@ Thank you for your business!
                   </div>
                   <div className="flex justify-between items-center p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg">
                     <span className="font-semibold text-gray-700 text-sm">Amount Paid:</span>
-                    <span className="font-bold text-green-600 text-lg">{currencyFormat(0)}</span>
+                    <span className="font-bold text-green-600 text-lg">{currencyFormat(invoiceData.paymentAmount || 0)}</span>
                   </div>
                   <div className="flex justify-between items-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg border-2 border-yellow-400">
                     <span className="font-bold text-gray-800 text-base">Balance Due:</span>
-                    <span className="font-bold text-red-600 text-xl">{currencyFormat(invoiceData.totalAmount)}</span>
+                    <span className="font-bold text-red-600 text-xl">{currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}</span>
                   </div>
                 </div>
               </div>

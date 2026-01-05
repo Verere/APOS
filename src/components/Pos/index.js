@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useDebouncedCallback } from 'use-debounce';
 import moment from 'moment';
 import { MdSearch } from 'react-icons/md';
+import { currencyFormat } from '@/utils/currency';
 import { CartContext } from '@/context/CartContext';
 import { GlobalContext } from '@/context';
 import { Cart } from '../CartItem/Cart';
@@ -17,6 +18,7 @@ import TopBar from '../topbar/topbar';
 import { addOrder } from '@/actions';
 import InvoiceModal from './InvoiceModal';
 import PosPaymentModal from './PosPaymentModal';
+import CreditPaymentModal from './CreditPaymentModal';
 
 const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) => {
   const { location, setBusDate, setHotel, setStore, payment, cartValue, user } = useContext(GlobalContext);
@@ -28,6 +30,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCreditPaymentModal, setShowCreditPaymentModal] = useState(false);
   
   const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
   const searchParams = useSearchParams();
@@ -79,11 +82,6 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
     setSelectedCustomer(customer || null);
   }, [customers, setSelectedCustomer]);
 
-  const selectedCustomerData = useMemo(() => {
-    if (!selectedCustomerId) return null;
-    return customers?.find(c => c._id === selectedCustomerId) || null;
-  }, [selectedCustomerId, customers]);
-
   const handleCreditSale = useCallback(async () => {
     if (!selectedCustomerId) {
       toast.error('Please select a customer for credit sale');
@@ -96,6 +94,13 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
       return;
     }
 
+    // Show modal to ask about partial payment
+    setShowCreditPaymentModal(true);
+  }, [selectedCustomerId, cart]);
+
+  const handleConfirmCreditPayment = useCallback(async ({ paymentAmount, creditAmount, paymentMethod }) => {
+    const items = cart?.cartItems || cart || [];
+    setShowCreditPaymentModal(false);
     setLoading(true);
 
     try {
@@ -109,6 +114,9 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
           customerId: selectedCustomerId,
           cartItems: items,
           bDate: bDate,
+          paymentAmount: paymentAmount,
+          creditAmount: creditAmount,
+          paymentMethod: paymentMethod,
         }),
       });
 
@@ -147,7 +155,11 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
       setCreditSale(false);
       
       // Show success message
-      toast.success('Credit sale completed successfully!');
+      if (paymentAmount > 0) {
+        toast.success(`Payment of ${currencyFormat(paymentAmount)} received. Credit of ${currencyFormat(creditAmount)} recorded.`);
+      } else {
+        toast.success('Credit sale completed successfully!');
+      }
       
       // Show invoice modal
       setInvoiceData(data);
@@ -159,7 +171,12 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
       toast.error('Failed to process credit sale');
       setLoading(false);
     }
-  }, [slug, selectedCustomerId, cart, bDate, setCart, setSelectedCustomer, setCreditSale, customers]);
+  }, [slug, selectedCustomerId, cart, bDate, setCart, setSelectedCustomer, setCreditSale]);
+
+  const selectedCustomerData = useMemo(() => {
+    if (!selectedCustomerId) return null;
+    return customers?.find(c => c._id === selectedCustomerId) || null;
+  }, [selectedCustomerId, customers]);
 
   const printCreditInvoice = useCallback((data) => {
     const invoiceWindow = window.open('', '_blank');
@@ -274,13 +291,13 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
                 <td colspan="3" style="text-align: right;">TOTAL AMOUNT:</td>
                 <td style="text-align: right;">${new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(data.totalAmount)}</td>
               </tr>
-              <tr class="total-row">
+              <tr class="total-row" style="background-color: #d4edda;">
                 <td colspan="3" style="text-align: right;">AMOUNT PAID:</td>
-                <td style="text-align: right;">${new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(0)}</td>
+                <td style="text-align: right; color: #155724;">${new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(data.paymentAmount || 0)}</td>
               </tr>
               <tr class="total-row" style="background-color: #fff3cd;">
                 <td colspan="3" style="text-align: right;">BALANCE DUE:</td>
-                <td style="text-align: right; color: #ff0000;">${new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(data.totalAmount)}</td>
+                <td style="text-align: right; color: #ff0000;">${new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(data.creditAmount || data.totalAmount)}</td>
               </tr>
             </tbody>
           </table>
@@ -540,6 +557,15 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
             setSelectedCustomer(null)
             setCreditSale(false)
           }}
+        />
+
+        {/* Credit Payment Modal */}
+        <CreditPaymentModal
+          isOpen={showCreditPaymentModal}
+          onClose={() => setShowCreditPaymentModal(false)}
+          totalAmount={cartValue}
+          customerName={selectedCustomerData?.name || 'Customer'}
+          onConfirm={handleConfirmCreditPayment}
         />
       </>
     )

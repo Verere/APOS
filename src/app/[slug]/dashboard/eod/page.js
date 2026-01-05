@@ -33,10 +33,12 @@ async function getEodData(slug) {
     console.log('Payments found:', payments.length);
 
     // Fetch all completed orders for today (Order model uses slug, not storeId)
+    // Include all orders regardless of completion status to count credit sales
     const orders = await Order.find({
       slug: slug,
       bDate,
-      isCompleted: true
+      // Remove isCompleted filter to include credit sales (partial/no payment)
+      isCancelled: { $ne: true } // Exclude cancelled orders only
     }).lean();
     console.log('Orders found:', orders.length);
     if (orders.length > 0) {
