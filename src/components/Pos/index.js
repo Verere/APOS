@@ -20,7 +20,7 @@ import InvoiceModal from './InvoiceModal';
 import PosPaymentModal from './PosPaymentModal';
 import CreditPaymentModal from './CreditPaymentModal';
 
-const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) => {
+const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, allowCreditSales = true, allowPriceAdjustment = false }) => {
   const { location, setBusDate, setHotel, setStore, payment, cartValue, user } = useContext(GlobalContext);
   const { cart, order, setCart, setCPayment, setSelectedCustomer, setCreditSale } = useContext(CartContext);
   const [loading, setLoading] = useState(false);
@@ -427,7 +427,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
               {/* Cart Items Scroll Area */}
               <div className="flex-1 overflow-auto">
                 <ScrollArea type="always" scrollbars="vertical" className="h-full">
-                  <Cart />
+                  <Cart allowPriceAdjustment={allowPriceAdjustment} />
                 </ScrollArea>
               </div>
               
@@ -447,24 +447,26 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
                     Clear Cart
                   </button>
                   
-                  <button 
-                    onClick={handleCreditSale}
-                    disabled={!selectedCustomerId || loading}
-                    className='bg-orange-600 text-white px-3 py-2 rounded-lg uppercase hover:bg-orange-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2'
-                    aria-label="Credit sale"
-                  >
-                    {loading ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Processing...
-                      </>
-                    ) : (
-                      'Credit Sale'
-                    )}
-                  </button>
+                  {allowCreditSales && (
+                    <button 
+                      onClick={handleCreditSale}
+                      disabled={!selectedCustomerId || loading}
+                      className='bg-orange-600 text-white px-3 py-2 rounded-lg uppercase hover:bg-orange-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2'
+                      aria-label="Credit sale"
+                    >
+                      {loading ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Processing...
+                        </>
+                      ) : (
+                        'Credit Sale'
+                      )}
+                    </button>
+                  )}
                   
                   <button 
                     onClick={() => {
@@ -477,6 +479,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
                     Make Payment
                   </button>
                   
+                  {/* Receipt button - Hidden
                   <Popover>
                     <PopoverTrigger asChild>
                       <button 
@@ -490,6 +493,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers }) =
                       <PrintPage cart={sales} payment={payment} />
                     </PopoverContent>
                   </Popover>
+                  */}
                 </div> 
               </div>
             </aside>

@@ -53,6 +53,36 @@ const userSchema = new mongoose.Schema({
         default: true
        
     },
+    // Subscription fields
+    currentSubscription: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'UserSubscription'
+    },
+    subscriptionStatus: {
+        type: String,
+        enum: ['TRIAL', 'ACTIVE', 'EXPIRED', 'CANCELLED', 'SUSPENDED', 'NONE'],
+        default: 'NONE'
+    },
+    // Referral fields
+    referralCode: {
+        type: String,
+        unique: true,
+        sparse: true,
+        uppercase: true
+    },
+    referredBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        default: null
+    },
+    referredByCode: {
+        type: String,
+        default: null
+    },
+    referralCredits: {
+        type: Number,
+        default: 0
+    },
 }, {
     timestamps: true
 })

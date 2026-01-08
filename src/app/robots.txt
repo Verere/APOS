@@ -1,6 +1,0 @@
-# Global crawler rules
-User-agent: *
-Allow: /
-Disallow: /dashboard/
-
-Sitemap: https://apos-one.vercel.app/sitemap.xml

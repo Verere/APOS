@@ -57,7 +57,8 @@ const [cpayment, setCPayment] = useState(0)
     
     const addToCart = async ({product, name, category, image, price,  qty, onSale}) => {
        // normalize cart item and include _id for UI keys
-       const item = { _id: product, product, name, category, image, price, qty, amount: qty * price, onSale}
+       // Store originalPrice to enforce minimum pricing
+       const item = { _id: product, product, name, category, image, price, originalPrice: price, qty, amount: qty * price, onSale}
 
         // server will validate stock at checkout; accept item into cart
 
@@ -69,7 +70,7 @@ const [cpayment, setCPayment] = useState(0)
 
         if(isItemExist){
           newCartItems =  cart?.cartItems?.map((i) =>
-          i.product === isItemExist.product ? { ...i, ...item } : i)
+          i.product === isItemExist.product ? { ...i, ...item, originalPrice: i.originalPrice || price } : i)
         }else{
             newCartItems =[...(cart?.cartItems || []), item]
         }
@@ -125,6 +126,30 @@ const [cpayment, setCPayment] = useState(0)
         setCartToState()
       }
 
+      const updatePrice = async (cart, item, newPrice) => {
+        const price = parseFloat(newPrice) || 0
+        if (price < 0) return
+        
+        // Enforce minimum price (original product price)
+        const minPrice = item.originalPrice || item.price
+        if (price < minPrice) {
+          // Don't update if price is below minimum
+          return { error: `Price cannot be below ${minPrice}` }
+        }
+        
+        const newData = [...cart?.cartItems ?? []]
+        newData.forEach(items => {
+          if (String(items.product) === String(item.product)) {
+            items.price = price
+            items.amount = items.qty * items.price
+            if(!items._id) items._id = items.product
+          }
+        })
+        localStorage.setItem('cart', JSON.stringify({cartItems: newData}))
+        setCartToState()
+        return { success: true }
+      }
+
       const deleteItem = (cart, item) => {
 
         const newData = (cart?.cartItems || []).filter(items => String(items.product) !== String(item.product))
@@ -143,6 +168,7 @@ const [cpayment, setCPayment] = useState(0)
         decr,
        incr,
        updateQty,
+       updatePrice,
        setCartToState,
         setCart,
         deleteItem,

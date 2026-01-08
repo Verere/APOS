@@ -74,17 +74,19 @@ return(
           <span className="text-base sm:text-lg font-bold text-gray-900">{currencyFormat(total)}</span>
         </div>
         
-        {/* Paid Amount */}
+        {/* Paid Amount - Hidden
         <div className='flex justify-between items-center py-1.5'>
           <span className="text-xs sm:text-sm font-semibold text-green-600 uppercase tracking-wide">Amount Paid:</span>
           <span className="text-base sm:text-lg font-bold text-green-700">{currencyFormat(payment || 0)}</span>
         </div>
+        */}
         
-        {/* Balance */}
+        {/* Balance - Hidden
         <div className='flex justify-between items-center py-2 px-2 bg-orange-50 rounded-lg border border-orange-200'>
           <span className="text-sm sm:text-base font-bold text-orange-700 uppercase tracking-wide">Balance Due:</span>
           <span className="text-lg sm:text-xl font-extrabold text-orange-600">{currencyFormat(bal|| 0)}</span>
         </div>
+        */}
       </div>
     </div>      
   </>

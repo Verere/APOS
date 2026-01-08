@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Search, Bell, User, Settings, LogOut, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { signOut } from 'next-auth/react'
+import ThemeSwitch from '@/app/switch'
 
 const TopBar = ({ user, slug }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -42,27 +43,35 @@ const TopBar = ({ user, slug }) => {
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+    <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between px-6 py-4">
         {/* Search Bar */}
         <div className="flex-1 max-w-2xl">
           <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
             <input
               type="text"
               placeholder="Search products, orders, customers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
             />
           </form>
         </div>
 
         {/* Right Side Actions */}
         <div className="flex items-center gap-4 ml-4">
+          {/* Theme Switcher */}
+          <button
+            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            aria-label="Toggle theme"
+          >
+            <ThemeSwitch />
+          </button>
+
           {/* Notifications */}
           <button
-            className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="relative p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             aria-label="Notifications"
           >
             <Bell size={22} />

@@ -15,7 +15,7 @@ export async function GET(req) {
     await connectToDB()
     const store = await Store.findOne({ user: token.email }).lean()
     const slug = store?.slug || null
-    if (slug) return NextResponse.redirect(new URL(`/${slug}/pos`, req.url))
+    if (slug) return NextResponse.redirect(new URL('/dashboard', req.url))
     return NextResponse.redirect(new URL('/dashboard', req.url))
   } catch (err) {
     console.error('slug-redirect error', err)

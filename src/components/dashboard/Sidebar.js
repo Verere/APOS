@@ -70,7 +70,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
     { icon: Calendar, label: 'End of Day', path: `/${slug}/dashboard/eod` },
     { icon: Users, label: 'Users', path: `/${slug}/dashboard/users` },
     { icon: FileText, label: 'Reports', path: `/${slug}/reports` },
-    { icon: Settings, label: 'Settings', path: `/${slug}/settings` },
+    { icon: Settings, label: 'Settings', path: `/${slug}/dashboard/settings` },
     { icon: HelpCircle, label: 'Help', path: `/${slug}/help` },
     { icon: LogOut, label: 'Logout', path: '/api/auth/signout', isAction: true },
   ]
@@ -102,7 +102,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
           "text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent transition-all duration-300",
           isCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
         )}>
-          APOS
+          MarketBook
         </h2>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -239,7 +239,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
         isCollapsed ? "opacity-0 h-0 p-0 overflow-hidden" : "opacity-100"
       )}>
         <div className="text-xs text-gray-400 text-center">
-          © 2025 APOS Dashboard
+          © 2025 MarketBook Dashboard
         </div>
       </div>
     </aside>

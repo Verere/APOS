@@ -34,16 +34,16 @@ export default function LoginForm() {
         <MainNav />
       </div>
       
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-8 pt-16">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4 sm:px-6 lg:px-8 pt-16">
         <div className="w-full max-w-md">
           {/* Card Container */}
-          <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 md:p-10">
             {/* Header */}
             <div className="text-center mb-8">
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
                 Welcome Back
               </h2>
-              <p className="text-sm sm:text-base text-gray-600">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
                 Sign in to your account to continue
               </p>
             </div>

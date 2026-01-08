@@ -10,13 +10,14 @@ import {  usePathname, useRouter, useSearchParams } from "next/navigation";
 
 
 
-const CartItemPanel = ({item}) => {
+const CartItemPanel = ({item, allowPriceAdjustment = false}) => {
   const [state, formAction, isPending] = useActionState(addMenuStock, {});
   const { replace } = useRouter();
 const {_id}= item
-    const {cart, incr, decr, deleteItem, updateQty} = useContext(CartContext)  
+    const {cart, incr, decr, deleteItem, updateQty, updatePrice} = useContext(CartContext)  
    const[loading, setLoading] = useState(false)
    const [qtyInput, setQtyInput] = useState(item.qty)
+   const [priceInput, setPriceInput] = useState(item.price)
     const { user, payment, setPayment, setBal} = useContext(GlobalContext)
     const pathname = usePathname()
     // if(!user)replace("/login")
@@ -24,6 +25,10 @@ const {_id}= item
     useEffect(()=>{
       setQtyInput(item.qty)
     },[item.qty])
+
+    useEffect(()=>{
+      setPriceInput(item.price)
+    },[item.price])
 
     useEffect(()=>{
       const getError = async()=>{
@@ -49,7 +54,42 @@ const {_id}= item
           {item.name || item.item}
         </p>
         <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-xs sm:text-sm text-gray-500">{currencyFormat(item.price)}</span>
+          {allowPriceAdjustment ? (
+            <div className="flex flex-col gap-1">
+              <input
+                type="number"
+                value={priceInput}
+                onChange={(e) => {
+                  const newPrice = e.target.value
+                  setPriceInput(newPrice)
+                  const minPrice = item.originalPrice || item.price
+                  if (parseFloat(newPrice) >= minPrice) {
+                    updatePrice(cart, item, newPrice)
+                  }
+                }}
+                onBlur={(e) => {
+                  const newPrice = parseFloat(e.target.value) || 0
+                  const minPrice = item.originalPrice || item.price
+                  if (newPrice < minPrice) {
+                    toast.error(`Price cannot be below ${currencyFormat(minPrice)}`)
+                    setPriceInput(minPrice)
+                    updatePrice(cart, item, minPrice)
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.target.blur()
+                  }
+                }}
+                min={item.originalPrice || item.price}
+                step="0.01"
+                className="w-20 sm:w-24 px-2 py-1 text-xs sm:text-sm text-gray-700 bg-yellow-50 border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-[10px] text-gray-400">Min: {currencyFormat(item.originalPrice || item.price)}</span>
+            </div>
+          ) : (
+            <span className="text-xs sm:text-sm text-gray-500">{currencyFormat(item.price)}</span>
+          )}
           <span className="text-xs text-gray-400">× {item.qty}</span>
         </div>
       </div>
