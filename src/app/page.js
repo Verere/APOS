@@ -526,19 +526,19 @@ export default function Home() {
 
             {/* PROFESSIONAL Plan */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Professional</h3>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Basic</h3>
               <div className="mb-4">
-                <span className="text-4xl font-bold text-gray-900 dark:text-white">₦220,000</span>
+                <span className="text-4xl font-bold text-gray-900 dark:text-white">₦120,000</span>
                 <span className="text-gray-600 dark:text-gray-400">/year</span>
               </div>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span>20 Users</span>
+                  <span>5 Users</span>
                 </li>
                 <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span>5,000 Products</span>
+                  <span>500 Products</span>
                 </li>
                 <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
