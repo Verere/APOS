@@ -37,10 +37,7 @@ export const metadata = genMeta({
     'sales tracking',
     'small business POS'
   ],
-//   verification:{
-//   google:'Ocaeiw6Sm2B4_VtSkDSsWl8R8YtNuaD9zSiNRBuCss8'
-// }
-  "google-site-verification": "google53737323db8ffce7.html"
+
 })
 
 
@@ -48,7 +45,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.className} suppressHydrationWarning>
         <head>    
-        <link rel='icon' href='/nlogo.svg'/>    
+        <link rel='icon' href='/nlogo.svg'/>
+        <meta name="google-site-verification" content="KWSs8Woy63tW1YiEI9i6ZX597xC6KbP7D74a5Sn9cIk" />
       </head>
       <body  className="bg-slate-300 dark:bg-slate-900">
         <Analytics />
