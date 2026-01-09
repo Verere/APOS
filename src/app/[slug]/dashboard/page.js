@@ -6,6 +6,9 @@ import OverViewPage from '@/components/overViewPage.js'
 import { fetchAllOrders, fetchAllstoreMembers, fetchProducts } from '@/actions/fetch'
 import connectDB from '@/utils/connectDB'
 import Expense from '@/models/expense'
+import StoreMembership from '@/models/storeMembership'
+import Store from '@/models/store'
+import User from '@/models/user'
 import moment from 'moment'
 
 const DashBoardPage = async ({params}) => {
@@ -17,6 +20,87 @@ const DashBoardPage = async ({params}) => {
 
   const { slug } = await params
 
+  // Check store membership and role
+  await connectDB()
+  const store = await Store.findOne({ slug }).lean()
+  if (!store) {
+    redirect('/dashboard')
+  }
+
+  const membership = await StoreMembership.findOne({
+    userId: session.user.id,
+    storeId: store._id,
+    isDeleted: { $ne: true }
+  }).lean()
+
+  if (!membership) {
+    redirect('/dashboard')
+  }
+
+  // Check subscription status based on role
+  // For OWNER: check their own subscription
+  // For MANAGER/CASHIER: check store owner's subscription
+  let ownerToCheck = membership.role === 'OWNER' ? session.user.id : store.owner
+  
+  const owner = await User.findById(ownerToCheck).populate('currentSubscription').lean()
+  
+  console.log('Checking subscription for:', {
+    role: membership.role,
+    ownerId: ownerToCheck,
+    hasCurrentSubscription: !!owner?.currentSubscription,
+    subscriptionStatus: owner?.currentSubscription?.status
+  })
+  
+  const hasActiveSubscription = owner?.currentSubscription && 
+    ['ACTIVE', 'TRIAL'].includes(owner.currentSubscription.status)
+  
+  // If owner has no active subscription
+  if (!hasActiveSubscription) {
+    if (membership.role === 'OWNER') {
+      redirect('/subscription')
+    }
+    
+    // For cashiers and managers, show subscription error message
+    const subscriptionStatus = owner?.currentSubscription?.status || 'NONE'
+    const message = subscriptionStatus === 'EXPIRED' 
+      ? 'Subscription Expired' 
+      : 'No Active Subscription'
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
+          <div className="mb-6">
+            <svg className="w-20 h-20 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">{message}</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            The store owner's subscription has {subscriptionStatus === 'EXPIRED' ? 'expired' : 'not been activated'}. 
+            Please contact the store owner to renew the subscription.
+          </p>
+          <div className="text-sm text-gray-500 dark:text-gray-500 mb-6">
+            Store: <span className="font-semibold">{slug}</span>
+          </div>
+          <a 
+            href="/dashboard" 
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Dashboard
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  // Redirect cashiers to POS
+  if (membership.role === 'CASHIER') {
+    redirect(`/${slug}/pos`)
+  }
+
  
 
    // Fetch stats - Pass slug directly as a string, not as an object
@@ -25,7 +109,6 @@ const DashBoardPage = async ({params}) => {
   const products = await fetchProducts(slug) || []
 
   // Fetch expenses for the current month
-  await connectDB()
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)

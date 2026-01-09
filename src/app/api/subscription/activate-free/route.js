@@ -20,7 +20,24 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { packageName, billingCycle } = body
+    let { packageName, billingCycle, storeId } = body
+
+    // If no storeId provided, try to get user's first store
+    if (!storeId && session?.user?.id) {
+      try {
+        const StoreMembership = (await import('@/models/storeMembership')).default
+        const membership = await StoreMembership.findOne({ 
+          userId: session.user.id, 
+          isDeleted: { $ne: true } 
+        }).select('storeId').lean()
+        
+        if (membership?.storeId) {
+          storeId = membership.storeId
+        }
+      } catch (error) {
+        console.error('Failed to fetch storeId from membership:', error)
+      }
+    }
 
     // Check if user already has an active subscription
     const existingSubscription = await UserSubscription.findOne({
@@ -49,9 +66,10 @@ export async function POST(request) {
     const endDate = new Date()
     endDate.setFullYear(endDate.getFullYear() + 1)
 
-    // Create free subscription
+    // Create free subscription (applies to all user's stores)
     const newSubscription = await UserSubscription.create({
       userId: session.user.id,
+      storeId: storeId || null, // Optional: just metadata for primary store
       packageId: freePackage._id,
       packageName: 'FREE',
       status: 'ACTIVE',

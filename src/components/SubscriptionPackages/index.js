@@ -41,6 +41,7 @@ export default function SubscriptionPackages() {
   const [isLoadingCurrency, setIsLoadingCurrency] = useState(true)
   const [processingPayment, setProcessingPayment] = useState(false)
   const [selectedPackage, setSelectedPackage] = useState(null)
+  const [userStoreId, setUserStoreId] = useState(null)
   
   const { data: session } = useSession()
   const router = useRouter()
@@ -211,6 +212,27 @@ export default function SubscriptionPackages() {
     detectCurrency()
   }, [])
 
+  // Fetch user's store ID when session is available
+  useEffect(() => {
+    const fetchUserStore = async () => {
+      if (session?.user) {
+        try {
+          const response = await fetch('/api/stores/mine')
+          if (response.ok) {
+            const stores = await response.json()
+            if (stores && stores.length > 0) {
+              setUserStoreId(stores[0].storeId)
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch user store:', error)
+        }
+      }
+    }
+    
+    fetchUserStore()
+  }, [session])
+
   // Convert price to selected currency
   const getConvertedPrice = (priceInNGN) => {
     if (priceInNGN === 0) return 0
@@ -265,7 +287,8 @@ export default function SubscriptionPackages() {
         body: JSON.stringify({
           reference: reference.reference,
           packageId: pkg?.name,
-          billingCycle: billingCycle.toUpperCase()
+          billingCycle: billingCycle.toUpperCase(),
+          storeId: userStoreId
         })
       })
 
@@ -331,7 +354,8 @@ export default function SubscriptionPackages() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           packageName: pkg.name,
-          billingCycle: billingCycle.toUpperCase()
+          billingCycle: billingCycle.toUpperCase(),
+          storeId: userStoreId
         })
       })
 

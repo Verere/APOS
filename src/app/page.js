@@ -101,7 +101,7 @@ export default function Home() {
               </div>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-gray-900 dark:text-white leading-tight">
-                Grow Your Business <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">3X Faster</span> with Smart POS
+                Grow Your Business <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">3X Faster</span> with MarketBook Software
               </h1>
               
               <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl">

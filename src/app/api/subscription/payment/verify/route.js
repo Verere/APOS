@@ -21,7 +21,25 @@ export async function POST(request) {
     }
 
     const body = await request.json()
-    const { reference, packageId, billingCycle, storeId } = body
+    let { reference, packageId, billingCycle, storeId } = body
+
+    // If no storeId provided, try to get user's first store
+    if (!storeId && session?.user?.id) {
+      try {
+        const StoreMembership = (await import('@/models/storeMembership')).default
+        const membership = await StoreMembership.findOne({ 
+          userId: session.user.id, 
+          isDeleted: { $ne: true } 
+        }).select('storeId').lean()
+        
+        if (membership?.storeId) {
+          storeId = membership.storeId
+          console.log('Fetched storeId from membership:', storeId)
+        }
+      } catch (error) {
+        console.error('Failed to fetch storeId from membership:', error)
+      }
+    }
 
     console.log('Payment verification request:', { reference, packageId, billingCycle, storeId })
 
@@ -119,10 +137,10 @@ export async function POST(request) {
       trialEndDate.setDate(trialEndDate.getDate() + subscriptionPackage.trialDays)
     }
 
-    // Create subscription
+    // Create user subscription (applies to all user's stores up to package limit)
     const newSubscription = await UserSubscription.create({
       userId: session.user.id,
-      storeId: storeId || null,
+      storeId: storeId || null, // Optional: reference to primary store (subscription covers all user's stores)
       packageId: subscriptionPackage._id,
       packageName: subscriptionPackage.name,
       status: trialEndDate ? 'TRIAL' : 'ACTIVE',

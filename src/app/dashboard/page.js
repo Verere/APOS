@@ -4,6 +4,7 @@ import { authOptions } from '@/auth'
 import { fetchUserMemberships } from '@/actions/fetch'
 import Link from 'next/link'
 import ThemeSwitcherClient from './ThemeSwitcherClient'
+import SubscriptionCard from '@/components/dashboard/SubscriptionCard'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -12,6 +13,20 @@ export default async function DashboardPage() {
   }
 
   const memberships = await fetchUserMemberships(session.user.id);
+
+  // If user is only a cashier (no owner/manager roles)
+  if (memberships.length > 0) {
+    const hasOwnerOrManager = memberships.some(m => m.role === 'OWNER' || m.role === 'MANAGER')
+    if (!hasOwnerOrManager) {
+      // If cashier has only 1 store, auto-redirect to POS
+      if (memberships.length === 1) {
+        redirect(`/${memberships[0].slug}/pos`)
+      }
+      // If cashier has multiple stores, show selection below
+    }
+  }
+
+  const isCashierOnly = memberships.length > 0 && !memberships.some(m => m.role === 'OWNER' || m.role === 'MANAGER')
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 lg:p-8">
@@ -34,8 +49,18 @@ export default async function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* Subscription Card - Only show for owners/managers */}
+        {!isCashierOnly && (
+          <div className="mb-8">
+            <SubscriptionCard />
+          </div>
+        )}
+
         <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Your Store Memberships</h2>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
+            {isCashierOnly ? 'Select Store to Open POS' : 'Your Store Memberships'}
+          </h2>
           {memberships.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center">
               <p className="text-gray-500 dark:text-gray-400">You are not a member of any stores yet.</p>
@@ -44,7 +69,7 @@ export default async function DashboardPage() {
             <ul className="space-y-3">
               {memberships.map((m) => (
                 <li key={String(m.storeId)}>
-                  <Link href={`/${m.slug}/dashboard`} className="block group">
+                  <Link href={isCashierOnly ? `/${m.slug}/pos` : `/${m.slug}/dashboard`} className="block group">
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 p-4 sm:p-5 transition-all duration-200 transform hover:-translate-y-1 cursor-pointer">
                       <div className="flex justify-between items-center gap-4">
                         <div className="flex-1 min-w-0">
@@ -52,7 +77,7 @@ export default async function DashboardPage() {
                             {m.slug}
                           </div>
                           <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Store ID: {String(m?.storeId)}
+                            {isCashierOnly ? 'Click to open POS' : `Store ID: ${String(m?.storeId)}`}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-3">

@@ -6,9 +6,13 @@ const UserSubscriptionSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  // Optional: Reference to primary/first store (for convenience only)
+  // Subscription applies to user and covers all their stores up to package limit
   storeId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Store'
+    ref: 'Store',
+    required: false,
+    default: null
   },
   packageId: {
     type: mongoose.Schema.Types.ObjectId,

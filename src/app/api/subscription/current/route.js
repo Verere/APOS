@@ -18,12 +18,9 @@ export async function GET(request) {
 
     await connectDB();
 
-    // Find the user's current subscription
+    // Find the user's current subscription (including expired ones for notification)
     const user = await User.findById(session.user.id)
-      .populate({
-        path: 'currentSubscription',
-        match: { status: { $in: ['ACTIVE', 'TRIAL'] } }
-      });
+      .populate('currentSubscription');
 
     if (!user) {
       return NextResponse.json(
@@ -44,6 +41,7 @@ export async function GET(request) {
           currency: user.currentSubscription.currency,
           startDate: user.currentSubscription.startDate,
           endDate: user.currentSubscription.endDate,
+          trialEndDate: user.currentSubscription.trialEndDate,
           autoRenew: user.currentSubscription.autoRenew,
           paymentMethod: user.currentSubscription.paymentMethod,
           transactionReference: user.currentSubscription.transactionReference
@@ -51,10 +49,9 @@ export async function GET(request) {
       });
     }
 
-    // Fallback: Find the most recent active subscription
+    // Fallback: Find the most recent subscription (any status)
     const subscription = await UserSubscription.findOne({
-      userId: session.user.id,
-      status: { $in: ['ACTIVE', 'TRIAL'] }
+      userId: session.user.id
     })
       .sort({ createdAt: -1 })
       .limit(1);
@@ -76,6 +73,7 @@ export async function GET(request) {
         currency: subscription.currency,
         startDate: subscription.startDate,
         endDate: subscription.endDate,
+        trialEndDate: subscription.trialEndDate,
         autoRenew: subscription.autoRenew,
         paymentMethod: subscription.paymentMethod,
         transactionReference: subscription.transactionReference
