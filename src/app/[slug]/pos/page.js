@@ -22,24 +22,47 @@ const Pos = async({params, searchParams})=>{
           )
         }
 
-        // Check store owner's subscription status
-        const owner = await User.findById(store.owner).populate('currentSubscription').lean()
-        
+        // Dynamically find the store owner using StoreMembership
+        const StoreMembership = (await import('@/models/storeMembership')).default;
+        const ownerMembership = await StoreMembership.findOne({
+          storeId: store._id,
+          role: 'OWNER',
+          isDeleted: { $ne: true }
+        }).lean();
+
+        const ownerId = ownerMembership?.userId?.toString() || store.user?.toString();
+        const owner = await User.findById(ownerId).populate('currentSubscription');
+        // Also check subscriptions directly
+        const directSubscription = await UserSubscription.findOne({
+          userId: ownerId,
+          status: { $in: ['ACTIVE', 'TRIAL'] }
+        }).sort({ createdAt: -1 });
+
         console.log('POS subscription check:', {
-          storeOwner: store.owner,
+          storeOwner: ownerId,
+          ownerFound: !!owner,
           hasCurrentSubscription: !!owner?.currentSubscription,
-          subscriptionStatus: owner?.currentSubscription?.status
-        })
-        
-        const hasActiveSubscription = owner?.currentSubscription && 
-          ['ACTIVE', 'TRIAL'].includes(owner.currentSubscription.status)
-        
+          currentSubscriptionId: owner?.currentSubscription?._id?.toString(),
+          subscriptionStatus: owner?.currentSubscription?.status,
+          directSubscriptionFound: !!directSubscription,
+          directSubscriptionStatus: directSubscription?.status,
+          allUserSubscriptions: await UserSubscription.find({ userId: ownerId }).select('status packageName createdAt').lean()
+        });
+
+        const hasActiveSubscription = (owner?.currentSubscription &&
+          ['ACTIVE', 'TRIAL'].includes(owner.currentSubscription.status)) ||
+          directSubscription;
+
+        console.log('Has active subscription:', hasActiveSubscription);
+
         if (!hasActiveSubscription) {
-          const subscriptionStatus = owner?.currentSubscription?.status || 'NONE'
-          const message = subscriptionStatus === 'EXPIRED' 
-            ? 'Subscription Expired' 
-            : 'No Active Subscription'
-          
+          const subscriptionStatus = owner?.currentSubscription?.status || directSubscription?.status || 'NONE';
+          const message = subscriptionStatus === 'EXPIRED'
+            ? 'Subscription Expired'
+            : 'No Active Subscription';
+
+          console.log('Blocking access - Status:', subscriptionStatus);
+
           return (
             <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
               <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
@@ -50,14 +73,14 @@ const Pos = async({params, searchParams})=>{
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">{message}</h1>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  The store owner's subscription has {subscriptionStatus === 'EXPIRED' ? 'expired' : 'not been activated'}. 
+                  The store owner's subscription has {subscriptionStatus === 'EXPIRED' ? 'expired' : 'not been activated'}.
                   Please contact the store owner to renew the subscription.
                 </p>
                 <div className="text-sm text-gray-500 dark:text-gray-500 mb-6">
                   Store: <span className="font-semibold">{slug}</span>
                 </div>
-                <a 
-                  href="/dashboard" 
+                <a
+                  href="/dashboard"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +90,7 @@ const Pos = async({params, searchParams})=>{
                 </a>
               </div>
             </div>
-          )
+          );
         }
         
         // Fetch or create store settings

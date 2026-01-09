@@ -40,33 +40,47 @@ const DashBoardPage = async ({params}) => {
 
   // Check subscription status based on role
   // For OWNER: check their own subscription
-  // For MANAGER/CASHIER: check store owner's subscription
-  let ownerToCheck = membership.role === 'OWNER' ? session.user.id : store.owner
-  
-  const owner = await User.findById(ownerToCheck).populate('currentSubscription').lean()
-  
+  // For MANAGER/CASHIER: check store owner's subscription (store.user)
+  let ownerToCheck = membership.role === 'OWNER' ? session.user.id : store.user
+
+  const owner = await User.findById(ownerToCheck).populate('currentSubscription')
+
+  // Also check subscriptions directly
+  const directSubscription = await UserSubscription.findOne({
+    userId: ownerToCheck,
+    status: { $in: ['ACTIVE', 'TRIAL'] }
+  }).sort({ createdAt: -1 })
+
   console.log('Checking subscription for:', {
     role: membership.role,
-    ownerId: ownerToCheck,
+    ownerId: ownerToCheck?.toString(),
+    ownerFound: !!owner,
     hasCurrentSubscription: !!owner?.currentSubscription,
-    subscriptionStatus: owner?.currentSubscription?.status
+    currentSubscriptionId: owner?.currentSubscription?._id?.toString(),
+    subscriptionStatus: owner?.currentSubscription?.status,
+    directSubscriptionFound: !!directSubscription,
+    directSubscriptionStatus: directSubscription?.status,
+    allUserSubscriptions: await UserSubscription.find({ userId: ownerToCheck }).select('status packageName createdAt').lean()
   })
-  
-  const hasActiveSubscription = owner?.currentSubscription && 
-    ['ACTIVE', 'TRIAL'].includes(owner.currentSubscription.status)
-  
+
+  const hasActiveSubscription = (owner?.currentSubscription && 
+    ['ACTIVE', 'TRIAL'].includes(owner.currentSubscription.status)) ||
+    directSubscription
+
+  console.log('Has active subscription:', hasActiveSubscription)
+
   // If owner has no active subscription
   if (!hasActiveSubscription) {
     if (membership.role === 'OWNER') {
       redirect('/subscription')
     }
-    
+
     // For cashiers and managers, show subscription error message
     const subscriptionStatus = owner?.currentSubscription?.status || 'NONE'
     const message = subscriptionStatus === 'EXPIRED' 
       ? 'Subscription Expired' 
       : 'No Active Subscription'
-    
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
