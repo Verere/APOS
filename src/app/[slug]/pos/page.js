@@ -5,6 +5,7 @@ import connectDB from '@/utils/connectDB';
 import StoreSettings from '@/models/storeSettings';
 import Store from '@/models/store';
 import User from '@/models/user';
+import UserSubscription from '@/models/userSubscription';
 
 
 const Pos = async({params, searchParams})=>{

@@ -9,6 +9,7 @@ import Expense from '@/models/expense'
 import StoreMembership from '@/models/storeMembership'
 import Store from '@/models/store'
 import User from '@/models/user'
+import UserSubscription from '@/models/userSubscription'
 import moment from 'moment'
 
 const DashBoardPage = async ({params}) => {
