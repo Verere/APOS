@@ -243,16 +243,16 @@ return(
      {filteredProducts && filteredProducts?.map((patient, index) => (
               
       <Table.Row key={patient?._id} className={`border-b border-gray-100 hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-        <Table.RowHeaderCell className="font-semibold text-gray-900 py-4">{patient?.name}</Table.RowHeaderCell>
+        <Table.RowHeaderCell className="font-semibold text-gray-900 py-4">{patient?.name || ''}</Table.RowHeaderCell>
         <Table.Cell className="text-gray-700">
           <span className="inline-block px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-            {patient?.category}
+            {patient?.category || ''}
           </span>
         </Table.Cell>
-        <Table.Cell className="text-gray-600 text-sm">{patient?.expiration}</Table.Cell>
-        <Table.Cell className="text-gray-700 font-medium">{currencyFormat(patient?.cost)}</Table.Cell>
-        <Table.Cell className="text-blue-600 font-semibold">{currencyFormat(patient.price)}</Table.Cell>
-        <Table.Cell className="text-green-600 font-semibold">{currencyFormat(patient.profit)}</Table.Cell>
+        <Table.Cell className="text-gray-600 text-sm">{patient?.expiration || ''}</Table.Cell>
+        <Table.Cell className="text-gray-700 font-medium">{currencyFormat(typeof patient?.cost === 'number' && !isNaN(patient.cost) ? patient.cost : 0)}</Table.Cell>
+        <Table.Cell className="text-blue-600 font-semibold">{currencyFormat(typeof patient?.price === 'number' && !isNaN(patient.price) ? patient.price : 0)}</Table.Cell>
+        <Table.Cell className="text-green-600 font-semibold">{currencyFormat(typeof patient?.profit === 'number' && !isNaN(patient.profit) ? patient.profit : 0)}</Table.Cell>
         <Table.Cell>
           <Dialog>
             <DialogTrigger asChild>
@@ -282,7 +282,13 @@ return(
             </DialogContent>
           </Dialog>
         </Table.Cell>
-        <Table.Cell className="font-bold text-gray-900">{currencyFormat(patient?.totalValue)}</Table.Cell>
+        <Table.Cell className="font-bold text-gray-900">{
+          currencyFormat(
+            typeof patient?.totalValue === 'number' && !isNaN(patient.totalValue)
+              ? patient.totalValue
+              : (Number(patient.qty) || 0) * (Number(patient.price) || 0)
+          )
+        }</Table.Cell>
         <Table.Cell>
           <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
             patient?.qty <= patient?.reOrder 

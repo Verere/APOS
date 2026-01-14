@@ -15,6 +15,7 @@ import { currencyFormat } from '@/utils/currency'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 const DashboardContent = ({ stats, recentOrders, salesData }) => {
+  const netProfit = (stats?.totalProfit || 0) - (stats?.totalExpenses || 0);
   const kpiCards = [
     {
       title: 'Total Revenue',
@@ -25,14 +26,7 @@ const DashboardContent = ({ stats, recentOrders, salesData }) => {
       icon: DollarSign,
       color: 'bg-blue-500',
     },
-    {
-      title: 'Total Orders',
-      value: stats?.totalOrders || 0,
-      change: '+8.2%',
-      isPositive: true,
-      icon: ShoppingCart,
-      color: 'bg-green-500',
-    },
+  
     {
       title: 'Total Profit',
       value: currencyFormat(stats?.totalProfit || 0),
@@ -49,14 +43,15 @@ const DashboardContent = ({ stats, recentOrders, salesData }) => {
       icon: ArrowDownCircle,
       color: 'bg-amber-500',
     },
-    {
-      title: 'Total Users',
-      value: stats?.totalUsers || 0,
-      change: '+5.1%',
-      isPositive: true,
-      icon: Users,
-      color: 'bg-purple-500',
+      {
+      title: 'Net Profit',
+      value: currencyFormat(netProfit),
+      change: '+12.1%',
+      isPositive: netProfit >= 0,
+      icon: TrendingUp,
+      color: 'bg-emerald-700',
     },
+   
     {
       title: 'Growth Rate',
       value: '23.5%',
@@ -65,7 +60,15 @@ const DashboardContent = ({ stats, recentOrders, salesData }) => {
       icon: Activity,
       color: 'bg-orange-500',
     },
-  ]
+     {
+      title: 'Total Users',
+      value: stats?.totalUsers || 0,
+      change: '+5.1%',
+      isPositive: true,
+      icon: Users,
+      color: 'bg-purple-500',
+    },
+  ].filter(card => card.title !== 'Total Orders');
 
   return (
     <div className="space-y-6 sm:space-y-6">
