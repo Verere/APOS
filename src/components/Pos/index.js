@@ -306,6 +306,8 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
         <div class="footer">
           <p>Thank you for your business!</p>
           <p style="margin-top: 10px; font-size: 10px;">This is a computer-generated invoice</p>
+          <p style="margin-top: 8px; font-size: 10px; font-weight: bold;">Powered by www.marketbook.app</p>
+          <p style="margin-top: 2px; font-size: 10px;">+2349076361669</p>
           <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Print Invoice</button>
           <button class="no-print" onclick="window.close()" style="margin-top: 20px; padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">Close</button>
         </div>

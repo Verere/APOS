@@ -346,6 +346,8 @@ const PaymentPage=({slug, order, location, busDate, pathname})=>{
                                         Questions? WhatsApp: {store.whatsapp}
                                     </p>
                                 )}
+                                <p style={{ margin: '8px 0', fontSize: '10px', fontWeight: 'bold' }}>Powered by www.marketbook.app</p>
+                                                            <p style={{ margin: '2px 0', fontSize: '10px' }}>+2349076361669</p>
                             </div>
                         </div>
                     </div>
