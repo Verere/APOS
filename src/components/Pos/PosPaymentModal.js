@@ -492,7 +492,7 @@ export default function PosPaymentModal({
                   <div style={{ textAlign: 'center', marginBottom: '10px' }}>
                     <h2 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>{store?.name || 'STORE'}</h2>
                     <p style={{ margin: '2px 0', fontSize: '11px' }}>{store?.address || 'Address'}</p>
-                    {store?.number && <p style={{ margin: '2px 0', fontSize: '11px' }}>Tel: {store.number}</p>}
+                    <p style={{ margin: '2px 0', fontSize: '11px' }}>Tel: {store.number},  {store.whatsapp}</p>
                     <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>
                   </div>
 
@@ -553,8 +553,9 @@ export default function PosPaymentModal({
 
                   <div style={{ borderTop: '2px dashed #000', margin: '10px 0' }}></div>
                   <div style={{ textAlign: 'center', fontSize: '12px' }}>
-                    <p style={{ margin: '5px 0', fontWeight: 'bold' }}>Thank You!</p>
-                    <p style={{ margin: '5px 0', fontSize: '10px' }}>Please come again</p>
+                    <p style={{ margin: '5px 0', fontWeight: 'bold' }}>Thank You for your Patronage!</p>
+                    <p style={{ margin: '5px 0', fontSize: '10px' }}>Powered by: www.marketbook.app</p>
+                    
                   </div>
                 </div>
               </div>

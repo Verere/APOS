@@ -62,16 +62,16 @@ const {_id}= item
                 onChange={(e) => {
                   const newPrice = e.target.value
                   setPriceInput(newPrice)
-                  const minPrice = item.originalPrice || item.price
+                  const minPrice = item.cost || 0
                   if (parseFloat(newPrice) >= minPrice) {
                     updatePrice(cart, item, newPrice)
                   }
                 }}
                 onBlur={(e) => {
                   const newPrice = parseFloat(e.target.value) || 0
-                  const minPrice = item.originalPrice || item.price
+                  const minPrice = item.cost || 0
                   if (newPrice < minPrice) {
-                    toast.error(`Price cannot be below ${currencyFormat(minPrice)}`)
+                    toast.error(`Price cannot be below cost price (${currencyFormat(minPrice)})`)
                     setPriceInput(minPrice)
                     updatePrice(cart, item, minPrice)
                   }
@@ -81,11 +81,11 @@ const {_id}= item
                     e.target.blur()
                   }
                 }}
-                min={item.originalPrice || item.price}
+                min={item.cost || 0}
                 step="0.01"
                 className="w-20 sm:w-24 px-2 py-1 text-xs sm:text-sm text-gray-700 bg-yellow-50 border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
-              <span className="text-[10px] text-gray-400">Min: {currencyFormat(item.originalPrice || item.price)}</span>
+              <span className="text-[10px] text-gray-400">Min: {currencyFormat(item.cost || 0)}</span>
             </div>
           ) : (
             <span className="text-xs sm:text-sm text-gray-500">{currencyFormat(item.price)}</span>

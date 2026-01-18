@@ -56,9 +56,11 @@ const [cpayment, setCPayment] = useState(0)
     
     
     const addToCart = async ({product, name, category, image, price,  qty, onSale}) => {
-       // normalize cart item and include _id for UI keys
-       // Store originalPrice to enforce minimum pricing
-       const item = { _id: product, product, name, category, image, price, originalPrice: price, qty, amount: qty * price, onSale}
+      // normalize cart item and include _id for UI keys
+      // Store originalPrice to enforce minimum pricing
+      // Add cost to cart item
+      // Assume cost is available on the product object
+      const item = { _id: product, product, name, category, image, price, originalPrice: price, cost: typeof product === 'object' && product.cost !== undefined ? product.cost : 0, qty, amount: qty * price, onSale}
 
         // server will validate stock at checkout; accept item into cart
 
@@ -70,7 +72,7 @@ const [cpayment, setCPayment] = useState(0)
 
         if(isItemExist){
           newCartItems =  cart?.cartItems?.map((i) =>
-          i.product === isItemExist.product ? { ...i, ...item, originalPrice: i.originalPrice || price } : i)
+          i.product === isItemExist.product ? { ...i, ...item, originalPrice: i.originalPrice || price, cost: i.cost !== undefined ? i.cost : item.cost } : i)
         }else{
             newCartItems =[...(cart?.cartItems || []), item]
         }
@@ -129,12 +131,11 @@ const [cpayment, setCPayment] = useState(0)
       const updatePrice = async (cart, item, newPrice) => {
         const price = parseFloat(newPrice) || 0
         if (price < 0) return
-        
-        // Enforce minimum price (original product price)
-        const minPrice = item.originalPrice || item.price
+        // Enforce minimum price (cost price)
+        const minPrice = item.cost !== undefined ? item.cost : 0
         if (price < minPrice) {
-          // Don't update if price is below minimum
-          return { error: `Price cannot be below ${minPrice}` }
+          // Don't update if price is below cost
+          return { error: `Price cannot be lower than cost price` }
         }
         
         const newData = [...cart?.cartItems ?? []]

@@ -124,6 +124,7 @@ export async function POST(request) {
             message: 'Invitation accepted successfully',
             email: user.email,
             storeName: invite.storeId.name,
+            storeSlug: invite.storeId.slug,
             role: invite.role
         }, { status: 200 })
 

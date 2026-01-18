@@ -38,9 +38,13 @@ export default function AcceptInviteClient() {
         setSuccess(true)
         setInviteDetails(data)
         
-        // Redirect to login after 3 seconds
+        // Redirect to store dashboard if possible, else login
         setTimeout(() => {
-          router.push('/login')
+          if (data && data.storeSlug) {
+            router.push(`/${data.storeSlug}/dashboard`)
+          } else {
+            router.push('/login')
+          }
         }, 3000)
       } catch (err) {
         setError(err.message)

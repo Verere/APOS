@@ -142,6 +142,8 @@ const PrintPage = ({ cart, payments }) => {
         <div style={{ textAlign: 'center', fontSize: '12px', marginTop: '10px' }}>
           <p style={{ margin: '5px 0', fontWeight: 'bold' }}>Thank You!</p>
           <p style={{ margin: '5px 0', fontSize: '10px' }}>Please come again</p>
+          <p style={{ margin: '5px 0', fontSize: '11px', fontWeight: 'bold' }}>Thank you for your patronage</p>
+          <p style={{ margin: '5px 0', fontSize: '10px', color: '#888' }}>Powered by www.marketbook.app</p>
           {store?.whatsapp && (
             <p style={{ margin: '5px 0', fontSize: '10px' }}>
               Questions? WhatsApp: {store.whatsapp}

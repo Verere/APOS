@@ -178,7 +178,7 @@ Thank you for your business!
             <div className="text-center border-b-2 border-gray-800 pb-4 mb-6">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{storeInfo?.name || 'Store Name'}</h1>
               <p className="text-sm text-gray-600">{storeInfo?.address || ''}</p>
-              <p className="text-sm text-gray-600">Tel: {storeInfo?.number || ''} | Email: {storeInfo?.email || ''}</p>
+              <p className="text-sm text-gray-600">Tel: {storeInfo?.number || ''} {storeInfo?.whatsapp || ''} | Email: {storeInfo?.email || ''}</p>
             </div>
 
             {/* Credit Notice */}
@@ -320,8 +320,8 @@ Thank you for your business!
 
             {/* Footer */}
             <div className="text-center border-t-2 border-gray-800 pt-4 mt-6">
-              <p className="text-gray-700 font-semibold">Thank you for your business!</p>
-              <p className="text-xs text-gray-500 mt-2">This is a computer-generated invoice</p>
+              <p className="text-gray-700 font-semibold mt-1">Thank you for your patronage</p>
+              <p className="text-xs text-gray-400 mt-1">Powered by www.marketbook.app</p>
             </div>
           </div>
         </div>
