@@ -553,7 +553,7 @@ export default function PosPaymentModal({
 
                   <div style={{ borderTop: '2px dashed #000', margin: '10px 0' }}></div>
                   <div style={{ textAlign: 'center', fontSize: '12px' }}>
-                    <p style={{ margin: '5px 0', fontWeight: 'bold' }}>Thank You for your Patronage!</p>
+                    <p style={{ margin: '5px 0', fontWeight: 'bold' }}>Thanks for your Patronage!</p>
                     <p style={{ margin: '5px 0', fontSize: '10px' }}>Powered by: www.marketbook.app</p>
                     
                   </div>
