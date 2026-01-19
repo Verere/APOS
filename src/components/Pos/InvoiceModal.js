@@ -125,7 +125,7 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo }
 ━━━━━━━━━━━━━━━━━━━━
 *${storeInfo?.name || 'Store'}*
 ${storeInfo?.address || ''}
-Tel: ${storeInfo?.number || ''}
+Tel: ${storeInfo?.number || ''}, ${storeInfo?.whatsapp || ''}
 
 *Invoice Details*
 ━━━━━━━━━━━━━━━━━━━━
@@ -145,8 +145,9 @@ ${invoiceData.items?.map((item, i) =>
 *Amount Paid:* ${currencyFormat(invoiceData.paymentAmount || 0)}
 *Balance Due:* ${currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}
 
-Thank you for your business!
-    `.trim()
+Thanks for your patronage!
+`.trim()
+// powered by:  www.marketbook.app
 
     // Open WhatsApp with pre-filled message
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
@@ -178,7 +179,7 @@ Thank you for your business!
             <div className="text-center border-b-2 border-gray-800 pb-4 mb-6">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{storeInfo?.name || 'Store Name'}</h1>
               <p className="text-sm text-gray-600">{storeInfo?.address || ''}</p>
-              <p className="text-sm text-gray-600">Tel: {storeInfo?.number || ''} {storeInfo?.whatsapp || ''} | Email: {storeInfo?.email || ''}</p>
+              <p className="text-sm text-gray-600">Tel: {storeInfo?.number || ''}, {storeInfo?.whatsapp || ''} </p>
             </div>
 
             {/* Credit Notice */}
