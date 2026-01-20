@@ -121,7 +121,7 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo }
 
     // Create invoice message
     const message = `
-*CREDIT SALE INVOICE*
+*CREDIT SALES INVOICE*
 ━━━━━━━━━━━━━━━━━━━━
 *${storeInfo?.name || 'Store'}*
 ${storeInfo?.address || ''}
