@@ -35,28 +35,32 @@ export default function CreditsListClient({ credits, stats, slug }) {
 
   // Filter credits based on search and status
   const filteredCredits = useMemo(() => {
-    let result = creditsData
+    let result = creditsData;
 
     // Filter by payment status
     if (filterStatus === 'paid') {
-      result = result.filter(credit => credit.isPaid)
+      result = result.filter(credit => credit.isPaid);
     } else if (filterStatus === 'unpaid') {
-      result = result.filter(credit => !credit.isPaid)
+      // Only show credits with outstanding balance > 0
+      result = result.filter(credit => {
+        const outstanding = (credit.amount || 0) - (credit.amountPaid || 0);
+        return !credit.isPaid && outstanding > 0;
+      });
     }
 
     // Filter by search term
     if (searchTerm) {
-      const term = searchTerm.toLowerCase()
+      const term = searchTerm.toLowerCase();
       result = result.filter(credit => 
         credit.customerId?.name?.toLowerCase().includes(term) ||
         credit.customerId?.phone?.includes(term) ||
         credit.orderId?.orderNum?.toLowerCase().includes(term) ||
         credit.soldBy?.toLowerCase().includes(term)
-      )
+      );
     }
 
-    return result
-  }, [creditsData, searchTerm, filterStatus])
+    return result;
+  }, [creditsData, searchTerm, filterStatus]);
 
   const formatDate = useCallback((dateString) => {
     if (!dateString) return 'N/A'

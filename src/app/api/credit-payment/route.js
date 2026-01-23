@@ -71,12 +71,22 @@ export async function POST(req) {
 
       // Update credit record
       const newAmountPaid = (credit.amountPaid || 0) + amount;
-      const isFullyPaid = newAmountPaid >= credit.amount;
-
       credit.amountPaid = newAmountPaid;
-      credit.paid = isFullyPaid;
-      credit.paidAt = isFullyPaid && !credit.paidAt ? new Date() : credit.paidAt;
+      // Set isPaid to true if amountPaid equals or exceeds amount
+      if (typeof credit.amount === 'number' && typeof newAmountPaid === 'number' && newAmountPaid >= credit.amount) {
+        credit.isPaid = true;
+      }
       await credit.save({ session: transactionSession });
+
+      // Update customer's outstandingBalance
+      const customer = await Customer.findById(credit.customerId).session(transactionSession);
+      if (customer) {
+        // Calculate all outstanding credits for this customer
+        const allCredits = await Credit.find({ customerId: customer._id, isCancelled: { $ne: true } }).session(transactionSession);
+        const totalOutstanding = allCredits.reduce((sum, c) => sum + Math.max((c.amount || 0) - (c.amountPaid || 0), 0), 0);
+        customer.outstandingBalance = totalOutstanding;
+        await customer.save({ session: transactionSession });
+      }
 
       // Commit transaction
       await transactionSession.commitTransaction();

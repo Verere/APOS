@@ -25,10 +25,11 @@ export default async function CreditsPage({ params }) {
     redirect('/dashboard')
   }
 
-  // Fetch all credits with customer and order details
+  // Fetch only unpaid credits (isPaid: false) with customer and order details
   const credits = await Credit.find({ 
     storeId: store._id,
-    isCancelled: false 
+    isCancelled: false,
+    isPaid: false
   })
     .populate('customerId', 'name phone email address')
     .populate('orderId', 'orderNum totalAmount bDate')
