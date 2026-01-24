@@ -5,6 +5,7 @@ import StoreMembership from '@/models/storeMembership'
 import User from '@/models/user'
 import bcrypt from 'bcryptjs'
 import { sendEmail } from '@/utils/email'
+import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request) {
     try {
@@ -33,12 +34,14 @@ export async function POST(request) {
         if (!user) {
             // Create new user with the default password
             const hashedPassword = await bcrypt.hash(invite.defaultPassword, 10)
-            
+            // Generate a random emailToken to satisfy required field
+            const emailToken = uuidv4()
             user = await User.create({
                 email: invite.email,
                 name: invite.email.split('@')[0], // Use email username as default name
                 password: hashedPassword,
-                role: 'user'
+                role: 'user',
+                emailToken
             })
         }
 
