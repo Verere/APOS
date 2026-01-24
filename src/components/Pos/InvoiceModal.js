@@ -146,8 +146,8 @@ ${invoiceData.items?.map((item, i) =>
 *Balance Due:* ${currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}
 
 Thanks for your patronage!
+powered by:  www.marketbook.app
 `.trim()
-// powered by:  www.marketbook.app
 
     // Open WhatsApp with pre-filled message
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
