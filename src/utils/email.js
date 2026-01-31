@@ -70,7 +70,7 @@ export async function sendVerificationEmail(toEmail, token) {
   const verifyLink = `${base}/auth/verify?token=${encodeURIComponent(token)}`
   console.log('Verification link built:', verifyLink)
 
-  const subject = 'Verify your email'
+  const subject = 'Verify your email with Marketbook'
   const text = `Please verify your email by visiting: ${verifyLink}`
   const html = `
     <div style="font-family: Arial, sans-serif; color: #111;">

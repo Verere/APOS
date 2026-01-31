@@ -12,7 +12,7 @@ export const SUBSCRIPTION_PACKAGES = [
     },
     features: {
       maxStores: 1,
-      maxProducts: 50,
+      maxProducts: 10,
       maxUsers: 1,
       maxOrders: 100,
       storage: '500MB',
