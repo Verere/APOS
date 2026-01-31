@@ -6,9 +6,13 @@ import { fetchUserSubscription } from '@/actions/userSubscription'
 import { fetchUserUsage } from '@/actions/userUsage'
 // Remove dynamic import of CreateStoreButton from server component
 import Link from 'next/link'
+
 import ThemeSwitcherClient from './ThemeSwitcherClient'
 import SubscriptionCard from '@/components/dashboard/SubscriptionCard'
 import CreateStoreButtonClient from './CreateStoreButtonClient.jsx'
+
+// Use a client wrapper for DashboardRefresher
+import DashboardRefresherClient from './DashboardRefresherClient';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -41,6 +45,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 lg:p-8">
+      <DashboardRefresherClient />
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>

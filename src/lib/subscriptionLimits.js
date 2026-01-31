@@ -68,15 +68,18 @@ export async function getUserUsage(userId) {
   try {
     await connectDB();
 
-    const [storesCount, productsCount, usersCount, ordersCount] = await Promise.all([
-      Store.countDocuments({ owner: userId }),
+    // Count store memberships where user is OWNER
+    const StoreMembership = await import('@/models/storeMembership').then(m => m.default || m);
+    const storesCreated = await StoreMembership.countDocuments({ userId, role: 'OWNER', isDeleted: { $ne: true } });
+
+    const [productsCount, usersCount, ordersCount] = await Promise.all([
       Product.countDocuments({ createdBy: userId }),
       User.countDocuments({ createdBy: userId }), // Team members/staff
       Order.countDocuments({ userId: userId })
     ]);
 
     return {
-      stores: storesCount,
+      stores: storesCreated,
       products: productsCount,
       users: usersCount,
       orders: ordersCount
