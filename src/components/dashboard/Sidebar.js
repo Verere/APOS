@@ -32,6 +32,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
   const router = useRouter()
   const [productsExpanded, setProductsExpanded] = useState(true)
   const [customersExpanded, setCustomersExpanded] = useState(true)
+  const [expensesExpanded, setExpensesExpanded] = useState(true)
   const [loadingItem, setLoadingItem] = useState(null)
 
   // Reset loading state when pathname changes (navigation completed)
@@ -66,12 +67,21 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
     { icon: ShoppingCart, label: 'Sales', path: `/${slug}/dashboard/orders` },
     { icon: CreditCard, label: 'Payments', path: `/${slug}/dashboard/payments` },
     { icon: UserCheck, label: 'Who Owe Me', path: `/${slug}/dashboard/credits` },
-    { icon: DollarSign, label: 'Expense', path: `/${slug}/dashboard/expense` },
+      {
+      icon: DollarSign,
+      label: 'Expenses',
+      path: `/${slug}/dashboard/expense`,
+      hasSubmenu: true,
+      submenu: [
+        { icon: DollarSign, label: 'Expenses', path:  `/${slug}/dashboard/expense/table`},
+        { icon: UserPlus, label: 'Add New Expense', path:  `/${slug}/dashboard/expense` },
+      ]
+    },
     { icon: Calendar, label: 'End of Day', path: `/${slug}/dashboard/eod` },
     { icon: Users, label: 'Users', path: `/${slug}/dashboard/users` },
-    { icon: FileText, label: 'Reports', path: `/${slug}/reports` },
+    { icon: LayoutDashboard, label: 'Stores', path: `/dashboard` },
     { icon: Settings, label: 'Settings', path: `/${slug}/dashboard/settings` },
-    { icon: HelpCircle, label: 'Help', path: `/${slug}/help` },
+    { icon: HelpCircle, label: 'Help', path: 'whatsapp', isWhatsApp: true },
     { icon: LogOut, label: 'Logout', path: '/api/auth/signout', isAction: true },
   ]
 
@@ -124,6 +134,99 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
             const Icon = item.icon
             const isActive = pathname === item.path
             const hasActiveSubmenu = item.submenu?.some(sub => pathname === sub.path)
+
+            if (item.isWhatsApp) {
+              return (
+                <li key={item.label}>
+                  <a
+                    href="https://wa.me/2349076361669"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-green-700 text-gray-300 hover:text-white',
+                      isCollapsed && 'justify-center px-0'
+                    )}
+                    title={isCollapsed ? item.label : ''}
+                  >
+                    <Icon size={20} className="flex-shrink-0" />
+                    {!isCollapsed && (
+                      <span className="font-medium text-sm transition-all duration-300 opacity-100">{item.label}</span>
+                    )}
+                  </a>
+                </li>
+              )
+            }
+
+            if (item.hasSubmenu && item.label === 'Expenses') {
+              return (
+                <li key={item.label}>
+                  <button
+                    onClick={() => {
+                      if (isCollapsed) {
+                        setIsCollapsed(false)
+                      }
+                      setExpensesExpanded(!expensesExpanded)
+                    }}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200',
+                      hasActiveSubmenu
+                        ? 'bg-gray-800 text-white'
+                        : 'hover:bg-gray-800 text-gray-300 hover:text-white',
+                      isCollapsed && 'justify-center px-0'
+                    )}
+                    title={isCollapsed ? item.label : ''}
+                  >
+                    <Icon size={20} className="flex-shrink-0" />
+                    {!isCollapsed && (
+                      <>
+                        <span className="font-medium text-sm transition-all duration-300 opacity-100">{item.label}</span>
+                        <div className="ml-auto transition-all duration-300">
+                          {expensesExpanded ? (
+                            <ChevronUp size={16} className="transition-transform duration-300" />
+                          ) : (
+                            <ChevronDown size={16} className="transition-transform duration-300" />
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </button>
+                  {/* Submenu */}
+                  {!isCollapsed && expensesExpanded && (
+                    <ul className="mt-1 ml-3 space-y-1 border-l-2 border-gray-700 pl-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {item.submenu.map((subItem) => {
+                        const SubIcon = subItem.icon
+                        const isSubActive = pathname === subItem.path
+                        return (
+                          <li key={subItem.label}>
+                            <button
+                              onClick={() => handleSubmenuNavigation(subItem)}
+                              disabled={loadingItem === subItem.path}
+                              className={cn(
+                                'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm',
+                                isSubActive
+                                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                                  : 'hover:bg-gray-800 text-gray-400 hover:text-white',
+                                loadingItem === subItem.path && 'opacity-75 cursor-wait'
+                              )}
+                            >
+                              {loadingItem === subItem.path ? (
+                                <Loader2 size={16} className="flex-shrink-0 animate-spin" />
+                              ) : (
+                                <SubIcon size={16} className="flex-shrink-0" />
+                              )}
+                              <span className="font-medium transition-all duration-300">{subItem.label}</span>
+                              {isSubActive && loadingItem !== subItem.path && (
+                                <div className="ml-auto w-1 h-4 bg-white rounded-full transition-all duration-300" />
+                              )}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </li>
+              )
+            }
 
             return (
               <li key={item.label}>

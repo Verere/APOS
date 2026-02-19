@@ -19,10 +19,13 @@ import { addOrder } from '@/actions';
 import InvoiceModal from './InvoiceModal';
 import PosPaymentModal from './PosPaymentModal';
 import CreditPaymentModal from './CreditPaymentModal';
+import BarcodeScanner from './BarcodeScanner';
 
 const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, allowCreditSales = true, allowPriceAdjustment = false }) => {
   const { location, setBusDate, setHotel, setStore, payment, cartValue, user } = useContext(GlobalContext);
   const { cart, order, setCart, setCPayment, setSelectedCustomer, setCreditSale } = useContext(CartContext);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannerLoading, setScannerLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [item, setItem] = useState('');
   const [showCart, setShowCart] = useState(false);
@@ -46,6 +49,45 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
       menu.name.toLowerCase().includes(searchTerm) || menu.barcode === item
     );
   }, [item, menus]);
+
+  // Barcode scan handler
+  const handleBarcodeScan = async (barcode) => {
+    setScannerLoading(true);
+    // Prevent rapid duplicate scans
+    setShowScanner(false);
+    try {
+      const found = menus.find(menu => menu.barcode === barcode);
+      if (!found) {
+        toast.error("Product not found for barcode: " + barcode);
+        setScannerLoading(false);
+        return;
+      }
+      // Check for duplicate in cart
+      const cartItems = cart?.cartItems || cart || [];
+      const alreadyInCart = cartItems.some(ci => ci.product === found._id);
+      if (alreadyInCart) {
+        toast.info("Product already in cart.");
+        setScannerLoading(false);
+        return;
+      }
+      // Add to cart
+      const newCartItem = {
+        product: found._id,
+        name: found.name,
+        price: found.price,
+        qty: 1,
+        amount: found.price,
+        barcode: found.barcode
+      };
+      const updatedCart = { cartItems: [...cartItems, newCartItem] };
+      localStorage.setItem('cart', JSON.stringify(updatedCart));
+      setCart(updatedCart);
+      toast.success("Product added to cart!");
+    } catch (err) {
+      toast.error("Scan error: " + (err?.message || err));
+    }
+    setScannerLoading(false);
+  };
 
   useEffect(() => {
     setBusDate(bDate);
@@ -335,6 +377,29 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
 
     return(
       <>
+        {/* Barcode Scanner Modal */}
+        {showScanner && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+            <div className="bg-white rounded-lg shadow-lg p-4 relative w-[340px] max-w-full">
+              <button
+                className="absolute top-2 right-2 text-xl text-gray-600 hover:text-gray-900"
+                onClick={() => setShowScanner(false)}
+                aria-label="Close scanner"
+              >×</button>
+              <h2 className="text-lg font-semibold mb-2">Scan Barcode</h2>
+              <div className="mb-2">
+                <span className="text-xs text-gray-500">Point your camera at the product barcode</span>
+              </div>
+              <div>
+                <BarcodeScanner
+                  onScan={handleBarcodeScan}
+                  onError={err => toast.error("Camera error: " + err)}
+                />
+              </div>
+              {scannerLoading && <div className="mt-2 text-blue-600">Processing...</div>}
+            </div>
+          </div>
+        )}
         {/* Main Container */}
         <div className='min-h-screen w-full bg-gray-50'>
           {/* Top Navigation Bar - Pass cart state */}
@@ -515,6 +580,11 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
                     className="w-full outline-none focus:ring-0 bg-transparent px-2 text-base"
                     aria-label="Search products"
                   />     
+                  <button
+                    className="ml-2 px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700"
+                    onClick={() => setShowScanner(true)}
+                    aria-label="Open barcode scanner"
+                  >Scan</button>
                 </div>
               </div>
 
@@ -573,6 +643,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
           customerName={selectedCustomerData?.name || 'Customer'}
           onConfirm={handleConfirmCreditPayment}
         />
+      {/* ...existing code... */}
       </>
     )
 }

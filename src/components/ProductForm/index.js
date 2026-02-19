@@ -15,10 +15,21 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { format } from 'date-fns';
 import { FaCalendarAlt } from 'react-icons/fa';
+import BarcodeScanner from '../Pos/BarcodeScanner';
 
  
 
 const ProductForm = ({slug, categories}) => {
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannerLoading, setScannerLoading] = useState(false);
+  // Barcode scan handler for product form
+  const handleBarcodeScan = (barcode) => {
+    setScannerLoading(true);
+    setShowScanner(false);
+    setCode(barcode);
+    toast.success('Barcode scanned and added!');
+    setScannerLoading(false);
+  };
 
  
   const { replace } = useRouter();
@@ -27,7 +38,7 @@ const ProductForm = ({slug, categories}) => {
 const {user} = useContext(GlobalContext)
  const [state, formAction, isPending] = useActionState(addProduct, {});
 const [loading, setLoading] = useState(false)
-const [category, setCategory] = useState([])
+const [category, setCategory] = useState('')
 console.log(
   'user', user
 )
@@ -125,6 +136,29 @@ useEffect(()=>{
 
   return (
     <>
+      {/* Barcode Scanner Modal */}
+      {showScanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-white rounded-lg shadow-lg p-4 relative w-[340px] max-w-full">
+            <button
+              className="absolute top-2 right-2 text-xl text-gray-600 hover:text-gray-900"
+              onClick={() => setShowScanner(false)}
+              aria-label="Close scanner"
+            >×</button>
+            <h2 className="text-lg font-semibold mb-2">Scan Barcode</h2>
+            <div className="mb-2">
+              <span className="text-xs text-gray-500">Point your camera at the product barcode</span>
+            </div>
+            <div>
+              <BarcodeScanner
+                onScan={handleBarcodeScan}
+                onError={err => toast.error("Camera error: " + err)}
+              />
+            </div>
+            {scannerLoading && <div className="mt-2 text-blue-600">Processing...</div>}
+          </div>
+        </div>
+      )}
       <form action={formAction} className="w-full -mt-[56px]">
    <Heading title="Product Entry"/>
     <div className="flex flex-col justify-around w-full mx-auto">
@@ -171,7 +205,15 @@ useEffect(()=>{
             <input type="text" placeholder="Total Value" name="totalValue" value ={total} onChange={(e)=>setTotal(e.target.value)}  className="border mx-auto mb-1 border-gray-400 p-2 w-full "/>
             <input type="number" placeholder="Enter reOrder Qty" name="reOrder" value ={reOrder} onChange={(e)=>setReOrder(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
 
-  <input name="barcode" placeholder="Enter Barcode" value={code} onChange={(e)=>setCode(e.target.value)} className="border mb-1 border-gray-400 p-2 w-full "/>
+  <div className="flex items-center gap-2 mb-1">
+    <input name="barcode" placeholder="Enter Barcode" value={code} onChange={(e)=>setCode(e.target.value)} className="border border-gray-400 p-2 w-full" />
+    <button
+      type="button"
+      className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700"
+      onClick={() => setShowScanner(true)}
+      aria-label="Scan barcode"
+    >Scan</button>
+  </div>
   <input name="up" type="hidden" value={up} />
   <input name="id" type="hidden" value={id} />
         </div>

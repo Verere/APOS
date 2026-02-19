@@ -27,6 +27,7 @@ export const metadata = genMeta({
   description: 'All-in-one POS system with automatic daily profit calculation, debt tracking with reminders, inventory management, and financial reports. Free forever plan. No credit card required. Trusted by 10,000+ businesses across Africa.',
   keywords: [
     'Point of Sale Business Management system Nigeria',
+    'Point of Sale Business Management system Lagos, Delta, Abuja, Port Harcourt, Benin City, Enugu, Ibadan, Kano, Ogun..., Nigeria',
     'inventory management software',
     'point of sale system',
     'retail Point of Sale system',
