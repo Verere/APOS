@@ -162,10 +162,10 @@ useEffect(()=>{
       <form action={formAction} className="w-full -mt-[56px]">
    <Heading title="Product Entry"/>
     <div className="flex flex-col justify-around w-full mx-auto">
-      <input type="text" placeholder="Enter Product Name" name="name" value={name} onChange={(e)=>setName(e.target.value)} className="border mb-1 border-gray-400 p-2 w-full " required />
+      <input type="text" placeholder="Enter Product Name" name="name" value={name} onChange={(e)=>setName(e.target.value)} className="border mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white" required />
      
-      <div className="flex justify-between items-center">
-            <select name="category" id="cat"  value={category} className="mx-auto mb-1 p-2 w-full border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onChange={(e)=>setCategory(e.target.value)}>
+      <div className="flex flex-col sm:flex-row gap-2">
+            <select name="category" id="cat"  value={category} className="mx-auto mb-1 p-2 w-full border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 block bg-white text-black dark:bg-gray-800 dark:text-white" onChange={(e)=>setCategory(e.target.value)}>
           <option value="">Choose Category</option>
             {
                 categories?.map(location=>(
@@ -180,7 +180,7 @@ useEffect(()=>{
                     selected={selectedDate}
                     onChange={(date) => setSelectedDate(date)}
                     dateFormat="dd/MM/yyyy"
-                    className="border border-gray-400 px-4 py-2 pr-10 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="border border-gray-400 px-4 py-2 pr-10 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white text-black dark:bg-gray-800 dark:text-white"
                     placeholderText="Select expiration date"
                     showMonthDropdown
                     showYearDropdown
@@ -193,23 +193,23 @@ useEffect(()=>{
                 </div>
                 </div>
                 </div>
-      <div className="flex justify-between flex-wrap">
-      <div className="flex justify-between w-full">
+      <div className="flex flex-col gap-2">
+      <div className="flex flex-col sm:flex-row gap-2 w-full">
       
       
-            <input type="number" placeholder="Enter Cost Price" name="cost" value= {cost}  onChange={(e)=>setCost(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
-            <input type="number" placeholder="Enter Selling Price" name="price" value= {price}  onChange={(e)=>setPrice(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
-            <input type="number" placeholder="Profit (Auto-calculated)" name="profit" value= {profit} readOnly className="border mx-auto mb-1 border-gray-300 bg-gray-50 p-2 w-full"  required />
+            <input type="number" placeholder="Enter Cost Price" name="cost" value= {cost}  onChange={(e)=>setCost(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
+            <input type="number" placeholder="Enter Selling Price" name="price" value= {price}  onChange={(e)=>setPrice(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
+            <input type="number" placeholder="Profit (Auto-calculated)" name="profit" value= {profit} readOnly className="border mx-auto mb-1 border-gray-300 bg-gray-50 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
            </div>
-            <input type="number" placeholder="Enter Qty" name="qty" value ={qty} onChange={(e)=>setQty(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
-            <input type="text" placeholder="Total Value" name="totalValue" value ={total} onChange={(e)=>setTotal(e.target.value)}  className="border mx-auto mb-1 border-gray-400 p-2 w-full "/>
-            <input type="number" placeholder="Enter reOrder Qty" name="reOrder" value ={reOrder} onChange={(e)=>setReOrder(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full"  required />
+            <input type="number" placeholder="Enter Qty" name="qty" value ={qty} onChange={(e)=>setQty(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
+            <input type="text" placeholder="Total Value" name="totalValue" value ={total} onChange={(e)=>setTotal(e.target.value)}  className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"/>
+            <input type="number" placeholder="Enter reOrder Qty" name="reOrder" value ={reOrder} onChange={(e)=>setReOrder(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
 
-  <div className="flex items-center gap-2 mb-1">
-    <input name="barcode" placeholder="Enter Barcode" value={code} onChange={(e)=>setCode(e.target.value)} className="border border-gray-400 p-2 w-full" />
+  <div className="flex flex-row items-center gap-2 mb-1">
+    <input name="barcode" placeholder="Enter Barcode" value={code} onChange={(e)=>setCode(e.target.value)} className="border border-gray-400 p-2 flex-1 min-w-0 bg-white text-black dark:bg-gray-800 dark:text-white" />
     <button
       type="button"
-      className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700"
+      className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 whitespace-nowrap"
       onClick={() => setShowScanner(true)}
       aria-label="Scan barcode"
     >Scan</button>
@@ -225,7 +225,7 @@ useEffect(()=>{
        <input type="hidden"  name="expiration" value={formattedExpiration} /> 
       <input type="hidden"  name="path" value={pathname} />
           
-      <button onClick={()=>setLoading(true)}  className="border border-gray-400 rounded-md bg-black text-white p-2 w-full">
+      <button onClick={()=>setLoading(true)}  className="border border-gray-400 rounded-md bg-black text-white p-2 w-full block">
         {loading? 'loading...' : id ? 'UPDATE PRODUCT': 'Add New Product'}</button>
       </div>
     

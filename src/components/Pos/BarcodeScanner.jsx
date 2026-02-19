@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import Quagga from "quagga";
 
 const BarcodeScanner = ({ onScan, onError }) => {
   const scannerRef = useRef(null);
@@ -9,57 +9,64 @@ const BarcodeScanner = ({ onScan, onError }) => {
   const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
-    let html5QrcodeScanner;
     setLoading(true);
     setError(null);
     setScanning(false);
 
-    const startScanner = async () => {
-      try {
-        html5QrcodeScanner = new Html5Qrcode(scannerRef.current.id);
-        await html5QrcodeScanner.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
-          (decodedText) => {
-            setScanning(true);
-            setLoading(false);
-            // Only stop if scanner is running
-            if (html5QrcodeScanner.getState() === 2) { // 2 = RUNNING
-              html5QrcodeScanner.stop().catch(() => {});
-            }
-            onScan(decodedText);
-          },
-          (err) => {
-            setError("Scan error: " + err);
-            setLoading(false);
-            if (onError) onError(err);
-          }
-        );
-      } catch (e) {
-        setError("Camera error: " + e.message);
+    Quagga.init({
+      inputStream: {
+        type: "LiveStream",
+        target: scannerRef.current,
+        constraints: {
+          facingMode: "environment",
+        },
+      },
+      decoder: {
+        readers: [
+          "code_128_reader",
+          "ean_reader",
+          "ean_8_reader",
+          "code_39_reader",
+          "code_39_vin_reader",
+          "codabar_reader",
+          "upc_reader",
+          "upc_e_reader",
+          "i2of5_reader",
+          "2of5_reader",
+          "code_93_reader",
+        ],
+      },
+      locate: true,
+    }, (err) => {
+      if (err) {
+        setError("Camera error: " + err);
         setLoading(false);
-        if (onError) onError(e);
+        if (onError) onError(err);
+        return;
       }
-    };
+      Quagga.start();
+      setLoading(false);
+    });
 
-    startScanner();
+    Quagga.onDetected((result) => {
+      if (result && result.codeResult && result.codeResult.code) {
+        setScanning(true);
+        Quagga.stop();
+        onScan(result.codeResult.code);
+      }
+    });
+
+    Quagga.onProcessed(() => {});
 
     return () => {
-      if (html5QrcodeScanner) {
-        if (html5QrcodeScanner.getState() === 2) { // RUNNING
-          html5QrcodeScanner.stop().catch(() => {});
-        }
-        html5QrcodeScanner.clear();
-      }
+      Quagga.offDetected();
+      Quagga.stop();
     };
   }, [onScan, onError]);
 
   return (
     <div className="barcode-scanner">
-      <div id="barcode-scanner-view" ref={scannerRef} style={{ width: 300, height: 300 }} />
+      <div ref={scannerRef} style={{ width: 300, height: 300 }} />
       {loading && <div>Loading camera...</div>}
       {error && <div className="text-red-600">{error}</div>}
       {!loading && !scanning && <div>Point your camera at a barcode</div>}
