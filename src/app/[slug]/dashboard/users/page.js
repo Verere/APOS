@@ -9,11 +9,13 @@ import UsersPageClient from '@/components/UsersPage'
 
 const UsersPage = async ({ params }) => {
     const session = await getServerSession(authOptions)
+    console.log('User session:', session) 
     if (!session) {
         redirect('/login')
     }
 
     const { slug } =await params
+    console.log('Store slug from params:', slug)
 
     try {
         await connectDB()
@@ -23,24 +25,19 @@ const UsersPage = async ({ params }) => {
         if (!store) {
             return <div>Store not found</div>
         }
+        console.log('Store found:', store)
 
-        // Get current user's membership
+        // Get current user's membership (minimal query)
         const currentUserMembership = await StoreMembership.findOne({
             storeId: store._id,
             userId: session.user.id,
             isDeleted: false
         }).lean()
-
-        if (!currentUserMembership) {
+        if (!currentUserMembership || !['OWNER', 'MANAGER'].includes(currentUserMembership.role)) {
             redirect(`/${slug}/dashboard`)
         }
 
-        // Only OWNER and MANAGER can view users
-        if (!['OWNER', 'MANAGER'].includes(currentUserMembership.role)) {
-            redirect(`/${slug}/dashboard`)
-        }
-
-        // Get all store memberships with user details
+        // Only fetch memberships if user is authorized
         const memberships = await StoreMembership.find({
             storeId: store._id,
             isDeleted: false
@@ -48,8 +45,6 @@ const UsersPage = async ({ params }) => {
             .populate('userId', 'name email')
             .sort({ role: 1, createdAt: -1 })
             .lean()
-
-        // Convert ObjectIds to strings for client components
         const serializedMemberships = memberships.map(m => ({
             _id: m._id.toString(),
             userId: m.userId?._id?.toString(),
@@ -59,7 +54,6 @@ const UsersPage = async ({ params }) => {
             createdAt: m.createdAt?.toISOString(),
             updatedAt: m.updatedAt?.toISOString()
         }))
-
         return (
             <UsersPageClient 
                 memberships={serializedMemberships}

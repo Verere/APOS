@@ -512,10 +512,9 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         
         for (const it of items) {
           const upd = updatedProducts.find(u => String(u.id) === String(it.product));
-          // Use the higher of cart price or DB price
+          // Always use the cart price for profit and amount calculations
           const cartPrice = Number(it.price) || 0;
-          const dbPrice = (upd && upd.price) || 0;
-          const price = cartPrice >= dbPrice ? cartPrice : dbPrice;
+          const price = cartPrice;
           const cost = (upd && upd.cost) || 0;
           const qty = Number(it.qty || 0);
           const amount = Number(qty * price) || 0;
