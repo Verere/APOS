@@ -33,34 +33,52 @@ export default function CreditsListClient({ credits, stats, slug }) {
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [creditsData, setCreditsData] = useState(credits)
 
+  const getOrderItems = useCallback((credit) => {
+    if (!Array.isArray(credit?.orderId?.items)) return []
+
+    return credit.orderId.items.map((item, index) => {
+      const itemName = item?.name || item?.item || item?.productName || item?.title || `Item ${index + 1}`
+      const quantity = Number(item?.qty ?? item?.quantity ?? 0) || 0
+      const lineAmount = Number(item?.amount ?? ((item?.price || 0) * quantity)) || 0
+
+      return {
+        id: item?.product || `${credit._id}-${index}`,
+        name: itemName,
+        qty: quantity,
+        amount: lineAmount
+      }
+    })
+  }, [])
+
   // Filter credits based on search and status
   const filteredCredits = useMemo(() => {
-    let result = creditsData;
+    let result = creditsData
 
     // Filter by payment status
     if (filterStatus === 'paid') {
-      result = result.filter(credit => credit.isPaid);
+      result = result.filter(credit => credit.isPaid)
     } else if (filterStatus === 'unpaid') {
-      // Only show credits with outstanding balance > 0
-      result = result.filter(credit => {
-        const outstanding = (credit.amount || 0) - (credit.amountPaid || 0);
-        return !credit.isPaid && outstanding > 0;
-      });
+      result = result.filter(credit => !credit.isPaid)
     }
 
     // Filter by search term
     if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+      const term = searchTerm.toLowerCase()
       result = result.filter(credit => 
         credit.customerId?.name?.toLowerCase().includes(term) ||
         credit.customerId?.phone?.includes(term) ||
         credit.orderId?.orderNum?.toLowerCase().includes(term) ||
-        credit.soldBy?.toLowerCase().includes(term)
-      );
+        credit.soldBy?.toLowerCase().includes(term) ||
+        getOrderItems(credit).some((item) => item.name.toLowerCase().includes(term))
+      )
     }
 
-    return result;
-  }, [creditsData, searchTerm, filterStatus]);
+    return result
+  }, [creditsData, searchTerm, filterStatus, getOrderItems])
+
+  const visibleCredits = useMemo(() => {
+    return filteredCredits.filter((credit) => ((credit.amount || 0) - (credit.amountPaid || 0)) > 0)
+  }, [filteredCredits])
 
   const formatDate = useCallback((dateString) => {
     if (!dateString) return 'N/A'
@@ -206,13 +224,13 @@ export default function CreditsListClient({ credits, stats, slug }) {
 
         {/* Results count */}
         <div className="mt-3 text-sm text-gray-600">
-          Showing <span className="font-semibold">{filteredCredits.length}</span> of <span className="font-semibold">{creditsData.length}</span> credit sales
+          Showing <span className="font-semibold">{visibleCredits.length}</span> of <span className="font-semibold">{creditsData.length}</span> credit sales
         </div>
       </div>
 
       {/* Credits List */}
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        {filteredCredits.length === 0 ? (
+        {visibleCredits.length === 0 ? (
           <div className="p-12 text-center">
             <UserCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-600 mb-2">No credit sales found</h3>
@@ -236,10 +254,13 @@ export default function CreditsListClient({ credits, stats, slug }) {
                       Contact
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Location
+                      Date of Purchase
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Outstanding Balance
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Products Sold
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Action
@@ -247,11 +268,10 @@ export default function CreditsListClient({ credits, stats, slug }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredCredits.map((credit) => {
+                  {visibleCredits.map((credit) => {
                     const outstandingBalance = (credit.amount || 0) - (credit.amountPaid || 0)
-                    const location = credit.customerId?.address ? 
-                      [credit.customerId.address.city, credit.customerId.address.state].filter(Boolean).join(', ') || 'N/A' 
-                      : 'N/A'
+                    const orderItems = getOrderItems(credit)
+                    const purchaseDate = credit.bDate || credit.createdAt || credit.orderId?.bDate 
                     
                     return (
                       <tr key={credit._id} className="hover:bg-gray-50 transition-colors">
@@ -280,8 +300,8 @@ export default function CreditsListClient({ credits, stats, slug }) {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-700">
-                            {location}
+                          <div className="text-sm text-gray-700 font-medium">
+                            {formatDate(purchaseDate)}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -300,6 +320,23 @@ export default function CreditsListClient({ credits, stats, slug }) {
                               </div>
                             )}
                           </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {orderItems.length > 0 ? (
+                            <div className="space-y-1 max-w-xs">
+                              {orderItems.slice(0, 3).map((item) => (
+                                <div key={item.id} className="text-xs text-gray-700 flex items-center justify-between gap-3">
+                                  <span className="truncate font-medium">{item.name}</span>
+                                  <span className="text-gray-500">x{item.qty}</span>
+                                </div>
+                              ))}
+                              {orderItems.length > 3 && (
+                                <div className="text-xs text-blue-600 font-medium">+{orderItems.length - 3} more item(s)</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-500">No item details</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -330,11 +367,10 @@ export default function CreditsListClient({ credits, stats, slug }) {
 
             {/* Mobile Cards */}
             <div className="lg:hidden divide-y divide-gray-200">
-              {filteredCredits.map((credit) => {
+              {visibleCredits.map((credit) => {
                 const outstandingBalance = (credit.amount || 0) - (credit.amountPaid || 0)
-                const location = credit.customerId?.address ? 
-                  [credit.customerId.address.city, credit.customerId.address.state].filter(Boolean).join(', ') || 'N/A' 
-                  : 'N/A'
+                const orderItems = getOrderItems(credit)
+                const purchaseDate = credit.orderId?.bDate || credit.bDate || credit.createdAt
                 
                 return (
                   <div key={credit._id} className="p-4 hover:bg-gray-50 transition-colors">
@@ -375,9 +411,9 @@ export default function CreditsListClient({ credits, stats, slug }) {
                     {/* Location and Balance */}
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div>
-                        <div className="text-xs text-gray-500 mb-1">Location</div>
+                        <div className="text-xs text-gray-500 mb-1">Date of Purchase</div>
                         <div className="text-sm text-gray-700 font-medium">
-                          {location}
+                          {formatDate(purchaseDate)}
                         </div>
                       </div>
                       <div>
@@ -398,6 +434,25 @@ export default function CreditsListClient({ credits, stats, slug }) {
                         <span>Amount Paid:</span>
                         <span className="font-semibold">{currencyFormat(credit.amountPaid || 0)}</span>
                       </div>
+                    </div>
+
+                    <div className="mb-3 p-2 bg-blue-50 rounded">
+                      <div className="text-xs text-blue-700 font-semibold mb-1">Products Sold</div>
+                      {orderItems.length > 0 ? (
+                        <div className="space-y-1">
+                          {orderItems.slice(0, 3).map((item) => (
+                            <div key={item.id} className="text-xs text-gray-700 flex items-center justify-between gap-2">
+                              <span className="truncate">{item.name}</span>
+                              <span className="text-gray-500">x{item.qty}</span>
+                            </div>
+                          ))}
+                          {orderItems.length > 3 && (
+                            <div className="text-xs text-blue-600 font-medium">+{orderItems.length - 3} more item(s)</div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500">No item details</div>
+                      )}
                     </div>
 
                     {/* Actions */}

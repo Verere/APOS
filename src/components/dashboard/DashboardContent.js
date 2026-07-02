@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   TrendingUp,
   ShoppingCart,
@@ -14,8 +15,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { currencyFormat } from '@/utils/currency'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
-const DashboardContent = ({ stats, recentOrders, salesData }) => {
+const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selectedMonthLabel }) => {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const netProfit = (stats?.totalProfit || 0) - (stats?.totalExpenses || 0);
+
+  const handleMonthChange = (event) => {
+    const monthValue = event.target.value
+    const params = new URLSearchParams(searchParams?.toString() || '')
+
+    if (monthValue) {
+      params.set('month', monthValue)
+    } else {
+      params.delete('month')
+    }
+
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
   const kpiCards = [
     {
       title: 'Total Revenue',
@@ -80,12 +99,24 @@ const DashboardContent = ({ stats, recentOrders, salesData }) => {
               Dashboard Overview
             </h1>
             <p className="text-blue-100 text-sm sm:text-base">
-              Welcome back! Here&apos;s what&apos;s happening today.
+              Viewing stats for {selectedMonthLabel || 'current month'}.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-white bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 w-fit">
-            <Activity size={20} />
-            <span className="font-semibold text-sm sm:text-base">Live Updates</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-white bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 w-fit border border-white/30">
+              <span className="text-sm font-semibold">Month</span>
+              <input
+                type="month"
+                value={selectedMonth || ''}
+                onChange={handleMonthChange}
+                className="bg-transparent text-sm font-medium text-white focus:outline-none [color-scheme:dark]"
+                aria-label="Filter dashboard stats by month"
+              />
+            </label>
+            <div className="flex items-center gap-2 text-white bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 w-fit">
+              <Activity size={20} />
+              <span className="font-semibold text-sm sm:text-base">Live Updates</span>
+            </div>
           </div>
         </div>
       </div>
@@ -169,7 +200,7 @@ const DashboardContent = ({ stats, recentOrders, salesData }) => {
           <CardHeader className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-purple-50">
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-800">
               <TrendingUp className="text-blue-600" size={24} />
-              Daily Sales - Current Month
+              Daily Sales - {selectedMonthLabel || 'Current Month'}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">

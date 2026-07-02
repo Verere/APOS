@@ -1,31 +1,54 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import MainNav from "../mainNav";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    const authError = searchParams.get("error");
+    if (authError === "CredentialsSignin") {
+      setError("Invalid email or password.");
+      return;
+    }
+    if (authError) {
+      setError("Unable to sign in right now. Please try again.");
+    }
+  }, [searchParams]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    await signIn("credentials", {
-      email,
+    const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+
+    const result = await signIn("credentials", {
+      email: email.trim().toLowerCase(),
       password,
-      callbackUrl: '/dashboard',
-      redirect: true,
+      callbackUrl,
+      redirect: false,
     });
+
+    if (result?.error) {
+      setError("Invalid email or password.");
+      setLoading(false);
+      return;
+    }
+
+    router.push(result?.url || callbackUrl);
+    router.refresh();
   };
 
   return (

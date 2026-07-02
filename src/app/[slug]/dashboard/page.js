@@ -10,9 +10,8 @@ import StoreMembership from '@/models/storeMembership'
 import Store from '@/models/store'
 import User from '@/models/user'
 import UserSubscription from '@/models/userSubscription'
-import moment from 'moment'
 
-const DashBoardPage = async ({params}) => {
+const DashBoardPage = async ({ params, searchParams }) => {
   const session = await getServerSession(authOptions)
   
   if (!session || !session.user) {
@@ -20,6 +19,15 @@ const DashBoardPage = async ({params}) => {
   }
 
   const { slug } = await params
+  const resolvedSearchParams = await searchParams
+  const monthParam = resolvedSearchParams?.month
+
+  const isValidMonthParam = typeof monthParam === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam)
+  const selectedMonthDate = isValidMonthParam ? new Date(`${monthParam}-01T00:00:00`) : new Date()
+  const selectedYear = selectedMonthDate.getFullYear()
+  const selectedMonthIndex = selectedMonthDate.getMonth()
+  const selectedMonth = `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}`
+  const selectedMonthLabel = selectedMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })
 
   // Check store membership and role
   await connectDB()
@@ -67,7 +75,6 @@ const DashBoardPage = async ({params}) => {
     ['ACTIVE', 'TRIAL'].includes(owner.currentSubscription.status)) ||
     directSubscription
 
-  console.log('Has active subscription:', hasActiveSubscription)
 
   // If owner has no active subscription
   if (!hasActiveSubscription) {
@@ -123,10 +130,9 @@ const DashBoardPage = async ({params}) => {
   const users = await fetchAllstoreMembers(slug) || []
   const products = await fetchProducts(slug) || []
 
-  // Fetch expenses for the current month
-  const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+  // Fetch expenses for the selected month
+  const startOfMonth = new Date(selectedYear, selectedMonthIndex, 1)
+  const endOfMonth = new Date(selectedYear, selectedMonthIndex + 1, 0, 23, 59, 59, 999)
   
   // Query expenses for current month using bDate format
   const monthExpenses = await Expense.find({
@@ -137,8 +143,6 @@ const DashBoardPage = async ({params}) => {
   
   const totalExpenses = monthExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
   console.log('Total Monthly Expenses:', totalExpenses, 'from', monthExpenses.length, 'expenses')
-
-  // Get current month date range
 
   // Debug logging
   console.log('Total orders fetched:', orders.length)
@@ -211,7 +215,7 @@ const DashBoardPage = async ({params}) => {
     totalProducts: Array.isArray(products) ? products.length : 0,
   }
 
-  // Prepare daily sales data for chart (current month)
+  // Prepare daily sales data for chart (selected month)
   const dailySalesData = []
   const daysInMonth = endOfMonth.getDate()
   
@@ -227,15 +231,15 @@ const DashBoardPage = async ({params}) => {
     
     dailySalesData.push({
       day: day.toString(),
-      date: `${day}/${now.getMonth() + 1}`,
+      date: `${day}/${selectedMonthIndex + 1}`,
       revenue: dayRevenue,
       orders: dayOrders.length
     })
   }
 
-    // Get recent orders (last 5) - Sort by createdAt descending to get most recent orders
-  const recentOrders = Array.isArray(orders)
-    ? orders
+  // Get recent orders (last 5) from selected month
+  const recentOrders = Array.isArray(monthlyOrders)
+    ? monthlyOrders
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // Sort by date, newest first
     .slice(0, 5) // Take first 5 (most recent)
     .map(order => ({
@@ -253,6 +257,8 @@ const DashBoardPage = async ({params}) => {
       stats={stats} 
       recentOrders={recentOrders}
       salesData={dailySalesData}
+      selectedMonth={selectedMonth}
+      selectedMonthLabel={selectedMonthLabel}
     />
   )
 }

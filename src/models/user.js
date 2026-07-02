@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
     },
     emailToken: {
         type: String,
-        required: true
+        default: null
     },
     // email verification fields
     emailVerified: {

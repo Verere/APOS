@@ -2,7 +2,6 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import User from "@/models/user";
-import Store from "@/models/store"
 import bcrypt from "bcryptjs";
 import connectToDB from '@/utils/connectDB';
 
@@ -19,7 +18,8 @@ const authOptions = {
       async authorize(credentials) {
         try {
           await connectToDB();
-          const user = await User.findOne({ email: credentials.email }).lean();
+          const normalizedEmail = credentials?.email?.trim().toLowerCase();
+          const user = await User.findOne({ email: normalizedEmail }).lean();
          
           if (!user) return null;  
           const match = await bcrypt.compare(credentials.password, user.password);

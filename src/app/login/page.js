@@ -1,4 +1,5 @@
 import LoginForm from "@/components/loginForm/loginForm";
+import { Suspense } from "react";
 
 
 export const metadata = {
@@ -20,7 +21,9 @@ const NextLoginPage =async () => {
   return (
      
          <div className="flex min-h-screen items-center justify-center ">
-          <LoginForm/>
+          <Suspense fallback={<div className="text-sm text-gray-500">Loading...</div>}>
+            <LoginForm/>
+          </Suspense>
          </div>    
      
   );

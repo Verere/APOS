@@ -32,7 +32,7 @@ export default async function CreditsPage({ params }) {
     isPaid: false
   })
     .populate('customerId', 'name phone email address')
-    .populate('orderId', 'orderNum totalAmount bDate')
+    .populate('orderId', 'orderNum totalAmount bDate items')
     .sort({ createdAt: -1 })
     .lean()
 
@@ -59,7 +59,8 @@ export default async function CreditsPage({ params }) {
       _id: credit.orderId._id.toString(),
       orderNum: credit.orderId.orderNum,
       totalAmount: credit.orderId.totalAmount,
-      bDate: credit.orderId.bDate
+      bDate: credit.orderId.bDate,
+      items: Array.isArray(credit.orderId.items) ? credit.orderId.items : []
     } : null,
     bDate: credit.bDate ? credit.bDate.toISOString() : null,
     createdAt: credit.createdAt.toISOString(),
