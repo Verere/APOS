@@ -4,6 +4,12 @@ const ExpenseSchema = new mongoose.Schema({
 
   
 slug:{type:String},
+ storeId: {
+    type: mongoose.Types.ObjectId,
+    ref: 'store',
+    required: true,
+    index: true
+  },
    Description:{type: String},  
    amount: {type: Number},   
    bDate: {type: String},

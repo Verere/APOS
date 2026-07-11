@@ -421,10 +421,11 @@ items = []
 
 // add payment and create order from cart items atomically
 export const addPaymentWithOrder = async (prvState, formData) => {
-  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, customerId, customerName } = Object.fromEntries(formData);
+  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, customerId, customerName, isComplimentary } = Object.fromEntries(formData);
   try {
     await connectToDB();
     const items = cartItems ? JSON.parse(cartItems) : [];
+    const complimentarySale = isComplimentary === 'true';
     // require authenticated user via NextAuth server session
     const session = await getServerSession(authOptions);
     if (!session || !session.user) return { error: 'Unauthorized' };
@@ -551,19 +552,22 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         const methods = (mop || '').split(',').filter(Boolean);
         
         // Build paymentMethods array
-        if (methods.includes('CASH') && Number(cashPaid || 0) > 0) {
-          paymentMethodsArray.push({ method: 'CASH', amount: Number(cashPaid) });
-        }
-        if (methods.includes('POS') && Number(posPaid || 0) > 0) {
-          paymentMethodsArray.push({ method: 'POS', amount: Number(posPaid) });
-        }
-        if (methods.includes('TRANSFER') && Number(transferPaid || 0) > 0) {
-          paymentMethodsArray.push({ method: 'TRANSFER', amount: Number(transferPaid) });
-        }
+        if (complimentarySale) {
+          paymentMethodsArray.push({ method: 'COMPLIMENTARY', amount: 0 });
+        } else {
+          if (methods.includes('CASH') && Number(cashPaid || 0) > 0) {
+            paymentMethodsArray.push({ method: 'CASH', amount: Number(cashPaid) });
+          }
+          if (methods.includes('POS') && Number(posPaid || 0) > 0) {
+            paymentMethodsArray.push({ method: 'POS', amount: Number(posPaid) });
+          }
+          if (methods.includes('TRANSFER') && Number(transferPaid || 0) > 0) {
+            paymentMethodsArray.push({ method: 'TRANSFER', amount: Number(transferPaid) });
+          }
 
-        // If no payment methods array built, use default CASH
-        if (paymentMethodsArray.length === 0) {
-          paymentMethodsArray.push({ method: 'CASH', amount: Number(amountPaid || 0) });
+          if (paymentMethodsArray.length === 0) {
+            paymentMethodsArray.push({ method: 'CASH', amount: Number(amountPaid || 0) });
+          }
         }
 
         // Ensure all required fields are present
@@ -585,11 +589,11 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           receiptNumber: orderNum, // Use orderNum as receipt number
           paymentMethods: paymentMethodsArray,
           orderAmount: Number(orderAmount) || totalOrderAmount, 
-          amountPaid: Number(amountPaid || 0),
-          balance: 0,
-          change: Math.max(0, Number(amountPaid || 0) - (Number(orderAmount) || totalOrderAmount)),
+          amountPaid: complimentarySale ? 0 : Number(amountPaid || 0),
+          balance: complimentarySale ? 0 : 0,
+          change: complimentarySale ? 0 : Math.max(0, Number(amountPaid || 0) - (Number(orderAmount) || totalOrderAmount)),
           status: 'COMPLETED',
-          paymentType: 'FULL',
+          paymentType: complimentarySale ? 'COMPLIMENTARY' : 'FULL',
           recordedBy: soldBy,
           user: soldBy, 
           bDate: bDate,
@@ -597,6 +601,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           cash: Number(cashPaid || 0),
           pos: Number(posPaid || 0),
           transfer: Number(transferPaid || 0),
+          ...(complimentarySale && { notes: 'Complimentary sale' }),
           // Customer info if provided
           ...(customerId && { customerId: customerId }),
           ...(customerName && { customerName: customerName }),
@@ -605,8 +610,8 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         await newPay.save({ session });
 
         // Update order with amount paid
-        newOrder.amountPaid = Number(amountPaid || 0);
-        newOrder.bal = Math.max(0, totalOrderAmount - Number(amountPaid || 0));
+        newOrder.amountPaid = complimentarySale ? 0 : Number(amountPaid || 0);
+        newOrder.bal = complimentarySale ? 0 : Math.max(0, totalOrderAmount - Number(amountPaid || 0));
         await newOrder.save({ session });
 
         return { success: true, orderId: newOrder._id };

@@ -33,6 +33,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMode, setPaymentMode] = useState('payment');
   const [showCreditPaymentModal, setShowCreditPaymentModal] = useState(false);
   
   const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
@@ -139,6 +140,18 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
     // Show modal to ask about partial payment
     setShowCreditPaymentModal(true);
   }, [selectedCustomerId, cart]);
+
+  const handleComplimentarySale = useCallback(() => {
+    const items = cart?.cartItems || cart || [];
+    if (!items || items.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
+
+    setCPayment(0);
+    setPaymentMode('complimentary');
+    setShowPaymentModal(true);
+  }, [cart, setCPayment]);
 
   const handleConfirmCreditPayment = useCallback(async ({ paymentAmount, creditAmount, paymentMethod }) => {
     const items = cart?.cartItems || cart || [];
@@ -517,7 +530,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
                   {allowCreditSales && (
                     <button 
                       onClick={handleCreditSale}
-                      disabled={!selectedCustomerId || loading}
+                      disabled={loading}
                       className='bg-orange-600 text-white px-3 py-2 rounded-lg uppercase hover:bg-orange-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2'
                       aria-label="Credit sale"
                     >
@@ -534,10 +547,20 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
                       )}
                     </button>
                   )}
+
+                  {/* <button
+                    onClick={handleComplimentarySale}
+                    disabled={loading}
+                    className='bg-violet-700 text-white px-3 py-2 rounded-lg uppercase hover:bg-violet-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed'
+                    aria-label="Complimentary sale"
+                  >
+                    Complimentary
+                  </button> */}
                   
                   <button 
                     onClick={() => {
                       setCPayment(0)
+                      setPaymentMode('payment')
                       setShowPaymentModal(true)
                     }} 
                     className='bg-green-700 text-white px-3 py-2 rounded-lg uppercase hover:bg-green-800 transition-colors'
@@ -615,7 +638,10 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
         {/* Payment Modal */}
         <PosPaymentModal
           isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
+          onClose={() => {
+            setShowPaymentModal(false)
+            setPaymentMode('payment')
+          }}
           cartValue={cartValue}
           cart={cart}
           order={order}
@@ -625,6 +651,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
           store={getHotel?.[0]}
           slug={slug}
           pathname={pathname}
+          isComplimentary={paymentMode === 'complimentary'}
           customer={selectedCustomerData}
           onSuccess={() => {
             localStorage.removeItem('cart')
@@ -632,6 +659,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
             setSelectedCustomerId('')
             setSelectedCustomer(null)
             setCreditSale(false)
+            setPaymentMode('payment')
           }}
         />
 

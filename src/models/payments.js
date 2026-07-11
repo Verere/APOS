@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 const PaymentMethodSchema = new mongoose.Schema({
   method: {
     type: String,
-    enum: ['CASH', 'POS', 'TRANSFER', 'CHEQUE', 'OTHER'],
+    enum: ['CASH', 'POS', 'TRANSFER', 'CHEQUE', 'OTHER', 'COMPLIMENTARY'],
     required: true
   },
   amount: {
@@ -117,7 +117,7 @@ const PaymentSchema = new mongoose.Schema({
   },
   paymentType: {
     type: String,
-    enum: ['FULL', 'PARTIAL', 'CREDIT'],
+    enum: ['FULL', 'PARTIAL', 'CREDIT', 'COMPLIMENTARY'],
     default: 'FULL'
   },
 
@@ -187,6 +187,23 @@ PaymentSchema.methods.calculateTotals = function() {
 
 // Pre-save middleware to ensure data consistency
 PaymentSchema.pre('save', function(next) {
+  if (this.paymentType === 'COMPLIMENTARY') {
+    this.amountPaid = 0;
+    this.balance = 0;
+    this.change = 0;
+    this.status = 'COMPLETED';
+    this.cash = 0;
+    this.pos = 0;
+    this.transfer = 0;
+    this.card = 0;
+
+    if (!this.paymentMethods || this.paymentMethods.length === 0) {
+      this.paymentMethods = [{ method: 'COMPLIMENTARY', amount: 0 }];
+    }
+
+    return next();
+  }
+
   // Calculate totals if payment methods are present
   if (this.paymentMethods && this.paymentMethods.length > 0) {
     this.calculateTotals();

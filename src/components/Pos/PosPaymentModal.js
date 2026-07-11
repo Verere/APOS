@@ -19,15 +19,17 @@ export default function PosPaymentModal({
   store,
   slug,
   pathname,
+  isComplimentary = false,
   customer,
   onSuccess 
 }) {
-  const [selectedMethods, setSelectedMethods] = useState(['CASH'])
+  const [selectedMethods, setSelectedMethods] = useState(isComplimentary ? ['COMPLIMENTARY'] : ['CASH'])
   const [paymentAmounts, setPaymentAmounts] = useState({
-    CASH: cartValue || 0,
+    CASH: isComplimentary ? 0 : (cartValue || 0),
     POS: 0,
     TRANSFER: 0,
-    OTHER: 0
+    OTHER: 0,
+    COMPLIMENTARY: 0
   })
   const [showHistory, setShowHistory] = useState(false)
   const [showPrintModal, setShowPrintModal] = useState(false)
@@ -42,20 +44,22 @@ export default function PosPaymentModal({
     { value: 'CASH', label: 'Cash', icon: Banknote, color: 'green' },
     { value: 'POS', label: 'POS', icon: CreditCard, color: 'blue' },
     { value: 'TRANSFER', label: 'Transfer', icon: ArrowRightLeft, color: 'purple' },
-    { value: 'OTHER', label: 'Other', icon: DollarSign, color: 'gray' }
+    { value: 'OTHER', label: 'Other', icon: DollarSign, color: 'gray' },
+    { value: 'COMPLIMENTARY', label: 'Complimentary', icon: Receipt, color: 'violet' }
   ], [])
 
   const totalPayment = useMemo(() => {
+    if (isComplimentary) return 0
     return selectedMethods.reduce((sum, method) => {
       return sum + (parseFloat(paymentAmounts[method]) || 0)
     }, 0)
-  }, [selectedMethods, paymentAmounts])
+  }, [isComplimentary, selectedMethods, paymentAmounts])
 
   const orderTotal = useMemo(() => parseFloat(cartValue || 0) || 0, [cartValue])
-  const balance = useMemo(() => Math.max(0, orderTotal - totalPayment), [orderTotal, totalPayment])
-  const change = useMemo(() => Math.max(0, totalPayment - orderTotal), [totalPayment, orderTotal])
+  const balance = useMemo(() => (isComplimentary ? 0 : Math.max(0, orderTotal - totalPayment)), [isComplimentary, orderTotal, totalPayment])
+  const change = useMemo(() => (isComplimentary ? 0 : Math.max(0, totalPayment - orderTotal)), [isComplimentary, totalPayment, orderTotal])
   const isOverpayment = totalPayment > orderTotal
-  const isUnderpayment = totalPayment < orderTotal
+  const isUnderpayment = !isComplimentary && totalPayment < orderTotal
 
   const cartItems = useMemo(() => {
     return cart?.cartItems || cart || []
@@ -69,6 +73,19 @@ export default function PosPaymentModal({
     `
   })
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    setSelectedMethods(isComplimentary ? ['COMPLIMENTARY'] : ['CASH'])
+    setPaymentAmounts({
+      CASH: isComplimentary ? 0 : (cartValue || 0),
+      POS: 0,
+      TRANSFER: 0,
+      OTHER: 0,
+      COMPLIMENTARY: 0
+    })
+  }, [isOpen, isComplimentary, cartValue])
+
   // Handle form state updates
   useEffect(() => {
     if (state.error) {
@@ -78,10 +95,12 @@ export default function PosPaymentModal({
       toast.success(state.success)
       
       // Prepare payment data
-      const paymentsList = selectedMethods.map(method => ({
-        mop: paymentMethods.find(m => m.value === method)?.label || method,
-        amount: parseFloat(paymentAmounts[method]) || 0
-      })).filter(p => p.amount > 0)
+      const paymentsList = isComplimentary
+        ? [{ mop: 'Complimentary', amount: 0 }]
+        : selectedMethods.map(method => ({
+            mop: paymentMethods.find(m => m.value === method)?.label || method,
+            amount: parseFloat(paymentAmounts[method]) || 0
+          })).filter(p => p.amount > 0)
       
       setPaymentsData(paymentsList)
       setCompletedOrder({
@@ -91,6 +110,7 @@ export default function PosPaymentModal({
         amountPaid: totalPayment,
         bal: balance,
         change: Math.max(0, totalPayment - orderTotal),
+        isComplimentary,
         customer: customer || null
       })
       setOrderItems(cartItems)
@@ -99,7 +119,7 @@ export default function PosPaymentModal({
       // Call success callback to clear cart
       if (onSuccess) onSuccess()
     }
-  }, [state])
+  }, [state, selectedMethods, paymentMethods, paymentAmounts, order, busDate, orderTotal, totalPayment, balance, customer, cartItems, onSuccess, isComplimentary])
 
   const togglePaymentMethod = useCallback((method) => {
     setSelectedMethods(prev => {
@@ -138,13 +158,17 @@ export default function PosPaymentModal({
   }, [selectedMethods, orderTotal])
 
   const validateBeforeSubmit = useCallback((e) => {
+    if (isComplimentary) {
+      return true
+    }
+
     if (isUnderpayment) {
       e.preventDefault()
       toast.error('Payment amount is less than order total')
       return false
     }
     return true
-  }, [isUnderpayment])
+  }, [isComplimentary, isUnderpayment])
 
   const handleSendWhatsApp = useCallback(() => {
     const customerData = completedOrder?.customer
@@ -202,7 +226,7 @@ export default function PosPaymentModal({
               </div>
               <div>
                 <h2 className="text-lg sm:text-xl font-bold text-white">Process Payment</h2>
-                <p className="text-xs sm:text-sm text-blue-100">Complete transaction</p>
+                <p className="text-xs sm:text-sm text-blue-100">{isComplimentary ? 'Complete complimentary sale' : 'Complete transaction'}</p>
               </div>
             </div>
             <button
@@ -337,77 +361,87 @@ export default function PosPaymentModal({
             <div className="space-y-4">
               <form action={formAction} onSubmit={validateBeforeSubmit} className="space-y-4">
                 {/* Payment Method Selection */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Payment Methods {selectedMethods.length > 1 && <span className="text-blue-600">(Split Payment)</span>}
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {paymentMethods.map(({ value, label, icon: Icon, color }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => togglePaymentMethod(value)}
-                        className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 transition-all font-medium text-sm ${
-                          selectedMethods.includes(value)
-                            ? `border-${color}-600 bg-${color}-50 text-${color}-700 shadow-md scale-105`
-                            : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <Icon className="w-5 h-5" />
-                        <span>{label}</span>
-                      </button>
-                    ))}
+                {isComplimentary ? (
+                  <div className="bg-violet-50 border-l-4 border-violet-500 rounded-lg px-4 py-3 flex items-start gap-3">
+                    <Receipt className="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-violet-900 text-sm">Complimentary Sale</p>
+                      <p className="text-sm text-violet-700">This order will be completed with no payment and no outstanding balance.</p>
+                    </div>
                   </div>
-
-                  {selectedMethods.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={handleSplitEvenly}
-                      className="mt-2 w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      Split evenly between {selectedMethods.length} methods
-                    </button>
-                  )}
-                </div>
-
-                {/* Amount Inputs */}
-                <div className="space-y-3">
-                  {selectedMethods.map(method => {
-                    const methodInfo = paymentMethods.find(m => m.value === method)
-                    const Icon = methodInfo?.icon || Banknote
-                    
-                    return (
-                      <div key={method}>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          {methodInfo?.label} Amount
-                        </label>
-                        <div className="relative">
-                          <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                          <span className="absolute left-11 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₦</span>
-                          <input
-                            type="number"
-                            value={paymentAmounts[method]}
-                            onChange={(e) => handleAmountChange(method, e.target.value)}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            className="w-full pl-16 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold transition-all"
-                          />
-                        </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Payment Methods {selectedMethods.length > 1 && <span className="text-blue-600">(Split Payment)</span>}
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {paymentMethods.filter(({ value }) => value !== 'COMPLIMENTARY').map(({ value, label, icon: Icon, color }) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => togglePaymentMethod(value)}
+                            className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 transition-all font-medium text-sm ${
+                              selectedMethods.includes(value)
+                                ? `border-${color}-600 bg-${color}-50 text-${color}-700 shadow-md scale-105`
+                                : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon className="w-5 h-5" />
+                            <span>{label}</span>
+                          </button>
+                        ))}
                       </div>
-                    )
-                  })}
-                </div>
 
-                {/* Quick Actions */}
-                {selectedMethods.length === 1 && (
-                  <button
-                    type="button"
-                    onClick={handlePayFull}
-                    className="w-full px-4 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-all text-sm font-semibold"
-                  >
-                    Pay Full Amount ({currencyFormat(orderTotal)})
-                  </button>
+                      {selectedMethods.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={handleSplitEvenly}
+                          className="mt-2 w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Split evenly between {selectedMethods.length} methods
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      {selectedMethods.map(method => {
+                        const methodInfo = paymentMethods.find(m => m.value === method)
+                        const Icon = methodInfo?.icon || Banknote
+                        
+                        return (
+                          <div key={method}>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              {methodInfo?.label} Amount
+                            </label>
+                            <div className="relative">
+                              <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                              <span className="absolute left-11 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₦</span>
+                              <input
+                                type="number"
+                                value={paymentAmounts[method]}
+                                onChange={(e) => handleAmountChange(method, e.target.value)}
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                className="w-full pl-16 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold transition-all"
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {selectedMethods.length === 1 && (
+                      <button
+                        type="button"
+                        onClick={handlePayFull}
+                        className="w-full px-4 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-all text-sm font-semibold"
+                      >
+                        Pay Full Amount ({currencyFormat(orderTotal)})
+                      </button>
+                    )}
+                  </>
                 )}
 
                 {/* Error/Warning Messages */}
@@ -450,6 +484,7 @@ export default function PosPaymentModal({
                 <input type="hidden" name="path" value={pathname} />
                 <input type="hidden" name="customerId" value={customer?._id || ''} />
                 <input type="hidden" name="customerName" value={customer?.name || ''} />
+                <input type="hidden" name="isComplimentary" value={isComplimentary ? 'true' : 'false'} />
 
                 {/* Submit Button */}
                 <button
@@ -465,7 +500,7 @@ export default function PosPaymentModal({
                   ) : (
                     <>
                       <CheckCircle className="w-6 h-6" />
-                      <span>Complete Payment</span>
+                      <span>{isComplimentary ? 'Complete Complimentary Sale' : 'Complete Payment'}</span>
                     </>
                   )}
                 </button>
