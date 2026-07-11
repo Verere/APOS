@@ -69,24 +69,7 @@ export default function Home() {
     
     <MainNav/>
     
-    {/* Tawk.to Chat Widget */}
-    <Script
-      id="tawk-to-script"
-      strategy="lazyOnload"
-      dangerouslySetInnerHTML={{
-        __html: `
-          var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-          (function(){
-          var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-          s1.async=true;
-          s1.src='https://embed.tawk.to/695f90e3cd470f1979715e8c/1jeekrusb';
-          s1.charset='UTF-8';
-          s1.setAttribute('crossorigin','*');
-          s0.parentNode.insertBefore(s1,s0);
-          })();
-        `,
-      }}
-    />
+   
     <main className="relative w-full min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Hero Section */}
       <section className="relative w-full min-h-screen flex items-center pt-20 sm:pt-24 pb-12 sm:pb-20">

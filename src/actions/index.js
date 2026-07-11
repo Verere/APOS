@@ -430,17 +430,8 @@ export const addPaymentWithOrder = async (prvState, formData) => {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) return { error: 'Unauthorized' };
 
-    // ensure user's email is verified
-    const userDoc = await User.findById(session.user.id).lean();
-    if (!userDoc || !userDoc.emailVerified) return { error: 'Email not verified' };
-
-    // fetch store and require OWNER or MANAGER role
     const store = await getStoreBySlug(slug);
-    try {
-      await requireStoreRole(session.user.id, store._id, ['OWNER', 'MANAGER']);
-    } catch (e) {
-      return { error: 'Forbidden' };
-    }
+
     const soldBy = session.user.email || user;
 
     if (!items.length) return { error: 'Cart is empty' };
@@ -619,7 +610,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
 
       if (result && result.success) {
         revalidatePath(path);
-        return { success: 'Order and payment saved', orderId: result.orderId };
+        return { success: 'Order and payment saved', orderId: String(result.orderId) };
       }
     }catch(err){
       console.log('transaction error', err);
@@ -634,7 +625,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
       if(err && err.code === 'INSUFFICIENT'){
         const ids = items.map(i=>i.product)
         const prods = await Product.find({_id: { $in: ids }}).lean();
-        const stockUpdates = prods.map(p=>({ product: p._id, qty: p.qty || 0 }));
+        const stockUpdates = prods.map(p=>({ product: String(p._id), qty: p.qty || 0 }));
         return { error: err.message, stockUpdates };
       }
       if(err && err.code === 'BAD_PAYMENT'){

@@ -38,7 +38,7 @@ const [total, setTotal] = useState(0)
         setCartTotal(qtyTotal)
       }
       getTotal()
-    }, [items, setCartTotal, setCartValue])
+    }, [items])
 
 
 return(

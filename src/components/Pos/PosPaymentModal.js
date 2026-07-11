@@ -37,6 +37,7 @@ export default function PosPaymentModal({
   const [paymentsData, setPaymentsData] = useState([])
   const [orderItems, setOrderItems] = useState([])
   const printRef = useRef(null)
+  const successProcessedRef = useRef(false)
   
   const [state, formAction, isPending] = useActionState(addPaymentWithOrder, {})
 
@@ -91,7 +92,8 @@ export default function PosPaymentModal({
     if (state.error) {
       toast.error(state.error)
     }
-    if (state.success) {
+    if (state.success && !successProcessedRef.current) {
+      successProcessedRef.current = true
       toast.success(state.success)
       
       // Prepare payment data
@@ -119,7 +121,7 @@ export default function PosPaymentModal({
       // Call success callback to clear cart
       if (onSuccess) onSuccess()
     }
-  }, [state, selectedMethods, paymentMethods, paymentAmounts, order, busDate, orderTotal, totalPayment, balance, customer, cartItems, onSuccess, isComplimentary])
+  }, [state, isComplimentary, selectedMethods, paymentMethods, paymentAmounts, order, busDate, orderTotal, totalPayment, balance, customer, cartItems, onSuccess])
 
   const togglePaymentMethod = useCallback((method) => {
     setSelectedMethods(prev => {
