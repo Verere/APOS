@@ -12,6 +12,7 @@ import { getStoreBySlug } from '@/lib/getStoreBySlug'
 import { requireStoreRole } from '@/lib/requireStoreRole'
 import withTransaction from '@/lib/withTransaction'
 import validateCheckout from '@/lib/checkout'
+import { buildOrderItemSnapshots } from '@/lib/orderItemSnapshot'
 
 export async function POST(req) {
   try {
@@ -121,21 +122,16 @@ export async function POST(req) {
           id: p._id,
           name: p.name,
           qty: qtyToTake,
-          price: updated.price,
           cost: updated.cost || 0,
           newQty: updated.qty,
-          amount: qtyToTake * updated.price,
-          profit: (updated.price - (updated.cost || 0)) * qtyToTake
         })
       }
 
-      // Calculate total amount and profit using DB prices
-      let totalAmount = 0
-      let totalProfit = 0
-      for (const upd of updatedProducts) {
-        totalAmount += upd.amount
-        totalProfit += upd.profit
-      }
+      const {
+        orderItems,
+        totalAmount,
+        totalProfit,
+      } = buildOrderItemSnapshots(cartItems, updatedProducts)
 
       // Generate order number
       const orderCount = await Order.countDocuments({ slug })
@@ -158,16 +154,7 @@ export async function POST(req) {
         slug,
         orderNum,
         orderName: customer.name,
-        items: cartItems.map(item => {
-          const upd = updatedProducts.find(u => String(u.id) === String(item.product))
-          return {
-            ...item,
-            price: upd?.price || item.price,
-            cost: upd?.cost || 0,
-            amount: upd?.amount || item.amount,
-            profit: upd?.profit || 0
-          }
-        }),
+        items: orderItems,
         amount: totalAmount,
         totalAmount: totalAmount, // Add totalAmount for consistency with other order endpoints
         profit: totalProfit,
@@ -246,7 +233,7 @@ export async function POST(req) {
         totalAmount,
         paymentAmount,
         creditAmount: actualCreditAmount,
-        items: updatedProducts,
+        items: orderItems,
         customer: {
           name: customer.name,
           email: customer.email,

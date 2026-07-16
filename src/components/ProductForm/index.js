@@ -18,8 +18,7 @@ import { FaCalendarAlt } from 'react-icons/fa';
 import BarcodeScanner from '../Pos/BarcodeScanner';
 
  
-
-const ProductForm = ({slug, categories}) => {
+const ProductForm = ({slug, categories, pricingSettings}) => {
   const [showScanner, setShowScanner] = useState(false);
   const [scannerLoading, setScannerLoading] = useState(false);
   // Barcode scan handler for product form
@@ -53,7 +52,8 @@ const {
 } = useContext(GlobalContext);
   
 const [name, setName] = useState('')
-const [price, setPrice] = useState('')
+const [legacyPrice, setLegacyPrice] = useState('')
+const [dynamicPrices, setDynamicPrices] = useState({})
 const [cost, setCost] = useState('')
 const [profit, setProfit] = useState('')
 const [reOrder, setReOrder] = useState('')
@@ -63,6 +63,46 @@ const [id, setId] =useState('')
 const [qty, setQty]= useState('')
 const [total, setTotal]=useState('')
 const [selectedDate, setSelectedDate] = useState(null);
+const priceTypes = useMemo(() => pricingSettings?.priceTypes || [], [pricingSettings])
+const defaultPriceTypeId = pricingSettings?.defaultPriceTypeId || null
+const requiredPriceTypeId = useMemo(() => defaultPriceTypeId || priceTypes?.[0]?.id || null, [defaultPriceTypeId, priceTypes])
+
+const resolvedSellingPrice = useMemo(() => {
+  if (priceTypes.length > 0) {
+    if (defaultPriceTypeId) {
+      const defaultVal = dynamicPrices?.[defaultPriceTypeId]
+      if (defaultVal !== '' && defaultVal !== undefined && defaultVal !== null) {
+        const parsed = Number(defaultVal)
+        if (!Number.isNaN(parsed)) return parsed
+      }
+    }
+
+    for (const pt of priceTypes) {
+      const val = dynamicPrices?.[pt.id]
+      if (val !== '' && val !== undefined && val !== null) {
+        const parsed = Number(val)
+        if (!Number.isNaN(parsed)) return parsed
+      }
+    }
+  }
+
+  if (legacyPrice !== '' && legacyPrice !== undefined && legacyPrice !== null) {
+    const parsedLegacy = Number(legacyPrice)
+    if (!Number.isNaN(parsedLegacy)) return parsedLegacy
+  }
+
+  return ''
+}, [defaultPriceTypeId, dynamicPrices, legacyPrice, priceTypes])
+
+const serializedPrices = useMemo(() => {
+  const normalized = {}
+  Object.entries(dynamicPrices || {}).forEach(([key, value]) => {
+    if (value === '' || value === null || value === undefined) return
+    const parsed = Number(value)
+    if (!Number.isNaN(parsed)) normalized[key] = parsed
+  })
+  return JSON.stringify(normalized)
+}, [dynamicPrices])
 
  
  useEffect(()=>{
@@ -77,7 +117,8 @@ if(state.success){
  setLoading(false)
  setUp(false)
  setName('')
- setPrice('')
+ setLegacyPrice('')
+ setDynamicPrices({})
  setCost('')
  setProfit('')
  setCode('')
@@ -98,36 +139,59 @@ getState()
 
      if(id){
       const prod = await fetchProductById(id)
+      const current = prod[0] || {}
       setName(prod[0]?.name)
-      setPrice(prod[0]?.price)
+      setLegacyPrice(current?.price ?? '')
       setCost(prod[0]?.cost)
       setProfit(prod[0]?.profit)
       setCode(prod[0]?.barcode)
       setUp(true)
       setId(id)
       setQty(prod[0]?.qty)
+      const incomingPrices = current?.prices || {}
+      const hasIncomingPrices = Object.keys(incomingPrices || {}).length > 0
+      const dynamic = {}
+
+      if (priceTypes.length > 0) {
+        priceTypes.forEach((pt) => {
+          if (incomingPrices?.[pt.id] !== undefined && incomingPrices?.[pt.id] !== null) {
+            dynamic[pt.id] = incomingPrices[pt.id]
+          } else {
+            dynamic[pt.id] = ''
+          }
+        })
+
+        if (!hasIncomingPrices && (current?.price !== undefined && current?.price !== null && current?.price !== '')) {
+          const fallbackPriceTypeId = defaultPriceTypeId || priceTypes?.[0]?.id
+          if (fallbackPriceTypeId) {
+            dynamic[fallbackPriceTypeId] = current.price
+          }
+        }
+      }
+
+      setDynamicPrices(dynamic)
       if(prod[0]?.category)setCategory(prod[0]?.category)
       if(prod[0]?.expiration)setCategory(prod[0]?.expiration)
      }
 }
 getProd()
-},[searchParams])
+},[defaultPriceTypeId, priceTypes, searchParams])
 
 // Auto-calculate total based on qty and price
 useEffect(()=>{
-  if(qty && price && qty.length && price.length ){
-    const totals = parseInt(qty) * parseFloat(price)
+  if(qty && resolvedSellingPrice !== '' ){
+    const totals = parseInt(qty) * parseFloat(resolvedSellingPrice)
     setTotal(totals)
   }
-},[qty,price])
+},[qty,resolvedSellingPrice])
 
 // Auto-calculate profit from price and cost
 useEffect(()=>{
-  if(cost && price && cost.length && price.length) {
-    const calculatedProfit = parseFloat(price) - parseFloat(cost)
+  if(cost && resolvedSellingPrice !== '') {
+    const calculatedProfit = parseFloat(resolvedSellingPrice) - parseFloat(cost)
     setProfit(calculatedProfit.toString())
   }
-},[cost, price])
+},[cost, resolvedSellingPrice])
 
   // Memoize formatted expiration date
   const formattedExpiration = useMemo(() => 
@@ -198,9 +262,27 @@ useEffect(()=>{
       
       
             <input type="number" placeholder="Enter Cost Price" name="cost" value= {cost}  onChange={(e)=>setCost(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
-            <input type="number" placeholder="Enter Selling Price" name="price" value= {price}  onChange={(e)=>setPrice(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
             <input type="number" placeholder="Profit (Auto-calculated)" name="profit" value= {profit} readOnly className="border mx-auto mb-1 border-gray-300 bg-gray-50 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
            </div>
+
+           {priceTypes.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+              {priceTypes.map((pt) => (
+                <input
+                  key={pt.id}
+                  type="number"
+                  placeholder={`Enter ${pt.name} Price`}
+                  value={dynamicPrices?.[pt.id] ?? ''}
+                  onChange={(e)=>setDynamicPrices((prev)=>({ ...prev, [pt.id]: e.target.value }))}
+                  className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"
+                  required={requiredPriceTypeId === pt.id}
+                />
+              ))}
+            </div>
+           ) : (
+            <input type="number" placeholder="Enter Selling Price" name="priceLegacyInput" value= {legacyPrice}  onChange={(e)=>setLegacyPrice(e.target.value)}className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
+           )}
+
             <input type="number" placeholder="Enter Qty" name="qty" value ={qty} onChange={(e)=>setQty(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
             <input type="text" placeholder="Total Value" name="totalValue" value ={total} onChange={(e)=>setTotal(e.target.value)}  className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"/>
             <input type="number" placeholder="Enter reOrder Qty" name="reOrder" value ={reOrder} onChange={(e)=>setReOrder(e.target.value)} className="border mx-auto mb-1 border-gray-400 p-2 w-full block bg-white text-black dark:bg-gray-800 dark:text-white"  required />
@@ -216,6 +298,8 @@ useEffect(()=>{
   </div>
   <input name="up" type="hidden" value={up} />
   <input name="id" type="hidden" value={id} />
+  <input name="price" type="hidden" value={resolvedSellingPrice} />
+  <input name="prices" type="hidden" value={serializedPrices} />
         </div>
        </div>
       <div className="flex justify-between w-full"> 

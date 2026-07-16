@@ -36,7 +36,7 @@ const DashboardLayoutClient = ({ children, slug, user, store, membership }) => {
           isCollapsed ? 'ml-16' : 'ml-64'
         } overflow-hidden`}
       >
-        <TopBar user={user} slug={slug} />
+        <TopBar user={user} slug={slug} store={store}/>
         <main className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
           {children}
         </main>

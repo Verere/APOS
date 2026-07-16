@@ -136,8 +136,8 @@ Customer: ${invoiceData.customer.name}
 *Items Purchased*
 ━━━━━━━━━━━━━━━━━━━━
 ${invoiceData.items?.map((item, i) => 
-  `${i + 1}. ${item.name}
-   ${item.qty} × ${currencyFormat(item.price)} = ${currencyFormat(item.amount)}`
+  `${i + 1}. ${item.productName || item.name}
+   ${item.quantity ?? item.qty} × ${currencyFormat(item.unitPrice ?? item.price)} = ${currencyFormat(item.total ?? item.amount)}`
 ).join('\n')}
 
 ━━━━━━━━━━━━━━━━━━━━
@@ -254,10 +254,10 @@ powered by:  www.marketbook.app
                   <tbody>
                     {invoiceData.items?.map((item, index) => (
                       <tr key={index} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                        <td className="p-3 text-sm font-medium text-gray-900">{item.name}</td>
-                        <td className="p-3 text-right text-sm text-gray-700">{currencyFormat(item.price)}</td>
-                        <td className="p-3 text-center text-sm font-semibold text-blue-600">{item.qty}</td>
-                        <td className="p-3 text-right text-sm font-semibold text-gray-900">{currencyFormat(item.amount)}</td>
+                        <td className="p-3 text-sm font-medium text-gray-900">{item.productName || item.name}</td>
+                        <td className="p-3 text-right text-sm text-gray-700">{currencyFormat(item.unitPrice ?? item.price)}</td>
+                        <td className="p-3 text-center text-sm font-semibold text-blue-600">{item.quantity ?? item.qty}</td>
+                        <td className="p-3 text-right text-sm font-semibold text-gray-900">{currencyFormat(item.total ?? item.amount)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -283,19 +283,19 @@ powered by:  www.marketbook.app
                 {invoiceData.items?.map((item, index) => (
                   <div key={index} className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-3 pb-3 border-b border-gray-200">
-                      <h3 className="font-semibold text-gray-900 text-base flex-1">{item.name}</h3>
+                      <h3 className="font-semibold text-gray-900 text-base flex-1">{item.productName || item.name}</h3>
                       <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
-                        ×{item.qty}
+                        ×{item.quantity ?? item.qty}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <span className="text-gray-500 text-xs block mb-1">Unit Price</span>
-                        <span className="font-semibold text-gray-900">{currencyFormat(item.price)}</span>
+                        <span className="font-semibold text-gray-900">{currencyFormat(item.unitPrice ?? item.price)}</span>
                       </div>
                       <div className="text-right">
                         <span className="text-gray-500 text-xs block mb-1">Total</span>
-                        <span className="font-bold text-gray-900 text-base">{currencyFormat(item.amount)}</span>
+                        <span className="font-bold text-gray-900 text-base">{currencyFormat(item.total ?? item.amount)}</span>
                       </div>
                     </div>
                   </div>

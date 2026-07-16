@@ -204,7 +204,7 @@ export async function updatePassword(email, password) {
   
   }
 //update order completed
-export async function updateProduct(idd, name,  price, qty, category, barcode, totalValue , cost, profit, reOrder, expiration) {
+export async function updateProduct(idd, name,  price, qty, category, barcode, totalValue , cost, profit, reOrder, expiration, prices = {}) {
   console.log('updtn',cost, profit, reOrder, expiration)
   await connectToDB();
    
@@ -215,6 +215,7 @@ export async function updateProduct(idd, name,  price, qty, category, barcode, t
       {
    
        name, price, qty, category, barcode, totalValue, isDeleted:false, cost, profit, reOrder, expiration
+      , prices
       },
       { new: true }
     );

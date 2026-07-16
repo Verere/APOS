@@ -21,6 +21,11 @@ import {
   Settings,
   ShoppingCart,
   DollarSign,
+  Plus,
+  Tag,
+  Archive,
+  Edit3,
+  Star,
 } from 'lucide-react'
 
 export default function SettingsPageClient({ slug, user }) {
@@ -29,6 +34,8 @@ export default function SettingsPageClient({ slug, user }) {
   const [loading, setLoading] = useState(true)
   const [subscriptionData, setSubscriptionData] = useState(null)
   const [loadingSubscription, setLoadingSubscription] = useState(false)
+  const [priceTypeUsage, setPriceTypeUsage] = useState({})
+  const [newPriceTypeName, setNewPriceTypeName] = useState('')
   const [formData, setFormData] = useState({
     // Profile
     name: user?.name || '',
@@ -69,6 +76,7 @@ export default function SettingsPageClient({ slug, user }) {
     // POS Settings
     allowCreditSales: true,
     allowPriceAdjustment: false,
+    allowPriceTypeSelection: false,
   })
 
   // Fetch settings on mount
@@ -83,9 +91,12 @@ export default function SettingsPageClient({ slug, user }) {
             setFormData(prev => ({
               ...prev,
               ...data.settings,
+              priceTypes: Array.isArray(data.settings.priceTypes) ? data.settings.priceTypes : [],
+              defaultPriceTypeId: data.settings.defaultPriceTypeId || null,
               name: user?.name || prev.name,
               email: user?.email || prev.email,
             }))
+            setPriceTypeUsage(data.priceTypeUsage || {})
           }
         }
       } catch (error) {
@@ -123,6 +134,7 @@ export default function SettingsPageClient({ slug, user }) {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User, color: 'text-blue-600', bgColor: 'bg-blue-50' },
     { id: 'store', label: 'Store Settings', icon: Store, color: 'text-green-600', bgColor: 'bg-green-50' },
+    { id: 'price-types', label: 'Price Types', icon: Tag, color: 'text-yellow-700', bgColor: 'bg-yellow-50' },
     { id: 'subscription', label: 'Subscription', icon: CreditCard, color: 'text-blue-600', bgColor: 'bg-blue-50' },
     { id: 'pos', label: 'POS Settings', icon: ShoppingCart, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
     { id: 'notifications', label: 'Notifications', icon: Bell, color: 'text-purple-600', bgColor: 'bg-purple-50' },
@@ -133,6 +145,100 @@ export default function SettingsPageClient({ slug, user }) {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const getUniquePriceTypeId = () => {
+    const existing = new Set((formData.priceTypes || []).map((pt) => pt.id))
+    let suffix = (newPriceTypeName || 'type')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+
+    if (!suffix) suffix = 'price-type'
+
+    let candidate = suffix
+    let i = 1
+    while (existing.has(candidate)) {
+      i += 1
+      candidate = `${suffix}-${i}`
+    }
+
+    return candidate
+  }
+
+  const handleAddPriceType = () => {
+    const trimmedName = newPriceTypeName.trim()
+    if (!trimmedName) return
+
+    const newType = {
+      id: getUniquePriceTypeId(),
+      name: trimmedName,
+      active: true,
+    }
+
+    setFormData(prev => {
+      const current = Array.isArray(prev.priceTypes) ? prev.priceTypes : []
+      return {
+        ...prev,
+        priceTypes: [...current, newType],
+        defaultPriceTypeId: prev.defaultPriceTypeId || newType.id,
+      }
+    })
+    setNewPriceTypeName('')
+  }
+
+  const handleRenamePriceType = (id, name) => {
+    setFormData(prev => ({
+      ...prev,
+      priceTypes: (prev.priceTypes || []).map((pt) =>
+        pt.id === id ? { ...pt, name } : pt
+      ),
+    }))
+  }
+
+  const handleArchivePriceType = (id) => {
+    setFormData(prev => {
+      const nextPriceTypes = (prev.priceTypes || []).map((pt) =>
+        pt.id === id ? { ...pt, active: false } : pt
+      )
+      const nextDefault = prev.defaultPriceTypeId === id ? null : prev.defaultPriceTypeId
+      return {
+        ...prev,
+        priceTypes: nextPriceTypes,
+        defaultPriceTypeId: nextDefault,
+      }
+    })
+  }
+
+  const handleUnarchivePriceType = (id) => {
+    setFormData(prev => ({
+      ...prev,
+      priceTypes: (prev.priceTypes || []).map((pt) =>
+        pt.id === id ? { ...pt, active: true } : pt
+      ),
+    }))
+  }
+
+  const handleDeletePriceType = (id) => {
+    const assignedCount = Number(priceTypeUsage?.[id] || 0)
+    if (assignedCount > 0) {
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus(null), 3000)
+      return
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      priceTypes: (prev.priceTypes || []).filter((pt) => pt.id !== id),
+      defaultPriceTypeId: prev.defaultPriceTypeId === id ? null : prev.defaultPriceTypeId,
+    }))
+  }
+
+  const handleSetDefaultPriceType = (id) => {
+    const priceType = (formData.priceTypes || []).find((pt) => pt.id === id)
+    if (!priceType || !priceType.active) return
+    handleInputChange('defaultPriceTypeId', id)
   }
 
   const handleSave = async () => {
@@ -149,6 +255,7 @@ export default function SettingsPageClient({ slug, user }) {
       const data = await response.json()
       
       if (response.ok) {
+        setPriceTypeUsage(data.priceTypeUsage || {})
         setSaveStatus('success')
         setTimeout(() => setSaveStatus(null), 3000)
       } else {
@@ -346,6 +453,140 @@ export default function SettingsPageClient({ slug, user }) {
       </div>
     </div>
   )
+
+  const renderPriceTypeSettings = () => {
+    const priceTypes = Array.isArray(formData.priceTypes) ? formData.priceTypes : []
+    const activePriceTypes = priceTypes.filter((pt) => pt.active)
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-yellow-500 to-amber-600 rounded-xl p-6 text-white">
+          <h3 className="text-2xl font-bold mb-2">Price Type Management</h3>
+          <p className="text-yellow-100">Create, rename, archive, and choose your default selling price type.</p>
+        </div>
+
+        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-700 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-yellow-900">
+            <p className="font-semibold mb-1">Validation Rules</p>
+            <p className="text-yellow-800">IDs are unique. Archived types cannot be default. Assigned types cannot be deleted.</p>
+          </div>
+        </div>
+
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Create New Price Type</label>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              value={newPriceTypeName}
+              onChange={(e) => setNewPriceTypeName(e.target.value)}
+              className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-yellow-500 focus:outline-none transition-colors"
+              placeholder="e.g. Retail, Wholesale, VIP, Distributor"
+            />
+            <button
+              type="button"
+              onClick={handleAddPriceType}
+              className="px-5 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Type
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {priceTypes.length === 0 ? (
+            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center text-gray-600">
+              No price types yet. Create one to enable dynamic product pricing.
+            </div>
+          ) : (
+            priceTypes.map((pt) => {
+              const assignedCount = Number(priceTypeUsage?.[pt.id] || 0)
+              const isDefault = formData.defaultPriceTypeId === pt.id
+              return (
+                <div key={pt.id} className="bg-white border-2 border-gray-200 rounded-xl p-4">
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-gray-500 mb-1">ID: {pt.id}</div>
+                      <div className="flex items-center gap-2">
+                        <Edit3 className="w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={pt.name}
+                          onChange={(e) => handleRenamePriceType(pt.id, e.target.value)}
+                          className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-yellow-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${pt.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}`}>
+                        {pt.active ? 'Active' : 'Archived'}
+                      </span>
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                        Assigned: {assignedCount}
+                      </span>
+                      {isDefault && (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 flex items-center gap-1">
+                          <Star className="w-3 h-3" />
+                          Default
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap lg:justify-end">
+                      <button
+                        type="button"
+                        disabled={!pt.active}
+                        onClick={() => handleSetDefaultPriceType(pt.id)}
+                        className="px-3 py-2 text-sm rounded-lg border-2 border-amber-200 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Set Default
+                      </button>
+
+                      {pt.active ? (
+                        <button
+                          type="button"
+                          onClick={() => handleArchivePriceType(pt.id)}
+                          className="px-3 py-2 text-sm rounded-lg border-2 border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center gap-1"
+                        >
+                          <Archive className="w-4 h-4" />
+                          Archive
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleUnarchivePriceType(pt.id)}
+                          className="px-3 py-2 text-sm rounded-lg border-2 border-green-200 text-green-700 hover:bg-green-50"
+                        >
+                          Unarchive
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePriceType(pt.id)}
+                        disabled={assignedCount > 0}
+                        className="px-3 py-2 text-sm rounded-lg border-2 border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {activePriceTypes.length === 0 && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 text-sm text-red-700">
+            You currently have no active price type. Add or unarchive at least one type before selecting a default.
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const renderSubscriptionSettings = () => {
     if (loadingSubscription) {
@@ -811,6 +1052,30 @@ export default function SettingsPageClient({ slug, user }) {
             </div>
           </label>
         </div>
+
+        {/* Allow Price Type Selection */}
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="bg-cyan-50 p-3 rounded-lg">
+                <Tag className="w-6 h-6 text-cyan-600" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Allow Price Type Selection on POS</div>
+                <div className="text-sm text-gray-500">Show a POS dropdown for selecting which selling price type to apply</div>
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={formData.allowPriceTypeSelection}
+                onChange={(e) => handleInputChange('allowPriceTypeSelection', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-600"></div>
+            </div>
+          </label>
+        </div>
       </div>
 
       <div className="bg-cyan-50 border-2 border-cyan-200 rounded-xl p-4 flex gap-3">
@@ -829,6 +1094,8 @@ export default function SettingsPageClient({ slug, user }) {
         return renderProfileSettings()
       case 'store':
         return renderStoreSettings()
+      case 'price-types':
+        return renderPriceTypeSettings()
       case 'subscription':
         return renderSubscriptionSettings()
       case 'pos':

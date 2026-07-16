@@ -1,5 +1,22 @@
 import mongoose from "mongoose";
 
+const PriceTypeSchema = new mongoose.Schema({
+  id: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  active: {
+    type: Boolean,
+    default: true
+  }
+}, { _id: false });
+
 const StoreSettingsSchema = new mongoose.Schema({
   storeId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -21,6 +38,21 @@ const StoreSettingsSchema = new mongoose.Schema({
   allowPriceAdjustment: {
     type: Boolean,
     default: false
+  },
+  allowPriceTypeSelection: {
+    type: Boolean,
+    default: false
+  },
+
+  // Configurable store-specific price types (unlimited)
+  priceTypes: {
+    type: [PriceTypeSchema],
+    default: []
+  },
+  // Single default price type id
+  defaultPriceTypeId: {
+    type: String,
+    default: null
   },
   
   // Store Information
@@ -110,8 +142,21 @@ const StoreSettingsSchema = new mongoose.Schema({
 
 // Update the updatedAt timestamp before saving
 StoreSettingsSchema.pre('save', function(next) {
+  // Keep defaultPriceTypeId consistent with configured priceTypes.
+  if (this.defaultPriceTypeId) {
+    const hasDefault = (this.priceTypes || []).some((pt) => pt.id === this.defaultPriceTypeId);
+    if (!hasDefault) {
+      this.defaultPriceTypeId = null;
+    }
+  }
+
   this.updatedAt = Date.now();
   next();
 });
+
+StoreSettingsSchema.path('priceTypes').validate(function (value) {
+  const ids = (value || []).map((pt) => pt?.id).filter(Boolean);
+  return ids.length === new Set(ids).size;
+}, 'priceTypes ids must be unique.');
 
 export default mongoose.models.StoreSettings || mongoose.model('StoreSettings', StoreSettingsSchema);

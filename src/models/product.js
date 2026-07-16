@@ -15,6 +15,11 @@ const productSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    prices: {
+        type: Map,
+        of: Number,
+        default: {}
+    },
     profit: {
         type: Number,
         required: true,

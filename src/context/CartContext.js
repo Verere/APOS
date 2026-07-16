@@ -55,12 +55,30 @@ const [cpayment, setCPayment] = useState(0)
     }
     
     
-    const addToCart = async ({product, name, category, image, price,  qty, onSale}) => {
+    const addToCart = async ({product, name, category, image, price, priceTypeId, qty, onSale}) => {
       // normalize cart item and include _id for UI keys
       // Store originalPrice to enforce minimum pricing
       // Add cost to cart item
       // Assume cost is available on the product object
-      const item = { _id: product, product, name, category, image, price, originalPrice: price, cost: typeof product === 'object' && product.cost !== undefined ? product.cost : 0, qty, amount: qty * price, onSale}
+      const item = {
+        _id: product,
+        product,
+        productId: String(product),
+        name,
+        productName: name,
+        category,
+        image,
+        price,
+        unitPrice: price,
+        priceTypeId: priceTypeId || 'legacy',
+        originalPrice: price,
+        cost: typeof product === 'object' && product.cost !== undefined ? product.cost : 0,
+        qty,
+        quantity: qty,
+        amount: qty * price,
+        total: qty * price,
+        onSale,
+      }
 
         // server will validate stock at checkout; accept item into cart
 
@@ -88,6 +106,8 @@ const [cpayment, setCPayment] = useState(0)
             // increment by 1
             items.qty = (items.qty || 0) + 1
             items.amount= items.qty * items.price 
+            items.quantity = items.qty
+            items.total = items.amount
             // ensure _id present
             if(!items._id) items._id = items.product
           }
@@ -104,6 +124,8 @@ const [cpayment, setCPayment] = useState(0)
             items.qty = (items.qty || 1) - 1
             if(items.qty < 0) items.qty = 0
             items.amount= items.qty * items.price
+            items.quantity = items.qty
+            items.total = items.amount
             if(!items._id) items._id = items.product
           }
 
@@ -121,6 +143,8 @@ const [cpayment, setCPayment] = useState(0)
           if (String(items.product) === String(item.product)) {
             items.qty = qty
             items.amount = items.qty * items.price
+            items.quantity = items.qty
+            items.total = items.amount
             if(!items._id) items._id = items.product
           }
         })
@@ -143,6 +167,8 @@ const [cpayment, setCPayment] = useState(0)
           if (String(items.product) === String(item.product)) {
             items.price = price
             items.amount = items.qty * items.price
+            items.unitPrice = items.price
+            items.total = items.amount
             if(!items._id) items._id = items.product
           }
         })

@@ -30,7 +30,10 @@ const Pos = async({params, searchParams})=>{
             storeId: store._id,
             slug: slug,
             allowCreditSales: true,
-            allowPriceAdjustment: false
+            allowPriceAdjustment: false,
+            allowPriceTypeSelection: false,
+            priceTypes: [],
+            defaultPriceTypeId: null
           })
           settings = settings.toObject()
         }
@@ -45,8 +48,13 @@ const Pos = async({params, searchParams})=>{
                  getHotel={getHotel}
                  slug={slug}
                  customers={customers}
+               pricingSettings={{
+                 priceTypes: Array.isArray(settings?.priceTypes) ? settings.priceTypes : [],
+                 defaultPriceTypeId: settings?.defaultPriceTypeId ?? null,
+               }}
                  allowCreditSales={settings?.allowCreditSales ?? true}
                  allowPriceAdjustment={settings?.allowPriceAdjustment ?? false}
+                 allowPriceTypeSelection={settings?.allowPriceTypeSelection ?? false}
              />
             </>
         )

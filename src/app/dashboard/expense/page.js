@@ -7,6 +7,8 @@ export default function ExpensePage() {
     amount: "",
     bDate: "",
     status: "",
+    slug: "",
+    storeId: "",
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
@@ -22,12 +24,24 @@ export default function ExpensePage() {
     setSuccess("");
     setError("");
     try {
-      // You may want to add slug/user from context or session
-      await axios.post("/api/expense", form);
+      const response = await fetch("/api/expense", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to record expense.");
+      }
+
       setSuccess("Expense recorded successfully!");
-      setForm({ Description: "", amount: "", bDate: "", status: "" });
+      setForm({ Description: "", amount: "", bDate: "", status: "", slug: "", storeId: "" });
     } catch (err) {
-      setError("Failed to record expense.");
+      setError(err?.message || "Failed to record expense.");
     } finally {
       setLoading(false);
     }
@@ -38,6 +52,30 @@ export default function ExpensePage() {
       <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 sm:p-8">
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">Add Expense</h2>
         <form className="space-y-5" onSubmit={handleSubmit}>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-gray-700 dark:text-gray-300 mb-1 text-xs font-medium">Store ID (Optional)</label>
+              <input
+                type="text"
+                name="storeId"
+                value={form.storeId}
+                onChange={handleChange}
+                className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                placeholder="Store ObjectId"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 dark:text-gray-300 mb-1 text-xs font-medium">Store Slug</label>
+              <input
+                type="text"
+                name="slug"
+                value={form.slug}
+                onChange={handleChange}
+                className="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                placeholder="e.g. my-store"
+              />
+            </div>
+          </div>
           <div>
             <label className="block text-gray-700 dark:text-gray-300 mb-1 font-medium">Description</label>
             <input

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { signOut } from 'next-auth/react'
 import ThemeSwitch from '@/app/switch'
 
-const TopBar = ({ user, slug }) => {
+const TopBar = ({ user, slug, store }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [notificationCount, setNotificationCount] = useState(3) // Example count
@@ -46,7 +46,7 @@ const TopBar = ({ user, slug }) => {
     <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex items-center justify-between px-6 py-4">
         {/* Search Bar */}
-        <div className="flex-1 max-w-2xl">
+        {/* <div className="flex-1 max-w-2xl">
           <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
             <input
@@ -57,7 +57,13 @@ const TopBar = ({ user, slug }) => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
             />
           </form>
-        </div>
+        </div> */}
+        <div className="flex-1 max-w-2xl">
+          <div className="flex items-center  gap-2">
+
+          <h2 className="text-2xl bg-gray-100 dark:bg-gray-700 px-4 py-2 font-semibold text-gray-800 dark:text-gray-200">{store?.name || slug}</h2>
+          </div>
+          </div> 
 
         {/* Right Side Actions */}
         <div className="flex items-center gap-4 ml-4">

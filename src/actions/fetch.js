@@ -54,7 +54,7 @@ const bDate = date.format('D/MM/YYYY')
         storeId: store._id,
         isDeleted: false 
       })
-        .select('name email phone address totalSpent')
+        .select('name email phone address totalSpent priceTypeId')
         .sort({ name: 1 })
         .lean();
   

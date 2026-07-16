@@ -10,74 +10,47 @@ import CreditPayment from "@/models/creditPayment";
 import Expense from "@/models/expense";
 import EodDisplay from "@/components/Eod/EodDisplay";
 import moment from 'moment';
+import TopBar from "@/components/topbar/topbar";
 
 async function getEodData(slug) {
   await connectDB();
-  
-  // Get current date formatted as bDate (matches moment format D/MM/YYYY)
   const bDate = moment().format('D/MM/YYYY');
   const isoDate = moment().format('YYYY-MM-DD');
   const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
   const endOfDay = new Date(new Date().setHours(23, 59, 59, 999));
 
-  // Verify store exists and get storeId
   const store = await Store.findOne({ slug }).lean();
-  if (!store) {
-    return null;
-  }
+  if (!store) return null;
 
   try {
-    
-    // Fetch all payments for today
     const payments = await Payment.find({
       storeId: store._id.toString(),
       bDate
     }).lean();
 
-    // Fetch all completed orders for today (Order model uses slug, not storeId)
-    // Include all orders regardless of completion status to count credit sales
     const orders = await Order.find({
-      slug: slug,
+      slug,
       bDate,
-      // Remove isCompleted filter to include credit sales (partial/no payment)
-      isCancelled: { $ne: true } // Exclude cancelled orders only
+      isCancelled: { $ne: true }
     }).lean();
-    if (orders.length > 0) {
-      console.log('Sample order:', JSON.stringify(orders[0], null, 2));
-    }
 
-    // Fetch all credits for today (Credit model uses storeId and bDate/createdAt as Date fields)
-    console.log('Querying credits with storeId:', store._id, 'Date range:', startOfDay, 'to', endOfDay);
-    
-    // Try both bDate and createdAt since we're not sure which is used
     const credits = await Credit.find({
       storeId: store._id,
       $or: [
         { bDate: { $gte: startOfDay, $lte: endOfDay } },
         { createdAt: { $gte: startOfDay, $lte: endOfDay } }
-      ]
+      ],
+      isCancelled: { $ne: true }
     }).lean();
-    if (credits.length > 0) {
-      console.log('Sample credit:', JSON.stringify(credits[0], null, 2));
-    } else {
-      // Also try querying all credits for debugging
-      const allCredits = await Credit.find({ storeId: store._id }).limit(5).lean();
-      console.log('Sample of all store credits (for debugging):', allCredits.length > 0 ? JSON.stringify(allCredits[0], null, 2) : 'No credits found for store');
-    }
 
-    // Fetch all credit payments for today (using paymentDate since bDate doesn't exist in schema)
     const creditPayments = await CreditPayment.find({
       storeId: store._id,
       paymentDate: { $gte: startOfDay, $lte: endOfDay }
     }).lean();
-    if (creditPayments.length > 0) {
-      console.log('Sample credit payment:', JSON.stringify(creditPayments[0], null, 2));
-    }
 
-    // Fetch all expenses for today
     const expenses = await Expense.find({
       storeId: store._id,
-      slug: slug,
+      slug,
       $or: [
         { bDate },
         { bDate: isoDate },
@@ -86,13 +59,11 @@ async function getEodData(slug) {
       isCancelled: { $ne: true }
     }).lean();
 
-    // Calculate totals
     let totalCash = 0;
     let totalPos = 0;
     let totalTransfer = 0;
     let totalOther = 0;
 
-    // Sum up payment methods from split payments
     payments.forEach(payment => {
       if (payment.paymentMethods && Array.isArray(payment.paymentMethods)) {
         payment.paymentMethods.forEach(method => {
@@ -113,7 +84,6 @@ async function getEodData(slug) {
           }
         });
       } else {
-        // Fallback to legacy fields if paymentMethods array doesn't exist
         totalCash += payment.cash || 0;
         totalPos += payment.pos || 0;
         totalTransfer += payment.transfer || 0;
@@ -121,34 +91,12 @@ async function getEodData(slug) {
       }
     });
 
-    // Calculate total payment
     const totalPayment = totalCash + totalPos + totalTransfer + totalOther;
-
-    // Calculate total revenue from orders (using 'amount' field from Order model)
     const totalRevenue = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
-    
-    // Calculate total profit from orders
     const totalProfit = orders.reduce((sum, order) => sum + (order.profit || 0), 0);
-    
-    // Calculate total credit (using 'amount' field from Credit model)
     const totalCredit = credits.reduce((sum, credit) => sum + (credit.amount || 0), 0);
-    
-    // Calculate total credit paid
     const totalCreditPaid = creditPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-
-    // Calculate total expenses
     const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
-    console.log('Total Expenses calculated:', totalExpenses, 'from', expenses.length, 'expenses');
-
-    // Verify the relationship: Total Revenue should equal Total Payment + Total Credit
-    const calculatedRevenue = totalPayment + totalCredit;
-    const difference = totalRevenue - calculatedRevenue;
-   
-   
-    // Get transaction counts
-    const transactionCount = orders.length;
-    const creditCount = credits.length;
-
 
     return {
       date: bDate,
@@ -162,10 +110,11 @@ async function getEodData(slug) {
       totalCreditPaid,
       totalProfit,
       totalExpenses,
-      transactionCount,
-      creditCount
+      transactionCount: orders.length,
+      creditCount: credits.length
     };
   } catch (error) {
+    console.error("Error fetching EOD data:", error);
     return null;
   }
 }
@@ -191,5 +140,10 @@ export default async function EodPage({ params }) {
     );
   }
 
-  return <EodDisplay eodData={eodData} slug={slug} />;
+  return (
+    <>
+      <TopBar />
+      <EodDisplay eodData={eodData} slug={slug} />
+    </>
+  );
 }

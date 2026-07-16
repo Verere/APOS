@@ -8,8 +8,9 @@ import { useContext, useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "react-toastify";
 import { GlobalContext } from "@/context";
 import moment from 'moment'
+import { resolveSellingPriceDetails } from '@/lib/pricingService';
 
-export default function ProductButton({ item, orderRcpt}) {
+export default function ProductButton({ item, orderRcpt, selectedCustomer = null, pricingSettings = {}}) {
 
   const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
 
@@ -40,12 +41,29 @@ export default function ProductButton({ item, orderRcpt}) {
 
   const handleCart = useCallback(async(item) => {
     setAdding(true)
-    const res = await addToCart({ product: item._id, name: item.name, category: item.category, image: item.image, price: item.price, qty: 1, onSale: item.onSale })
+    let priceDetails;
+    try {
+      priceDetails = resolveSellingPriceDetails(item, selectedCustomer, pricingSettings);
+    } catch (err) {
+      toast.warn(err?.message || 'No selling price available for this product');
+      setAdding(false)
+      return;
+    }
+    const res = await addToCart({
+      product: item._id,
+      name: item.name,
+      category: item.category,
+      image: item.image,
+      price: priceDetails.unitPrice,
+      priceTypeId: priceDetails.priceTypeId,
+      qty: 1,
+      onSale: item.onSale,
+    })
     if(res && !res.success){
       toast.warn(res?.message || 'Failed to add item')
     }
     setAdding(false)
-  }, [addToCart]);
+  }, [addToCart, pricingSettings, selectedCustomer]);
  
   const handleDeletedProduct = useCallback(async function(item) {
     const res = await deleteProduct(item._id);

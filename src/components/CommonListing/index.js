@@ -10,7 +10,7 @@ import { CartContext } from "@/context/CartContext"
 
 
 
-export default function CommonListing({data}){
+export default function CommonListing({data, selectedCustomer = null, pricingSettings = {}}){
     const { cart,  order, setOrder,  currentOrder, } =
         useContext(CartContext);
    
@@ -34,8 +34,8 @@ export default function CommonListing({data}){
                     hasData &&
                     data.map(item =>(
                         <article className="relative flex flex-col border border-gray-200 rounded-xl overflow-hidden cursor-pointer bg-white hover:shadow-lg hover:border-blue-300 transition-all duration-300 group" key={item._id}>
-                        <ProductTile item={item}/>
-                        <ProductButton  item={item} />
+                        <ProductTile item={item} selectedCustomer={selectedCustomer} pricingSettings={pricingSettings} />
+                        <ProductButton  item={item} selectedCustomer={selectedCustomer} pricingSettings={pricingSettings} />
                     </article>
                     ))                  
                     

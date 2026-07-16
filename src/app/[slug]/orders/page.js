@@ -1,5 +1,6 @@
 import {  fetchAllOrders } from '@/actions/fetch';
 import OrderTable from '@/components/OrderTable';
+import TopBar from '@/components/topbar/topbar';
 
 
 const Orders = async({params})=>{
@@ -9,7 +10,8 @@ const Orders = async({params})=>{
        
 
     return(
-        <>            
+        <>  
+        <TopBar />          
        <OrderTable
        patients={orders} 
       

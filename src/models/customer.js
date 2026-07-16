@@ -57,6 +57,11 @@ const customerSchema = new mongoose.Schema({
         enum: ['regular', 'vip', 'wholesale', 'retail'],
         default: 'retail'
     },
+    priceTypeId: {
+        type: String,
+        trim: true,
+        default: null
+    },
     tags: [{
         type: String,
         trim: true

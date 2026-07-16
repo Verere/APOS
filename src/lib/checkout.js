@@ -24,12 +24,23 @@ export async function validateCheckout(cartItems, slug){
 	const normalized = cartItems.map((it, idx) => {
 		const product = it.product || it.productId || it.itemId || it._id
 		const rawQty = it.qty ?? it.quantity ?? it.count
+		const rawUnitPrice = it.unitPrice ?? it.price
+		const unitPrice = Number(rawUnitPrice)
+		const rawTotal = it.total ?? it.amount ?? ((Number(rawQty) || 0) * unitPrice)
+		const total = Number(rawTotal)
 		const qty = Number(rawQty)
+		const priceTypeId = String(it.priceTypeId || 'legacy').trim() || 'legacy'
 		if(!product) throw new Error(`cartItems[${idx}]: missing product id`)
 		if(!Number.isFinite(qty) || qty <= 0 || !Number.isInteger(qty)){
 			throw new Error(`cartItems[${idx}]: qty must be a positive integer`)
 		}
-		return { product: String(product), qty }
+		if(!Number.isFinite(unitPrice) || unitPrice < 0){
+			throw new Error(`cartItems[${idx}]: unitPrice must be a valid non-negative number`)
+		}
+		if(!Number.isFinite(total) || total < 0){
+			throw new Error(`cartItems[${idx}]: total must be a valid non-negative number`)
+		}
+		return { product: String(product), qty, unitPrice, total, priceTypeId }
 	})
 
 	// fetch products from DB

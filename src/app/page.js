@@ -84,15 +84,20 @@ export default function Home() {
               </div>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-gray-900 dark:text-white leading-tight">
-                Grow Your Business <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">3X Faster</span> with MarketBook Software
+                 
+                Know Your Profit Every Day.  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Sell Faster.</span> Never Run Out of Stock.
               </h1>
               
-              <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl">
+              {/* <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl">
                 Complete sales, inventory, and customer management system with <span className="font-bold text-blue-600 dark:text-blue-400">automatic daily & monthly profit calculations</span>, <span className="font-bold text-blue-600 dark:text-blue-400">debt tracking</span>, and <span className="font-bold text-blue-600 dark:text-blue-400">automated reminders</span>. Start FREE, upgrade as you grow. No credit card required.
-              </p>
+              </p> */}
+              {/* <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl">
+                 
+               Unlike traditional POS systems,  <span className="font-bold text-blue-600 dark:text-blue-400">MarketBook</span>, <span className="font-bold text-blue-600 dark:text-blue-400">automatically calculates your daily profit,</span>, <span className="font-bold text-blue-600 dark:text-blue-400">tracks debtors, reminds customers via WhatsApp, and shows exactly how your business is performing.</span>
+              </p> */}
 
               {/* Key Benefits */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                   <span className="text-sm font-medium">Track daily revenue & profit</span>
@@ -109,11 +114,11 @@ export default function Home() {
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                   <span className="text-sm font-medium">24/7 support</span>
                 </div>
-              </div>
+              </div> */}
               
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <a href="/signup" className="group px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl text-center text-sm sm:text-base flex items-center justify-center gap-2">
-                  Start Free Now
+                  Start Now
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </a>
                 <a href="/subscription" className="px-6 sm:px-8 py-3 sm:py-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400 font-semibold rounded-xl transition-all shadow-md hover:shadow-lg border-2 border-blue-600 dark:border-blue-400 text-center text-sm sm:text-base">
@@ -146,7 +151,7 @@ export default function Home() {
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-3xl blur-3xl opacity-20"></div>
                 <img
-                  src="/sales.png"
+                  src="/db.png"
                   alt="MarketBook System"
                   className="relative w-full h-auto max-h-[500px] object-contain rounded-2xl shadow-2xl"
                 />

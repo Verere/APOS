@@ -5,6 +5,31 @@ import connectDB from '@/utils/connectDB';
 import StoreSettings from '@/models/storeSettings';
 import Store from '@/models/store';
 import StoreMembership from '@/models/storeMembership';
+import Customer from '@/models/customer';
+
+function normalizePriceTypes(rawPriceTypes) {
+  if (!Array.isArray(rawPriceTypes)) return [];
+
+  return rawPriceTypes
+    .map((pt) => ({
+      id: String(pt?.id || '').trim(),
+      name: String(pt?.name || '').trim(),
+      active: pt?.active !== false
+    }))
+    .filter((pt) => pt.id && pt.name);
+}
+
+async function getPriceTypeUsageMap(storeId) {
+  const usage = await Customer.aggregate([
+    { $match: { storeId, isDeleted: false, priceTypeId: { $nin: [null, ''] } } },
+    { $group: { _id: '$priceTypeId', count: { $sum: 1 } } }
+  ]);
+
+  return usage.reduce((acc, row) => {
+    acc[row._id] = row.count;
+    return acc;
+  }, {});
+}
 
 export async function GET(request, { params }) {
   try {
@@ -39,12 +64,17 @@ export async function GET(request, { params }) {
         storeId: store._id,
         slug: slug,
         allowCreditSales: true,
-        allowPriceAdjustment: false
+        allowPriceAdjustment: false,
+        allowPriceTypeSelection: false,
+        priceTypes: [],
+        defaultPriceTypeId: null
       });
       settings = settings.toObject();
     }
 
-    return NextResponse.json({ settings });
+    const priceTypeUsage = await getPriceTypeUsageMap(store._id);
+
+    return NextResponse.json({ settings, priceTypeUsage });
   } catch (error) {
     console.error('Error fetching settings:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -78,25 +108,67 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Only store owners can modify settings' }, { status: 403 });
     }
 
+    const normalizedPriceTypes = normalizePriceTypes(body.priceTypes);
+    const ids = normalizedPriceTypes.map((pt) => pt.id);
+    const uniqueIds = new Set(ids);
+    if (ids.length !== uniqueIds.size) {
+      return NextResponse.json({ error: 'Price type IDs must be unique.' }, { status: 400 });
+    }
+
+    const defaultPriceTypeId = body.defaultPriceTypeId ? String(body.defaultPriceTypeId).trim() : null;
+    if (defaultPriceTypeId) {
+      const defaultType = normalizedPriceTypes.find((pt) => pt.id === defaultPriceTypeId);
+      if (!defaultType) {
+        return NextResponse.json({ error: 'Default price type must exist in price types.' }, { status: 400 });
+      }
+      if (!defaultType.active) {
+        return NextResponse.json({ error: 'Archived price types cannot be selected as default.' }, { status: 400 });
+      }
+    }
+
+    const assignedPriceTypeIds = await Customer.distinct('priceTypeId', {
+      storeId: store._id,
+      isDeleted: false,
+      priceTypeId: { $nin: [null, ''] }
+    });
+    const assignedSet = new Set(assignedPriceTypeIds.map(String));
+
     // Update or create settings
     let settings = await StoreSettings.findOne({ slug });
     
     if (settings) {
+      const existingIds = new Set((settings.priceTypes || []).map((pt) => String(pt.id)));
+      const incomingIds = new Set(normalizedPriceTypes.map((pt) => String(pt.id)));
+      const deletedIds = [...existingIds].filter((id) => !incomingIds.has(id));
+      const deletingAssigned = deletedIds.find((id) => assignedSet.has(id));
+      if (deletingAssigned) {
+        return NextResponse.json({ error: `Cannot delete price type '${deletingAssigned}' because it is assigned to customers.` }, { status: 400 });
+      }
+
       // Update existing settings
-      Object.assign(settings, body);
+      Object.assign(settings, {
+        ...body,
+        priceTypes: normalizedPriceTypes,
+        defaultPriceTypeId
+      });
       await settings.save();
     } else {
       // Create new settings
       settings = await StoreSettings.create({
         storeId: store._id,
         slug: slug,
-        ...body
+        ...body,
+        priceTypes: normalizedPriceTypes,
+        defaultPriceTypeId
       });
     }
+
+    const priceTypeUsage = await getPriceTypeUsageMap(store._id);
 
     return NextResponse.json({ 
       success: true, 
       settings: settings.toObject(),
+      priceTypeUsage,
       message: 'Settings saved successfully' 
     });
   } catch (error) {

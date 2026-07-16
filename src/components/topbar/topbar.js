@@ -42,10 +42,10 @@ const handleLogout = async ()=>{
       {/* Desktop / tablet inline nav */}
       <nav className="hidden md:flex mr-3 text-white justify-between items-center w-1/2 uppercase gap-4">
         <Link href={`/${slug}/pos`}><button className="hover:underline bg-transparent p-0 m-0 border-0">POS</button></Link>
-        <Link href={`/${slug}/dashboard/orders`}><button className="hover:underline bg-transparent p-0 m-0 border-0">Orders</button></Link>
-        <Link href={`/${slug}/dashboard/payments`}><button className="hover:underline bg-transparent p-0 m-0 border-0">Payments</button></Link>
-        <Link href={`/${slug}/dashboard/payments`}><button className="hover:underline bg-transparent p-0 m-0 border-0">Expenses</button></Link>
-        <Link href={`/${slug}/dashboard/payments`}><button className="hover:underline bg-transparent p-0 m-0 border-0">EOD</button></Link>
+        <Link href={`/${slug}/orders`}><button className="hover:underline bg-transparent p-0 m-0 border-0">Orders</button></Link>
+        <Link href={`/${slug}/payments`}><button className="hover:underline bg-transparent p-0 m-0 border-0">Payments</button></Link>
+        {/* <Link href={`/${slug}/expenses`}><button className="hover:underline bg-transparent p-0 m-0 border-0">Expenses</button></Link> */}
+        <Link href={`/${slug}/eod`}><button className="hover:underline bg-transparent p-0 m-0 border-0">EOD</button></Link>
         <Link href={`/${slug}/dashboard`}><button className="hover:underline bg-transparent p-0 m-0 border-0">Admin</button></Link>
         <button onClick={()=>handleLogout()} className="ml-2">Logout</button>
       </nav>
@@ -103,16 +103,16 @@ const handleLogout = async ()=>{
               <Link href={`/${slug}/pos`}><button onClick={() => setMobileOpen(false)} className="bg-transparent p-0 m-0 border-0 text-left w-full">POS</button></Link>
             </li>
             <li>
-              <Link href={`/${slug}/dashboard/orders`}><button onClick={() => setMobileOpen(false)} className="bg-transparent p-0 m-0 border-0 text-left w-full">Orders</button></Link>
+              <Link href={`/${slug}/orders`}><button onClick={() => setMobileOpen(false)} className="bg-transparent p-0 m-0 border-0 text-left w-full">Orders</button></Link>
             </li>
             <li>
-              <Link href={`/${slug}/dashboard/payments`}><button onClick={() => setMobileOpen(false)} className="bg-transparent p-0 m-0 border-0 text-left w-full">Payments</button></Link>
+              <Link href={`/${slug}/payments`}><button onClick={() => setMobileOpen(false)} className="bg-transparent p-0 m-0 border-0 text-left w-full">Payments</button></Link>
             </li>
+            {/* <li>
+              <Link href={`/${slug}/expenses`}><button onClick={() => setMobileOpen(false)} className="bg-transparent p-0 m-0 border-0 text-left w-full">Expenses</button></Link>
+            </li> */}
             <li>
-              <Link href={`/${slug}/dashboard/payments`}><button onClick={() => setMobileOpen(false)} className="bg-transparent p-0 m-0 border-0 text-left w-full">Expenses</button></Link>
-            </li>
-            <li>
-              <Link href={`/${slug}/dashboard/payments`}><button onClick={() => setMobileOpen(false)} className="bg-transparent p-0 m-0 border-0 text-left w-full">EOD</button></Link>
+              <Link href={`/${slug}/eod`}><button onClick={() => setMobileOpen(false)} className="bg-transparent p-0 m-0 border-0 text-left w-full">EOD</button></Link>
             </li>
             
               <li>

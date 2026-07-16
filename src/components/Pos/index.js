@@ -20,8 +20,21 @@ import InvoiceModal from './InvoiceModal';
 import PosPaymentModal from './PosPaymentModal';
 import CreditPaymentModal from './CreditPaymentModal';
 import BarcodeScanner from './BarcodeScanner';
+import { resolveSellingPriceDetails } from '@/lib/pricingService';
 
-const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, allowCreditSales = true, allowPriceAdjustment = false }) => {
+const PosPage = ({
+  slug,
+  menus,
+  orderRcpt,
+  sales,
+  getHotel,
+  pays,
+  customers,
+  pricingSettings = {},
+  allowCreditSales = true,
+  allowPriceAdjustment = false,
+  allowPriceTypeSelection = false,
+}) => {
   const { location, setBusDate, setHotel, setStore, payment, cartValue, user } = useContext(GlobalContext);
   const { cart, order, setCart, setCPayment, setSelectedCustomer, setCreditSale } = useContext(CartContext);
   const [showScanner, setShowScanner] = useState(false);
@@ -35,6 +48,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMode, setPaymentMode] = useState('payment');
   const [showCreditPaymentModal, setShowCreditPaymentModal] = useState(false);
+  const [selectedPriceTypeId, setSelectedPriceTypeId] = useState('');
   
   const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
   const searchParams = useSearchParams();
@@ -50,6 +64,34 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
       menu.name.toLowerCase().includes(searchTerm) || menu.barcode === item
     );
   }, [item, menus]);
+
+  const selectedCustomerData = useMemo(() => {
+    if (!selectedCustomerId) return null;
+    return customers?.find(c => c._id === selectedCustomerId) || null;
+  }, [selectedCustomerId, customers]);
+
+  const availablePriceTypes = useMemo(() => {
+    const all = Array.isArray(pricingSettings?.priceTypes) ? pricingSettings.priceTypes : [];
+    return all.filter((pt) => pt?.active !== false && pt?.id && pt?.name);
+  }, [pricingSettings]);
+
+  const effectivePricingSettings = useMemo(() => ({
+    ...pricingSettings,
+    defaultPriceTypeId: selectedPriceTypeId || pricingSettings?.defaultPriceTypeId || null,
+  }), [pricingSettings, selectedPriceTypeId]);
+
+  const effectiveSelectedCustomer = useMemo(() => {
+    if (!selectedCustomerData) {
+      return selectedPriceTypeId ? { priceTypeId: selectedPriceTypeId } : null;
+    }
+
+    if (!selectedPriceTypeId) return selectedCustomerData;
+    return { ...selectedCustomerData, priceTypeId: selectedPriceTypeId };
+  }, [selectedCustomerData, selectedPriceTypeId]);
+
+  useEffect(() => {
+    setSelectedPriceTypeId('');
+  }, [slug]);
 
   // Barcode scan handler
   const handleBarcodeScan = async (barcode) => {
@@ -72,12 +114,19 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
         return;
       }
       // Add to cart
+      const priceDetails = resolveSellingPriceDetails(found, effectiveSelectedCustomer, effectivePricingSettings);
       const newCartItem = {
         product: found._id,
+        productId: String(found._id),
         name: found.name,
-        price: found.price,
+        productName: found.name,
+        price: priceDetails.unitPrice,
+        unitPrice: priceDetails.unitPrice,
+        priceTypeId: priceDetails.priceTypeId || 'legacy',
         qty: 1,
-        amount: found.price,
+        quantity: 1,
+        amount: priceDetails.unitPrice,
+        total: priceDetails.unitPrice,
         barcode: found.barcode
       };
       const updatedCart = { cartItems: [...cartItems, newCartItem] };
@@ -227,11 +276,6 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
       setLoading(false);
     }
   }, [slug, selectedCustomerId, cart, bDate, setCart, setSelectedCustomer, setCreditSale]);
-
-  const selectedCustomerData = useMemo(() => {
-    if (!selectedCustomerId) return null;
-    return customers?.find(c => c._id === selectedCustomerId) || null;
-  }, [selectedCustomerId, customers]);
 
   const printCreditInvoice = useCallback((data) => {
     const invoiceWindow = window.open('', '_blank');
@@ -591,7 +635,7 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
             {/* ==================== MENU PANEL ==================== */}
             <main className="w-full lg:w-1/2 bg-white flex flex-col">
               {/* Search Bar */}
-              <div className='flex justify-between items-center p-3 border-b bg-slate-200 sticky top-0 z-10 shrink-0'>
+              <div className='p-3 border-b bg-slate-200 sticky top-0 z-10 shrink-0'>
                 <div className="flex items-center border border-gray-400 w-full md:w-3/4 xl:w-2/3 rounded-lg p-2 mx-auto bg-white shadow-sm">
                   <MdSearch className="text-gray-500 text-2xl flex-shrink-0" />
                   <input 
@@ -609,6 +653,26 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
                     aria-label="Open barcode scanner"
                   >Scan</button>
                 </div>
+                {allowPriceTypeSelection && availablePriceTypes.length > 0 && (
+                  <div className="w-full md:w-3/4 xl:w-2/3 mx-auto mt-2">
+                    <label htmlFor="pos-price-type" className="block text-xs font-semibold text-gray-700 mb-1">
+                      Price Type
+                    </label>
+                    <select
+                      id="pos-price-type"
+                      value={selectedPriceTypeId}
+                      onChange={(e) => setSelectedPriceTypeId(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Store default</option>
+                      {availablePriceTypes.map((pt) => (
+                        <option key={pt.id} value={pt.id}>
+                          {pt.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Menu Items Grid */}
@@ -618,7 +682,12 @@ const PosPage = ({ slug, menus, orderRcpt, sales, getHotel, pays, customers, all
                     Select Item
                   </Heading>
                   <ScrollArea type="always" scrollbars="vertical" className="h-full"> 
-                    <CommonListing data={filteredProducts} orderRcpt={orderRcpt} />
+                    <CommonListing
+                      data={filteredProducts}
+                      orderRcpt={orderRcpt}
+                      selectedCustomer={effectiveSelectedCustomer}
+                      pricingSettings={effectivePricingSettings}
+                    />
                   </ScrollArea>
                 </Box> 
               </div>

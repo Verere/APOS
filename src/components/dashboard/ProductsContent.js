@@ -27,6 +27,17 @@ const ProductsContent = ({ products }) => {
     return matchesSearch && matchesFilter
   })
 
+  const getDisplayPrice = (product) => {
+    const prices = product?.prices
+    if (prices && typeof prices === 'object') {
+      const vals = Object.values(prices)
+      if (vals.length > 0 && Number.isFinite(Number(vals[0]))) {
+        return Number(vals[0])
+      }
+    }
+    return Number(product?.price || 0)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -121,7 +132,7 @@ const ProductsContent = ({ products }) => {
                         </div>
                       </td>
                       <td className="py-4 px-6 font-medium">{product.name}</td>
-                      <td className="py-4 px-6">${product.price}</td>
+                      <td className="py-4 px-6">${getDisplayPrice(product)}</td>
                       <td className="py-4 px-6">{product.stock}</td>
                       <td className="py-4 px-6">
                         <span

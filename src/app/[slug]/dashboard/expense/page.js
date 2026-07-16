@@ -1,8 +1,11 @@
 "use client";
 import { useState } from "react";
-
+import { useParams } from "next/navigation";
 
 export default function ExpensePage() {
+  const params = useParams();
+  const slug = params?.slug || "";
+
   const [form, setForm] = useState({
     Description: "",
     amount: "",
@@ -23,11 +26,11 @@ export default function ExpensePage() {
     setSuccess("");
     setError("");
     try {
-      // You may want to add slug/user from context or session
+      const payload = { ...form, slug };
       const res = await fetch("/api/expense", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed to record expense");
       setSuccess("Expense recorded successfully!");

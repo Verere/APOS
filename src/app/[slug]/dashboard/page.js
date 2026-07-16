@@ -134,8 +134,9 @@ const DashBoardPage = async ({ params, searchParams }) => {
   const startOfMonth = new Date(selectedYear, selectedMonthIndex, 1)
   const endOfMonth = new Date(selectedYear, selectedMonthIndex + 1, 0, 23, 59, 59, 999)
   
-  // Query expenses for current month using bDate format
+  // Query expenses for current month using storeId and bDate format
   const monthExpenses = await Expense.find({
+    storeId: store._id,
     slug: slug,
     isCancelled: { $ne: true },
     createdAt: { $gte: startOfMonth, $lte: endOfMonth }
@@ -192,9 +193,9 @@ const DashBoardPage = async ({ params, searchParams }) => {
       }
       
       // Fallback calculation
-      const price = item.price || 0
+      const price = item.unitPrice ?? item.price ?? 0
       const cost = item.cost || 0
-      const quantity = item.qty || 0
+      const quantity = item.quantity ?? item.qty ?? 0
       return itemSum + ((price - cost) * quantity)
     }, 0)
     

@@ -1,16 +1,19 @@
 "use client"
-import { useRouter } from 'next/navigation';
 import { currencyFormat } from './../../../utils/currency';
-import { useContext } from 'react';
-import { CartContext } from '@/context/CartContext';
 import { toast } from 'react-toastify';
+import { resolveSellingPriceDetails } from '@/lib/pricingService';
 
 
-export default function ProductTile({item}){  
-   
-    const router = useRouter()
-    const { } = useContext(CartContext)
+export default function ProductTile({ item, selectedCustomer = null, pricingSettings = {} }){  
     const avail = item.qty
+    let displayPrice = item?.price
+
+    try {
+      const resolved = resolveSellingPriceDetails(item, selectedCustomer, pricingSettings)
+      displayPrice = resolved?.unitPrice
+    } catch (_err) {
+      // Keep legacy display fallback when dynamic prices are not configured.
+    }
 
     const handleAddStock = () => {
       toast.info('Use the stock management page to update product stock.')
@@ -38,7 +41,7 @@ export default function ProductTile({item}){
 
             <div className='flex items-center justify-between'>
                 <p className="text-lg sm:text-xl font-bold text-blue-600">
-                  {currencyFormat(item.price)}
+                  {currencyFormat(displayPrice)}
                 </p>
                 {avail === 0 && (
                   <button 

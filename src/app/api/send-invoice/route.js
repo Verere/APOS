@@ -131,10 +131,10 @@ export async function POST(req) {
               <tbody>
                 ${invoiceData.items?.map(item => `
                   <tr>
-                    <td>${item.name}</td>
-                    <td class="text-right">${currencyFormat(item.price)}</td>
-                    <td class="text-center">${item.qty}</td>
-                    <td class="text-right">${currencyFormat(item.amount)}</td>
+                    <td>${item.productName || item.name}</td>
+                    <td class="text-right">${currencyFormat(item.unitPrice ?? item.price)}</td>
+                    <td class="text-center">${item.quantity ?? item.qty}</td>
+                    <td class="text-right">${currencyFormat(item.total ?? item.amount)}</td>
                   </tr>
                 `).join('')}
               </tbody>

@@ -324,10 +324,10 @@ export default function PosPaymentModal({
                   {cartItems.map((item, index) => (
                     <div key={index} className="px-4 py-2 border-b border-gray-100 last:border-0 hover:bg-gray-50">
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-sm font-medium text-gray-900 flex-1">{item.name || item.item}</span>
-                        <span className="text-xs text-gray-500 whitespace-nowrap">x{item.qty}</span>
+                        <span className="text-sm font-medium text-gray-900 flex-1">{item.productName || item.name || item.item}</span>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">x{item.quantity ?? item.qty}</span>
                         <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
-                          {currencyFormat(item.amount || (item.price * item.qty))}
+                          {currencyFormat(item.total ?? item.amount ?? ((item.unitPrice ?? item.price) * (item.quantity ?? item.qty ?? 0)))}
                         </span>
                       </div>
                     </div>

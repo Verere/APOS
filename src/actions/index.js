@@ -25,6 +25,7 @@ import {fetchCountOrder, fetchLatestStockItem, fetchPaymentByOrder, fetchProduct
  fetchOneOrder
 } from "./fetch";
 import validateCheckout from '@/lib/checkout'
+import { buildOrderItemSnapshots } from '@/lib/orderItemSnapshot'
 import {updateAllPayment, updateOrderAmount, updateItemStock, updateMenuStock, updateCompletedOrderDetails, updateSuspendOrder, updateProduct } from "./update";
 import Pos from './../app/[slug]/pos/page';
 import withTransaction from '@/lib/withTransaction'
@@ -96,21 +97,40 @@ console.log('sub',slug, sub, startDate, endDate)
 };
 
 export const addProduct = async (prvState, formData) => {
-  const {up, id, name, barcode, cost, price, profit, qty, reOrder, expiration, category, totalValue, slug, path } =
+  const {up, id, name, barcode, cost, price, prices, profit, qty, reOrder, expiration, category, totalValue, slug, path } =
     Object.fromEntries(formData);
+
+    let parsedPrices = {}
+    try {
+      const incomingPrices = prices ? JSON.parse(prices) : {}
+      if (incomingPrices && typeof incomingPrices === 'object' && !Array.isArray(incomingPrices)) {
+        Object.entries(incomingPrices).forEach(([key, val]) => {
+          const parsed = Number(val)
+          if (key && Number.isFinite(parsed)) parsedPrices[key] = parsed
+        })
+      }
+    } catch (e) {
+      parsedPrices = {}
+    }
+
+    const fallbackPriceFromMap = Object.values(parsedPrices)[0]
+    const legacyPrice = Number(price)
+    const normalizedLegacyPrice = Number.isFinite(legacyPrice)
+      ? legacyPrice
+      : (Number.isFinite(fallbackPriceFromMap) ? fallbackPriceFromMap : undefined)
   
     try {
       connectToDB();
       if(up==="true"){
-await updateProduct(id,name, price, qty, category, barcode, totalValue, cost, profit, reOrder, expiration)
+await updateProduct(id,name, normalizedLegacyPrice, qty, category, barcode, totalValue, cost, profit, reOrder, expiration, parsedPrices)
 return{success:true}
       }else{
 
     // Calculate profit if not provided
-    const calculatedProfit = profit || (parseFloat(price) - parseFloat(cost));
+    const calculatedProfit = profit || (parseFloat(normalizedLegacyPrice) - parseFloat(cost));
 
     const newProduct = new Product({
-      name, barcode, price,  qty, category,totalValue, cost, profit: calculatedProfit, reOrder, expiration, slug, 
+      name, barcode, price: normalizedLegacyPrice, prices: parsedPrices, qty, category,totalValue, cost, profit: calculatedProfit, reOrder, expiration, slug, 
     
     });
 
@@ -446,7 +466,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         const updatedProducts = [];
         const ids = items.map(i => i.product);
 
-        // fetch fresh product docs (for price and previous stock)
+        // fetch fresh product docs (for stock and cost)
         const prods = await Product.find({ _id: { $in: ids } }).session(session);
         const prodMap = new Map(prods.map(p => [String(p._id), p]));
 
@@ -483,11 +503,10 @@ export const addPaymentWithOrder = async (prvState, formData) => {
 
           updatedProducts.push({ 
             id: p._id, 
+            name: p.name,
             qty: qtyToTake, 
-            price: updated.price, 
             cost: updated.cost || 0,
-            newQty: updated.qty,
-            profit: (updated.price - (updated.cost || 0)) * qtyToTake
+            newQty: updated.qty
           });
         }
 
@@ -497,34 +516,15 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         const newOrder = new Order({ slug, orderNum, soldBy, bDate });
         await newOrder.save({ session });
 
-        // compute total order amount and profit using authoritative DB prices
-        let totalOrderAmount = 0;
-        let totalOrderProfit = 0;
-        const itemsWithCostProfit = [];
-        
-        for (const it of items) {
-          const upd = updatedProducts.find(u => String(u.id) === String(it.product));
-          // Always use the cart price for profit and amount calculations
-          const cartPrice = Number(it.price) || 0;
-          const price = cartPrice;
-          const cost = (upd && upd.cost) || 0;
-          const qty = Number(it.qty || 0);
-          const amount = Number(qty * price) || 0;
-          const profit = Number((price - cost) * qty) || 0;
-          totalOrderAmount += amount;
-          totalOrderProfit += profit;
-          itemsWithCostProfit.push({
-            ...it,
-            price,
-            cost,
-            amount,
-            profit
-          });
-        }
+        const {
+          orderItems: itemsWithCostProfit,
+          totalAmount: totalOrderAmount,
+          totalProfit: totalOrderProfit,
+        } = buildOrderItemSnapshots(items, updatedProducts);
 
         // payment amount sanity
         const paid = Number(amountPaid || 0);
-        if (paid > totalOrderAmount) throw Object.assign(new Error('Payment amount exceeds order total based on current prices'), { code: 'BAD_PAYMENT' });
+        if (paid > totalOrderAmount) throw Object.assign(new Error('Payment amount exceeds order total based on checkout snapshot prices'), { code: 'BAD_PAYMENT' });
 
         // finalize order with items, amount, and profit
         newOrder.items = itemsWithCostProfit;
@@ -579,10 +579,10 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           orderNum: orderNum,
           receiptNumber: orderNum, // Use orderNum as receipt number
           paymentMethods: paymentMethodsArray,
-          orderAmount: Number(orderAmount) || totalOrderAmount, 
+          orderAmount: totalOrderAmount,
           amountPaid: complimentarySale ? 0 : Number(amountPaid || 0),
           balance: complimentarySale ? 0 : 0,
-          change: complimentarySale ? 0 : Math.max(0, Number(amountPaid || 0) - (Number(orderAmount) || totalOrderAmount)),
+          change: complimentarySale ? 0 : Math.max(0, Number(amountPaid || 0) - totalOrderAmount),
           status: 'COMPLETED',
           paymentType: complimentarySale ? 'COMPLIMENTARY' : 'FULL',
           recordedBy: soldBy,

@@ -30,9 +30,62 @@ import { generateEAN13FromUUID } from "@/lib/genBarcode";
 import InventoryMovementTable from "../InventoryMovementTable";
 import StockAdjustmentForm from "../StockAdjustmentForm";
 
+function getMappedPrice(prices, priceTypeId) {
+  if (!prices || !priceTypeId) return undefined;
+
+  if (typeof prices?.get === 'function') {
+    const v = Number(prices.get(priceTypeId));
+    return Number.isFinite(v) ? v : undefined;
+  }
+
+  if (typeof prices === 'object') {
+    const v = Number(prices[priceTypeId]);
+    return Number.isFinite(v) ? v : undefined;
+  }
+
+  return undefined;
+}
+
+function hasAnyMappedPrices(prices) {
+  if (!prices) return false;
+  if (typeof prices?.size === 'number') return prices.size > 0;
+  if (typeof prices === 'object') return Object.keys(prices).length > 0;
+  return false;
+}
+
+function getAnyMappedPrice(prices) {
+  if (!prices) return undefined;
+
+  if (typeof prices?.values === 'function') {
+    const first = prices.values().next()?.value;
+    const parsed = Number(first);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  if (typeof prices === 'object') {
+    const first = Object.values(prices)[0];
+    const parsed = Number(first);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+}
+
+function getDefaultSellingPrice(product, defaultPriceTypeId) {
+  const defaultMapped = getMappedPrice(product?.prices, defaultPriceTypeId);
+  if (defaultMapped !== undefined) return defaultMapped;
+
+  const legacyPrice = Number(product?.price);
+  if (Number.isFinite(legacyPrice)) return legacyPrice;
+
+  const anyMapped = getAnyMappedPrice(product?.prices);
+  if (anyMapped !== undefined) return anyMapped;
+
+  return 0;
+}
 
 
-const ProductTable=({products, slug, userRole})=>{
+const ProductTable=({products, slug, userRole, pricingSettings = {}})=>{
  
     const { replace } = useRouter();
     const pathname = usePathname()
@@ -85,6 +138,23 @@ await updateProd(id, path)
           );
        }, [code, products]);
 
+      const priceTypes = useMemo(() => {
+       const all = pricingSettings?.priceTypes || [];
+       return all.filter((pt) => pt?.active !== false);
+      }, [pricingSettings]);
+
+      const defaultPriceTypeId = pricingSettings?.defaultPriceTypeId || null;
+      const defaultPriceTypeName = useMemo(() => {
+        if (!defaultPriceTypeId) return 'Not set';
+        const found = priceTypes.find((pt) => pt.id === defaultPriceTypeId);
+        return found?.name || defaultPriceTypeId;
+      }, [defaultPriceTypeId, priceTypes]);
+
+      const showLegacyPriceColumn = useMemo(() => {
+       if (!Array.isArray(filteredProducts) || filteredProducts.length === 0) return false;
+       return filteredProducts.some((p) => !hasAnyMappedPrices(p?.prices));
+      }, [filteredProducts]);
+
    
 
     const handleEdit = useCallback(async(id, price, qty, path)=>{
@@ -132,13 +202,15 @@ for (const obj of tempOrders) {
    counter++;
 }
 await   setQty(counter)
-        let allPayments=[]
-            allPayments =  products?.map((i) => i.totalValue)
-            const amtTotal = allPayments.reduce((acc, item) => acc + (item), 0)
-          await setTotal(amtTotal)   
+        const amtTotal = (products || []).reduce((acc, item) => {
+          const productQty = Number(item?.qty) || 0
+          const unitSellingPrice = getDefaultSellingPrice(item, defaultPriceTypeId)
+          return acc + (productQty * unitSellingPrice)
+        }, 0)
+        await setTotal(amtTotal)
   }
   getTotal()
-},[products])
+},[products, defaultPriceTypeId])
 
 
 
@@ -163,6 +235,7 @@ return(
            <div className="flex-1 min-w-0">
              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Total Stock Value</p>
              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-900 truncate">{currencyFormat(total)}</p>
+             <p className="text-[11px] sm:text-xs text-blue-700 mt-1">total stock value is calculated with default selling price</p>
            </div>
          </div>
        </div>
@@ -220,19 +293,27 @@ return(
  </div>
 
  {/* Table Section */}
+        <div className="mb-3 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900 font-medium">
+          Selected default price type: <span className="font-bold">{defaultPriceTypeName}</span>
+        </div>
         <div className="w-full overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
         <Table.Root layout="auto" variant="surface">
     <Table.Header>
       <Table.Row className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
         <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide py-4">Product</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Category</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Expiration</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Cost</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Price</Table.ColumnHeaderCell>
+        {priceTypes.map((pt) => (
+          <Table.ColumnHeaderCell key={`price-header-${pt.id}`} className="font-bold text-gray-700 text-xs uppercase tracking-wide">
+            {pt.name}
+          </Table.ColumnHeaderCell>
+        ))}
+        {showLegacyPriceColumn && (
+          <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Selling Price (Legacy)</Table.ColumnHeaderCell>
+        )}
         <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Profit</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Qty</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Stock Value</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Re-Order</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Stock</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Update</Table.ColumnHeaderCell>
         <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Delete</Table.ColumnHeaderCell>
@@ -249,9 +330,20 @@ return(
             {patient?.category || ''}
           </span>
         </Table.Cell>
-        <Table.Cell className="text-gray-600 text-sm">{patient?.expiration || ''}</Table.Cell>
         <Table.Cell className="text-gray-700 font-medium">{currencyFormat(typeof patient?.cost === 'number' && !isNaN(patient.cost) ? patient.cost : 0)}</Table.Cell>
-        <Table.Cell className="text-blue-600 font-semibold">{currencyFormat(typeof patient?.price === 'number' && !isNaN(patient.price) ? patient.price : 0)}</Table.Cell>
+        {priceTypes.map((pt) => {
+          const mapped = getMappedPrice(patient?.prices, pt.id)
+          return (
+            <Table.Cell key={`price-${patient?._id}-${pt.id}`} className="text-blue-600 font-semibold">
+              {mapped !== undefined ? currencyFormat(mapped) : '-'}
+            </Table.Cell>
+          )
+        })}
+        {showLegacyPriceColumn && (
+          <Table.Cell className="text-blue-600 font-semibold">
+            {!hasAnyMappedPrices(patient?.prices) ? currencyFormat(typeof patient?.price === 'number' && !isNaN(patient.price) ? patient.price : 0) : '-'}
+          </Table.Cell>
+        )}
         <Table.Cell className="text-green-600 font-semibold">{currencyFormat(typeof patient?.profit === 'number' && !isNaN(patient.profit) ? patient.profit : 0)}</Table.Cell>
         <Table.Cell>
           <Dialog>
@@ -283,13 +375,9 @@ return(
           </Dialog>
         </Table.Cell>
         <Table.Cell className="font-bold text-gray-900">{
-          currencyFormat(
-            typeof patient?.totalValue === 'number' && !isNaN(patient.totalValue)
-              ? patient.totalValue
-              : (Number(patient.qty) || 0) * (Number(patient.price) || 0)
-          )
+          currencyFormat((Number(patient?.qty) || 0) * getDefaultSellingPrice(patient, defaultPriceTypeId))
         }</Table.Cell>
-        <Table.Cell>
+        {/* <Table.Cell>
           <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
             patient?.qty <= patient?.reOrder 
               ? 'bg-red-100 text-red-700' 
@@ -297,7 +385,7 @@ return(
           }`}>
             {patient?.reOrder}
           </span>
-        </Table.Cell>
+        </Table.Cell> */}
         <Table.Cell>
           <Dialog open={showStockAdjustment && productToAdjust?._id === patient._id} onOpenChange={(open) => {
             if (!open) {

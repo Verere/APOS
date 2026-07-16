@@ -29,4 +29,4 @@ slug:{type:String},
    
 })
 
-export default mongoose.models.expense || mongoose.model('expense', ExpenseSchema) 
+export default mongoose.models.expense || mongoose.model('expense', ExpenseSchema)

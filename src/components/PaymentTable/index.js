@@ -218,7 +218,7 @@ const PaymentTable=({payments, allPayment, slug})=>{
     };
 
 return( 
-  <div className="p-6 -mt-[56px]">
+  <div className="p-6 ">
     {/* Header Section with Filters */}
     <div className="mb-6 bg-white rounded-lg shadow-sm p-4 border border-gray-200">
       <div className="flex flex-col gap-4 mb-4">
