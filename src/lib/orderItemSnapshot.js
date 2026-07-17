@@ -3,7 +3,8 @@ function toNumber(value, fallback = NaN) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-export function buildOrderItemSnapshots(cartItems = [], updatedProducts = []) {
+export function buildOrderItemSnapshots(cartItems = [], updatedProducts = [], options = {}) {
+  const isComplimentary = options?.complimentary === true;
   const updatedMap = new Map((updatedProducts || []).map((p) => [String(p.id), p]));
 
   let totalAmount = 0;
@@ -20,19 +21,19 @@ export function buildOrderItemSnapshots(cartItems = [], updatedProducts = []) {
       throw new Error(`cartItems[${index}]: quantity must be a positive integer`);
     }
 
-    const unitPrice = toNumber(item.unitPrice ?? item.price, NaN);
+    const unitPrice = isComplimentary ? 0 : toNumber(item.unitPrice ?? item.price, NaN);
     if (!Number.isFinite(unitPrice) || unitPrice < 0) {
       throw new Error(`cartItems[${index}]: unitPrice must be a valid non-negative number`);
     }
 
-    const resolvedTotal = toNumber(item.total ?? item.amount, quantity * unitPrice);
+    const resolvedTotal = isComplimentary ? 0 : toNumber(item.total ?? item.amount, quantity * unitPrice);
     if (!Number.isFinite(resolvedTotal) || resolvedTotal < 0) {
       throw new Error(`cartItems[${index}]: total must be a valid non-negative number`);
     }
 
     const productMeta = updatedMap.get(productId);
     const cost = toNumber(productMeta?.cost, 0);
-    const profit = Number((unitPrice - cost) * quantity) || 0;
+    const profit = isComplimentary ? 0 : (Number((unitPrice - cost) * quantity) || 0);
 
     const priceTypeId = String(item.priceTypeId || 'legacy').trim() || 'legacy';
     const productName = String(item.productName || item.name || productMeta?.name || '').trim();

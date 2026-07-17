@@ -1,10 +1,4 @@
-
- import { addMenuStock, } from "@/actions";
- import {  fetchMenuStockSearch,  fetchLocation,fetchMenuGroup, fetchMenu, fetchMenuSearch, fetchMenuStockItem} from "@/actions/fetch";
- import {  deleteMenuCategory , } from "@/actions/delete";
-
 import AddMenuStockPage from "@/components/AddMenuStockPage";
-import { StockTable } from "@/components/StockTable";
 
 const  StockPage =async ({ params, searchParams}) => {
 
@@ -54,7 +48,7 @@ const  StockPage =async ({ params, searchParams}) => {
     <div className="min-h-screen w-full">
       
     {/* <StockTable menustock={menustock}   slug={slug}/>  */}
-    <AddMenuStockPage addMenuStock={addMenuStock}   slug={slug} /> 
+    <AddMenuStockPage slug={slug} /> 
 
     </div>
   );

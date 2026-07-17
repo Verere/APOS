@@ -6,10 +6,14 @@ import Subscription from "@/models/subscription"
 import Store from '@/models/store'
 import Menu from "@/models/menu"
 import payments from "@/models/payments"
-import MenuStock from "@/models/menuStock"
 import Group from "@/models/group"
 import Product from "@/models/product"
+import Customer from '@/models/customer'
+import Credit from '@/models/credit'
+import Complimentary from '@/models/complimentary'
 // Stock model removed; historical stock movements are handled via InventoryTransaction
+import { applyInventoryChange } from '@/lib/inventoryService'
+import withTransaction from '@/lib/withTransaction'
 
 import { revalidatePath } from "next/cache";
 import { signIn } from "@/auth";
@@ -24,29 +28,29 @@ export async function updateItemStock(id, qty, totalValue, path) {
     await connectToDB();
   
     const prev = await Product.findById(id).lean();
+    if (!prev) {
+      throw new Error('Product not found')
+    }
+
     const prevQty = prev ? (prev.qty || 0) : 0;
 
-    await Product.findOneAndUpdate(
-      {
-        _id: id,
-      },
-      {
-       qty,
-       totalValue
+    const nextQty = Number(qty || 0)
+    const change = nextQty - prevQty
 
-      },
-      { new: true }
-    );
-
-    // record stock movement in Stock collection
-    try{
-      const change = qty - prevQty;
-      if(change !== 0){
-        const type = change < 0 ? 'out' : 'in';
-        await Stock.addStockMovement({ product: id, change: Math.abs(change), type, reference: null, notes: `sync from updateItemStock`, location: undefined });
-      }
-    }catch(err){
-      console.error('Failed recording stock movement', err)
+    if (change !== 0) {
+      await applyInventoryChange({
+        productId: id,
+        slug: prev.slug,
+        quantityChange: change,
+        type: 'ADJUSTMENT',
+        notes: 'sync from updateItemStock',
+      })
+    } else {
+      await Product.findOneAndUpdate(
+        { _id: id },
+        { totalValue },
+        { new: true }
+      )
     }
 
     revalidatePath(path);
@@ -86,20 +90,111 @@ export async function updateSuspendOrder(id) {
   
   }
 //update order canceled
-export async function updateCancelOrder(id) {
+export async function updateCancelOrder(id, cancellationReason = '', cancelledBy = '') {
     await connectToDB();
-   
-    await Order.findOneAndUpdate(
-      {
-        _id: id,
-      },
-      {
-        status:"Cancelled",
-       isCancelled: true
-      },
-      { new: true }
-    );
-  
+
+    try {
+      const result = await withTransaction(async (session) => {
+        const order = await Order.findById(id).session(session)
+        if (!order) {
+          throw new Error('Order not found')
+        }
+
+        if (order.isCancelled) {
+          return { success: true, message: 'Order already cancelled', orderId: String(order._id) }
+        }
+
+        const reasonText = String(cancellationReason || '').trim()
+        if (!reasonText) {
+          throw new Error('Cancellation reason is required')
+        }
+        const cancelledByText = String(cancelledBy || '').trim() || 'system'
+
+        // Reverse stock movement by returning sold quantities back into inventory.
+        for (const item of order.items || []) {
+          const productId = item?.productId || item?.product
+          const quantity = Number(item?.quantity ?? item?.qty ?? 0)
+
+          if (!productId || !Number.isFinite(quantity) || quantity <= 0) continue
+
+          await applyInventoryChange({
+            productId,
+            slug: order.slug,
+            quantityChange: quantity,
+            type: 'RETURN',
+            notes: `Order cancellation restock for ${order.orderNum}`,
+            orderId: order._id,
+            session,
+          })
+        }
+
+        await payments.updateMany(
+          { orderId: order._id },
+          {
+            $set: {
+              status: 'CANCELLED',
+              isCancelled: true,
+              refundReason: reasonText,
+              notes: `Order cancelled: ${reasonText}`,
+              updatedBy: cancelledByText,
+              updatedAt: new Date(),
+            },
+          },
+          { session }
+        )
+
+        const credit = await Credit.findOne({ orderId: order._id, isCancelled: { $ne: true } }).session(session)
+        if (credit) {
+          const outstandingCredit = Math.max(0, Number(credit.amount || 0) - Number(credit.amountPaid || 0))
+
+          credit.isCancelled = true
+          credit.updatedBy = cancelledByText
+          credit.updatedAt = new Date()
+          await credit.save({ session })
+
+          if (credit.customerId) {
+            const customer = await Customer.findById(credit.customerId).session(session)
+            if (customer) {
+              customer.outstandingBalance = Math.max(0, Number(customer.outstandingBalance || 0) - outstandingCredit)
+              customer.totalPurchases = Math.max(0, Number(customer.totalPurchases || 0) - 1)
+              customer.totalSpent = Math.max(0, Number(customer.totalSpent || 0) - Number(order.amount || 0))
+              await customer.save({ session })
+            }
+          }
+        }
+
+        if (order.transactionType === 'COMPLIMENTARY') {
+          await Complimentary.updateMany(
+            { orderNum: order.orderNum, isCancelled: { $ne: true } },
+            {
+              $set: {
+                isCancelled: true,
+                updatedBy: cancelledByText,
+                updatedAt: new Date(),
+              },
+            },
+            { session }
+          )
+        }
+
+        order.status = 'Cancelled'
+        order.isCancelled = true
+        order.isCompleted = false
+        order.cancellationReason = reasonText
+        order.cancelledBy = cancelledByText
+        order.cancelledAt = new Date()
+        order.updatedBy = cancelledByText
+        order.updatedAt = new Date()
+        await order.save({ session })
+
+        return { success: true, message: 'Order cancelled successfully', orderId: String(order._id) }
+      })
+
+      return result
+    } catch (error) {
+      console.error('updateCancelOrder error:', error)
+      return { error: error?.message || 'Failed to cancel order' }
+    }
   }
 //update order completed
 export async function updateCompletedOrder(id) {
@@ -139,20 +234,8 @@ export async function updateCompletedOrderDetails(id, amountPaid, bal, items, or
   }
 //update order completed
 export async function updateMenuStock(idd, qtyy, balanceStock,  ) {
-  await connectToDB();
-   
-    await MenuStock.findOneAndUpdate(
-      {
-        _id: idd,
-      },
-      {
-   
-   qty: qtyy, 
-   balanceStock, 
-      },
-      { new: true }
-    );
-  
+  // Deprecated: legacy MenuStock writes are disabled.
+  return { success: true, deprecated: true };
   }
 //update order completed
 export async function updateOrderAmount(idd,  amountTotal ) {

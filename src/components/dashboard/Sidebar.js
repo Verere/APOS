@@ -66,6 +66,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
       ]
     },
     { icon: ShoppingCart, label: 'Sales', path: `/${slug}/dashboard/orders` },
+    { icon: FileText, label: 'Inventory Report', path: `/${slug}/dashboard/inventory-report` },
     { icon: CreditCard, label: 'Payments', path: `/${slug}/dashboard/payments` },
     { icon: UserCheck, label: 'Who Owe Me', path: `/${slug}/dashboard/credits` },
       {

@@ -36,6 +36,9 @@ export default function PosPaymentModal({
   const [completedOrder, setCompletedOrder] = useState(null)
   const [paymentsData, setPaymentsData] = useState([])
   const [orderItems, setOrderItems] = useState([])
+  const [approvedBy, setApprovedBy] = useState('')
+  const [complimentaryReason, setComplimentaryReason] = useState('')
+  const [complimentaryRemarks, setComplimentaryRemarks] = useState('')
   const printRef = useRef(null)
   const successProcessedRef = useRef(false)
   
@@ -85,6 +88,9 @@ export default function PosPaymentModal({
       OTHER: 0,
       COMPLIMENTARY: 0
     })
+    setApprovedBy('')
+    setComplimentaryReason('')
+    setComplimentaryRemarks('')
   }, [isOpen, isComplimentary, cartValue])
 
   // Handle form state updates
@@ -161,6 +167,11 @@ export default function PosPaymentModal({
 
   const validateBeforeSubmit = useCallback((e) => {
     if (isComplimentary) {
+      if (!approvedBy.trim() || !complimentaryReason.trim()) {
+        e.preventDefault()
+        toast.error('approvedBy and reason are required for complimentary sales')
+        return false
+      }
       return true
     }
 
@@ -446,6 +457,41 @@ export default function PosPaymentModal({
                   </>
                 )}
 
+                {isComplimentary && (
+                  <div className="space-y-3 bg-violet-50 border border-violet-200 rounded-xl p-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Approved By</label>
+                      <input
+                        type="text"
+                        value={approvedBy}
+                        onChange={(e) => setApprovedBy(e.target.value)}
+                        placeholder="Supervisor / manager name"
+                        className="w-full px-4 py-3 border-2 border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Reason</label>
+                      <input
+                        type="text"
+                        value={complimentaryReason}
+                        onChange={(e) => setComplimentaryReason(e.target.value)}
+                        placeholder="Why is this complimentary?"
+                        className="w-full px-4 py-3 border-2 border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Remarks</label>
+                      <textarea
+                        value={complimentaryRemarks}
+                        onChange={(e) => setComplimentaryRemarks(e.target.value)}
+                        placeholder="Optional internal notes"
+                        rows={3}
+                        className="w-full px-4 py-3 border-2 border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Error/Warning Messages */}
                 {isOverpayment && (
                   <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -487,6 +533,10 @@ export default function PosPaymentModal({
                 <input type="hidden" name="customerId" value={customer?._id || ''} />
                 <input type="hidden" name="customerName" value={customer?.name || ''} />
                 <input type="hidden" name="isComplimentary" value={isComplimentary ? 'true' : 'false'} />
+                <input type="hidden" name="transactionType" value={isComplimentary ? 'COMPLIMENTARY' : 'STANDARD'} />
+                <input type="hidden" name="approvedBy" value={approvedBy} />
+                <input type="hidden" name="reason" value={complimentaryReason} />
+                <input type="hidden" name="remarks" value={complimentaryRemarks} />
 
                 {/* Submit Button */}
                 <button

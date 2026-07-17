@@ -37,7 +37,7 @@ export async function GET(req) {
       return new Response(JSON.stringify({ error: 'storeId or valid store slug is required to fetch expenses.' }), { status: 400 });
     }
 
-    const query = { storeId };
+    const query = { storeId, isCancelled: false };
 
     if (slug) {
       query.slug = slug;

@@ -138,7 +138,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
   const monthExpenses = await Expense.find({
     storeId: store._id,
     slug: slug,
-    isCancelled: { $ne: true },
+    isCancelled: false,
     createdAt: { $gte: startOfMonth, $lte: endOfMonth }
   }).lean()
   

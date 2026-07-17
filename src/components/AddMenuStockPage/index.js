@@ -1,162 +1,137 @@
 "use client"
-import { fetchLocation, fetchMenuItem, fetchMenuSearch, fetchMenuStockItem } from "@/actions/fetch";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useContext, useEffect, useState, useActionState } from "react";
+import { fetchProductById } from "@/actions/fetch";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useFormState } from 'react-dom';
-import { GlobalContext } from "@/context";
-import { CartContext } from '@/context/CartContext'
 
-
- const AddMenuStockPage = ({addMenuStock,  slug,  }) => {
+const AddMenuStockPage = ({ slug }) => {
   const searchParams = useSearchParams();
-  const { replace } = useRouter();
   const pathname = usePathname();
- const [values1, setValues1] = useState("")
- const [menuId, setMenuId]= useState("")
- const [menu, setMenu]= useState("")
- const [uom, setUom]= useState("")
- const [cost, setCost]= useState(0)
- const [totalValue, setTotalValue]= useState(0)
- const [reOrder, setReOrder]= useState(0)
- const [stockBal, setStockBal] = useState(0)
- const [prevStock, setPrevStock] = useState(0)
- const [qty, setQty] = useState(0)
- const [currentStock, setCurrentStock] = useState(0)
+  const [action, setAction] = useState("")
+  const [productId, setProductId] = useState("")
+  const [productName, setProductName] = useState("")
+  const [cost, setCost] = useState(0)
+  const [stockBal, setStockBal] = useState(0)
+  const [prevStock, setPrevStock] = useState(0)
+  const [qty, setQty] = useState(0)
+  const [loading, setLoading] = useState(false)
 
- const [state, formAction, isPending] = useActionState(addMenuStock, {});
+  useEffect(() => {
+    const loadProduct = async () => {
+      const id = searchParams.get('id')
+      if (!id) return
 
-//  const user = JSON.parse(localStorage.getItem('location'))
-//  if(!user)replace("/login")
-
-
- useEffect(()=>{
-  const getProd = async ()=>{
-    const params = new URLSearchParams(searchParams)
-    const id = params.get('id')
-      // setTotal(prod[0]?.totalValue)
-
-     if(id){
       const prod = await fetchProductById(id)
-      console.log(prod)
-      // setName(prod[0]?.name)
-      // setPrice(prod[0]?.price)
-      // setCode(prod[0]?.barcode)
-      // setUp(true)
-      // setId(id)
-      // setQty(prod[0]?.qty)
-      // if(prod[0]?.category)setCategory(prod[0]?.category)
-     }
-}
-getProd()
-},[searchParams])
+      const product = prod?.[0]
+      if (!product) return
 
- useEffect(()=>{
-
-const setItems= async()=>{
-   const men = searchParams.get('menu')
-   const menuStock = searchParams.get('Stock')
-   if(men){
-    const menuItem = await fetchMenuItem(men)
-    await setMenuId(menuItem?._id)
-    await setMenu(menuItem.menu)
-    await     setCost(menuItem?.price )
-    await  setUom(menuItem?.uom )
-   }
-   if(menuStock){
-    const menuItem = await fetchMenuStockItem(menuStock)
-    await setMenuId(menuItem?.menuId)
-    await setMenu(menuItem.menu)
-    await  setUom(menuItem?.uom )
-   await setPrevStock(menuItem?.balanceStock )
-   await     setCost(menuItem?.price )
-   await      setReOrder(menuItem?.reOrder)
-   }
-   
-
-}
-setItems()
-},[searchParams])
-
-  // currentStock is provided by server responses (prevStock) --- use prevStock
-  useEffect(()=>{
-    if(menuId){
-      setCurrentStock(prevStock || 0)
+      setProductId(product._id)
+      setProductName(product.name || '')
+      setCost(Number(product.price) || 0)
+      setPrevStock(Number(product.qty) || 0)
+      setStockBal(Number(product.qty) || 0)
     }
-  },[menuId, prevStock])
 
+    loadProduct()
+  }, [searchParams])
 
+  const handleStockBal = async (value) => {
+    const numericQty = Number(value || 0)
+    setQty(numericQty)
 
+    if (!action) {
+      setStockBal(prevStock)
+      return
+    }
 
-   const handleStockBal= async(e)=>{
-    await setQty(e)
-    if(values1=="addStock"){
-    const stock= parseInt(prevStock)  + parseInt(e)
-   await  setStockBal(stock)
-    const tt= stock*cost
-    setTotalValue(tt)
-}else if(values1=="writeOff"){
-    const stock= parseInt(prevStock)  - parseInt(e)
-    setStockBal(stock)
-    const tt= stock*cost
-    setTotalValue(tt)
-    if(stock < 0) toast.warn("bal stock cannot be less than zero!");
-}else if(values1=="return"){
-    const stock= parseInt(prevStock)  - parseInt(e)
-    setStockBal(stock)
-    const tt= stock*cost
-    setTotalValue(tt)
-    if(stock < 0) toast.warn("bal stock cannot be less than zero!");
-}else { toast.warn("Please choose an Action");}
-   }
+    const delta = action === 'writeOff' ? -numericQty : numericQty
+    const nextStock = Number(prevStock) + delta
+    setStockBal(nextStock)
 
-   useEffect(()=>{
-    const getState=()=>{
+    if (nextStock < 0) {
+      toast.warn("bal stock cannot be less than zero!")
+    }
+  }
 
-  if(state.error){
-   toast.error("Something went wrong")
- }
-  if(state.success){
-   toast.success("Stock added Successfully!")
- }
-}
-getState()
-   },[state])
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    const quantity = Number(qty || 0)
+    if (!productId) {
+      toast.error('Missing product selection')
+      return
+    }
+    if (!action) {
+      toast.error('Please choose an action')
+      return
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      toast.error('Quantity must be greater than zero')
+      return
+    }
+
+    const mapping = {
+      addStock: { type: 'RESTOCK', signedQty: quantity },
+      return: { type: 'RETURN', signedQty: quantity },
+      writeOff: { type: 'DAMAGED', signedQty: -quantity },
+    }
+
+    const tx = mapping[action]
+    if (!tx) {
+      toast.error('Unsupported action')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await fetch('/api/inventory/adjust', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId,
+          slug,
+          type: tx.type,
+          quantity: tx.signedQty,
+          notes: `${action} via dashboard stock page`,
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to update stock')
+      }
+
+      toast.success('Stock updated successfully')
+      setPrevStock(Number(data?.product?.qty) || 0)
+      setStockBal(Number(data?.product?.qty) || 0)
+      setQty(0)
+    } catch (err) {
+      toast.error(err?.message || 'Failed to update stock')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <>
-
-      <form action={formAction}   className="flex flex-col justify-between  w-full mt-0 mr-0 ml-0 ">
+      <form onSubmit={handleSubmit} className="flex flex-col justify-between w-full mt-0 mr-0 ml-0 ">
       <div className="mb-2 px-2">
-        <div className="text-sm font-medium">Product: <span className="font-bold">{menu || '—'}</span></div>
-        <div className="text-sm">Current stock: <span className="font-semibold">{currentStock ?? prevStock}</span></div>
+        <div className="text-sm font-medium">Product: <span className="font-bold">{productName || '—'}</span></div>
+        <div className="text-sm">Current stock: <span className="font-semibold">{prevStock}</span></div>
       </div>
-      <input type="text" placeholder="Enter Product"  value={menu}  onChange={async (e) => {
-          await setMenu(e.target.value)
-        }} name="menu" className="border w-full mx-2 border-gray-400 p-2 mb-2" required />
+      <input type="text" placeholder="Product" value={productName} readOnly className="border w-full mx-2 border-gray-400 p-2 mb-2 bg-gray-100" required />
 
 
                             <div className="flex flex-wrap gap-2 mt-2 p-2 justify-between">
-      <input type="text"  name="uom" placeholder="Enter UOM"
-      value={uom}  onChange={async (e) => {
-          await setUom(e.target.value)
-        }}
-        className="border  mx-2 border-gray-400 p-2" />
-
-
       <div>
-                            <label htmlFor="reOrder">ReOrder</label>
-
-      <input type="number" value={reOrder}
-      onChange={async (e) => {
-          await setReOrder(e.target.value)
-        }}
-        name="reOrder" className="border w-20 mx-2 border-gray-400 p-2" required />
+        <label htmlFor="path">Path</label>
+        <input type="text" value={pathname} readOnly className="border w-44 mx-2 border-gray-400 p-2 bg-gray-100" />
       </div>
 
 
 
 
-      <select name="action" id="cat"  value={values1} onChange={async(e)=>await setValues1(e.target.value)}>
+        <select name="action" id="cat" value={action} onChange={async(e)=>await setAction(e.target.value)}>
           <option value="">Action</option>
           <option value="addStock">Add Stock</option>
           <option value="writeOff">Write Off</option>
@@ -170,7 +145,7 @@ getState()
       </div>
       <div>
                             <label htmlFor="qty">Qty Added</label>
-      <input type="number"  value={qty} name="qty" onChange={async(e)=> await handleStockBal(e.target.value)} className="border w-20 mx-2 border-gray-400 p-2" required />
+      <input type="number" value={qty} name="qty" onChange={async(e)=> await handleStockBal(e.target.value)} className="border w-20 mx-2 border-gray-400 p-2" required />
 
       </div>
 
@@ -182,31 +157,23 @@ getState()
       <div>
                             <label htmlFor="price">Price/Unit</label>
 
-      <input type="number"  name="price"
-      value={cost}  onChange={async (e) => {
-        await setCost(e.target.value)
-      }}  className="border  w-20 mx-2 border-gray-400 p-2" required />
+      <input type="number" name="price" value={cost} readOnly className="border w-20 mx-2 border-gray-400 p-2 bg-gray-100" required />
 
       </div>
       <div>
                             <label htmlFor="totalValue">Total Value</label>
 
-      <input type="number"
-        value={totalValue}
-         onChange={async (e) => {
-        await setTalValue(e.target.value)    }}
-        name="totalValue"
-        className="border w-20 mx-2 border-gray-400 p-2"
-        required />
+      <input type="number" value={(Number(stockBal) || 0) * (Number(cost) || 0)} name="totalValue" readOnly className="border w-20 mx-2 border-gray-400 p-2 bg-gray-100" required />
 
       </div>
-      <input type="hidden"  name="slug" value={slug} />
-      <input type="text"  name="menuId" value={menuId} />
-      <input type="hidden"  name="path" value={pathname} />
-      <input type="hidden" name="user" value="Eddy" />
+      <input type="hidden" name="slug" value={slug} />
+      <input type="hidden" name="menuId" value={productId} />
+      <input type="hidden" name="path" value={pathname} />
       </div>
 
-      <button type="submit" className="border border-gray-400 rounded-md bg-black text-white p-2 ">Add Stock</button>
+      <button type="submit" disabled={loading} className="border border-gray-400 rounded-md bg-black text-white p-2 disabled:opacity-60">
+        {loading ? 'Updating...' : 'Update Stock'}
+      </button>
 
 
 

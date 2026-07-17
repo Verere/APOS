@@ -1,13 +1,11 @@
 import connectToDB from '@/utils/connectDB'
-import Product from '@/models/product'
-import Store from '@/models/store'
-import InventoryTransaction from '@/models/models/InventoryTransaction'
 import withTransaction from '@/lib/withTransaction'
 import User from '@/models/user'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { getStoreBySlug } from '@/lib/getStoreBySlug'
 import { requireStoreRole } from '@/lib/requireStoreRole'
+import { applyInventoryChange } from '@/lib/inventoryService'
 
 export async function POST(req){
   try{
@@ -41,29 +39,17 @@ export async function POST(req){
     }
 
     const res = await withTransaction(async (session) => {
-      const prod = await Product.findById(productId).session(session);
-      if(!prod) throw Object.assign(new Error('Product not found'), { code: 'NOT_FOUND' });
-
-      const previousStock = prod.qty || 0;
-      const newStock = previousStock + q;
-
-      const updated = await Product.findOneAndUpdate({ _id: prod._id }, { $set: { qty: newStock } }, { new: true, session }).lean();
-      if(!updated) throw new Error('Failed to update product stock');
-
-      const inv = new InventoryTransaction({
-        productId: prod._id,
+      const result = await applyInventoryChange({
+        productId,
         slug,
+        quantityChange: q,
         type: 'RESTOCK',
-        quantity: q,
-        previousStock,
-        newStock,
+        notes: notes || 'Restock via API',
         orderId: null,
-        notes: notes || 'Restock via API'
-      });
+        session,
+      })
 
-      await inv.save({ session });
-
-      return { product: updated, transaction: inv };
+      return { product: result.updated.toObject(), transaction: result.transaction };
     });
 
     return new Response(JSON.stringify(res), { status: 200 })

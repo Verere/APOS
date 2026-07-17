@@ -31,7 +31,8 @@ async function getEodData(slug) {
     // Fetch all payments for today
     const payments = await Payment.find({
       storeId: store._id.toString(),
-      bDate
+      bDate,
+      isCancelled: false
     }).lean();
 
     // Fetch all completed orders for today (Order model uses slug, not storeId)
@@ -40,7 +41,7 @@ async function getEodData(slug) {
       slug: slug,
       bDate,
       // Remove isCompleted filter to include credit sales (partial/no payment)
-      isCancelled: { $ne: true } // Exclude cancelled orders only
+      isCancelled: false // Exclude cancelled orders only
     }).lean();
     if (orders.length > 0) {
       console.log('Sample order:', JSON.stringify(orders[0], null, 2));
@@ -83,7 +84,7 @@ async function getEodData(slug) {
         { bDate: isoDate },
         { createdAt: { $gte: startOfDay, $lte: endOfDay } }
       ],
-      isCancelled: { $ne: true }
+      isCancelled: false
     }).lean();
 
     // Calculate totals

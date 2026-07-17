@@ -5,7 +5,6 @@ import Customer from '@/models/customer'
 import Credit from '@/models/credit'
 import Product from '@/models/product'
 import Payment from '@/models/payments'
-import InventoryTransaction from '@/models/models/InventoryTransaction'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { getStoreBySlug } from '@/lib/getStoreBySlug'
@@ -13,6 +12,7 @@ import { requireStoreRole } from '@/lib/requireStoreRole'
 import withTransaction from '@/lib/withTransaction'
 import validateCheckout from '@/lib/checkout'
 import { buildOrderItemSnapshots } from '@/lib/orderItemSnapshot'
+import { reserveStockForSale, attachTransactionsToOrder } from '@/lib/inventoryService'
 
 export async function POST(req) {
   try {
@@ -64,68 +64,14 @@ export async function POST(req) {
     // Process credit sale in transaction
     const result = await withTransaction(async (transactionSession) => {
       const soldBy = session.user.email
-      const updatedProducts = []
       const ids = cartItems.map(i => i.product)
-
-      // Fetch fresh product data
-      const prods = await Product.find({ _id: { $in: ids } }).session(transactionSession)
-      const prodMap = new Map(prods.map(p => [String(p._id), p]))
-
-      // Reserve stock and create inventory transactions
-      for (const item of cartItems) {
-        const qtyToTake = Number(item.qty || 0)
-        if (qtyToTake <= 0) continue
-
-        const p = prodMap.get(String(item.product))
-        if (!p) {
-          throw Object.assign(
-            new Error(`Product not found ${item.product}`),
-            { code: 'NOT_FOUND', product: item.product }
-          )
-        }
-
-        if (p.qty < qtyToTake) {
-          throw Object.assign(
-            new Error(`Insufficient stock for ${item.name || p.name}`),
-            { code: 'INSUFFICIENT', product: item.product }
-          )
-        }
-
-        // Decrement stock
-        const updated = await Product.findOneAndUpdate(
-          { _id: p._id, qty: { $gte: qtyToTake } },
-          { $inc: { qty: -qtyToTake } },
-          { new: true, session: transactionSession }
-        )
-
-        if (!updated) {
-          throw Object.assign(
-            new Error(`Insufficient stock for ${item.name || p.name}`),
-            { code: 'INSUFFICIENT', product: item.product }
-          )
-        }
-
-        // Record inventory transaction
-        const inv = new InventoryTransaction({
-          productId: p._id,
-          slug,
-          type: 'SALE',
-          quantity: -qtyToTake,
-          previousStock: p.qty,
-          newStock: updated.qty,
-          orderId: null,
-          notes: `Credit sale to ${customer.name} by ${soldBy}`,
-        })
-        await inv.save({ session: transactionSession })
-
-        updatedProducts.push({
-          id: p._id,
-          name: p.name,
-          qty: qtyToTake,
-          cost: updated.cost || 0,
-          newQty: updated.qty,
-        })
-      }
+      const { updatedProducts, transactionIds } = await reserveStockForSale({
+        slug,
+        items: cartItems,
+        soldBy,
+        session: transactionSession,
+        orderId: null,
+      })
 
       const {
         orderItems,
@@ -168,11 +114,7 @@ export async function POST(req) {
       await newOrder.save({ session: transactionSession })
 
       // Update inventory transactions with order ID
-      await InventoryTransaction.updateMany(
-        { orderId: null, productId: { $in: ids } },
-        { $set: { orderId: newOrder._id } },
-        { session: transactionSession }
-      )
+      await attachTransactionsToOrder(transactionIds, newOrder._id, transactionSession)
 
       // If partial payment is made, create payment record
       if (paymentAmount > 0) {

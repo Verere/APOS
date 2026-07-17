@@ -8,22 +8,65 @@ import {useEffect,  useContext, useState, useActionState, useMemo, useCallback }
 import { format } from 'date-fns';
 import Search from "../search/search";
 import { addOrder } from "@/actions";
+import { updateCancelOrder } from "@/actions/update";
 import { toast } from "react-toastify";
-import { fetchPatientListByLab } from "@/actions/fetch";
 import { currencyFormat } from '@/utils/currency';
 import { formatTime } from "@/utils/date";
 import DatePicker from "react-datepicker";
    import moment from 'moment'
 
+function CancelConfirmToast({ onConfirm, onClose }) {
+  const [reason, setReason] = useState('')
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-semibold text-gray-800">Cancel this order?</p>
+      <p className="text-xs text-gray-600">Enter a cancellation reason. Stock and related records will be reversed.</p>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="Reason for cancellation"
+        rows={3}
+        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="px-3 py-1.5 text-xs font-semibold rounded-md bg-red-600 text-white hover:bg-red-700"
+          onClick={() => {
+            const trimmed = reason.trim()
+            if (!trimmed) {
+              toast.error('Cancellation reason is required')
+              return
+            }
+            onConfirm(trimmed)
+          }}
+        >
+          Yes, Cancel Order
+        </button>
+        <button
+          type="button"
+          className="px-3 py-1.5 text-xs font-semibold rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300"
+          onClick={onClose}
+        >
+          No
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const OrderTable = ({patients}) => {
   const [slug, setSlug]=useState(null)
   const {user }= useContext(GlobalContext)
   const [state, formAction, isPending] = useActionState(addOrder, {});
-     const { replace } = useRouter();
+  const pathname = usePathname();
+  const { replace } = useRouter();
 
    
        const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
        const [selectedDate, setSelectedDate] = useState(null);
+      const [cancelingOrderId, setCancelingOrderId] = useState(null);
 
 const filteredOrders = useMemo(() => {
   if (selectedDate) {
@@ -70,6 +113,39 @@ setSlug(slg)
         }
         
       }, [slug])
+
+    const handleCancelOrder = useCallback(async (orderId, cancellationReason) => {
+      try {
+        setCancelingOrderId(orderId)
+        const cancelledBy = user?.email || user?.name || 'system'
+        const result = await updateCancelOrder(orderId, cancellationReason, cancelledBy)
+        if (result?.error) {
+          throw new Error(result.error)
+        }
+        toast.success('Order cancelled successfully')
+        replace(pathname)
+      } catch (error) {
+        console.error('Cancel order error:', error)
+        toast.error(error?.message || 'Failed to cancel order')
+      } finally {
+        setCancelingOrderId(null)
+      }
+    }, [pathname, replace, user])
+
+    const requestCancelOrder = useCallback((orderId) => {
+      toast.warning(
+        ({ closeToast }) => (
+          <CancelConfirmToast
+            onClose={closeToast}
+            onConfirm={async (reason) => {
+              closeToast()
+              await handleCancelOrder(orderId, reason)
+            }}
+          />
+        ),
+        { autoClose: false, closeOnClick: false, draggable: false }
+      )
+    }, [handleCancelOrder])
 
     return (
     <div className="p-6 -mt-[6px]">
@@ -138,12 +214,13 @@ setSlug(slg)
             <Table.Header>
               <Table.Row className="bg-gray-50">
                 <Table.ColumnHeaderCell className="font-semibold text-gray-700">Receipt No.</Table.ColumnHeaderCell>
+                <Table.ColumnHeaderCell className="font-semibold text-gray-700">Customer</Table.ColumnHeaderCell>
                 <Table.ColumnHeaderCell className="font-semibold text-gray-700">Items Sold</Table.ColumnHeaderCell>
                 <Table.ColumnHeaderCell className="font-semibold text-gray-700">Order Amount</Table.ColumnHeaderCell>
                 <Table.ColumnHeaderCell className="font-semibold text-gray-700">Amount Paid</Table.ColumnHeaderCell>
                 <Table.ColumnHeaderCell className="font-semibold text-gray-700">Date</Table.ColumnHeaderCell>
-                <Table.ColumnHeaderCell className="font-semibold text-gray-700">Time</Table.ColumnHeaderCell>
                 <Table.ColumnHeaderCell className="font-semibold text-gray-700">User</Table.ColumnHeaderCell>
+                <Table.ColumnHeaderCell className="font-semibold text-gray-700">Action</Table.ColumnHeaderCell>
               </Table.Row>
             </Table.Header>
           
@@ -154,6 +231,11 @@ setSlug(slg)
                     <Table.RowHeaderCell className="font-semibold text-blue-600">
                       #{patient?.orderNum}
                     </Table.RowHeaderCell>
+                    <Table.Cell>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+                        {patient?.orderName || patient?.customerName || 'Walk-in Customer'}
+                      </span>
+                    </Table.Cell>
                     <Table.Cell>
                       {patient?.items && patient.items.length > 0 ? (
                         <div className="space-y-1">
@@ -179,18 +261,38 @@ setSlug(slg)
                         {currencyFormat(patient?.amountPaid)}
                       </span>
                     </Table.Cell>
-                    <Table.Cell className="text-gray-600">{patient?.bDate}</Table.Cell>
-                    <Table.Cell className="text-gray-600">{formatTime(patient?.createdAt)}</Table.Cell>
+                    <Table.Cell>
+                      <div className="text-gray-700">
+                        <div className="font-medium">{patient?.bDate}</div>
+                        <div className="text-xs text-gray-500">{formatTime(patient?.createdAt)}</div>
+                      </div>
+                    </Table.Cell>
                     <Table.Cell>
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                         {patient.user}
                       </span>
                     </Table.Cell>
+                    <Table.Cell>
+                      {patient?.isCancelled ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                          Cancelled
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => requestCancelOrder(patient?._id)}
+                          disabled={cancelingOrderId === patient?._id}
+                          className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {cancelingOrderId === patient?._id ? 'Cancelling...' : 'Cancel Order'}
+                        </button>
+                      )}
+                    </Table.Cell>
                   </Table.Row>
                 ))
               ) : (
                 <Table.Row>
-                  <Table.Cell colSpan={7} className="text-center py-12">
+                  <Table.Cell colSpan={8} className="text-center py-12">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

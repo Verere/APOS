@@ -1,5 +1,5 @@
-import { FetchCategory, fetchOneOrder, fetchSearchedProducts, fetchSalesByOrderId, fetchBDate, fetchPaymentByOrder, fetchSlug, fetchAllOrders, fetchCategory, fetchProducts, fetchCustomers } from '@/actions/fetch';
-import { updatePassword } from '@/actions/update';
+import {  fetchSlug, fetchProducts, fetchCustomers } from '@/actions/fetch';
+
 import PosPage from '@/components/Pos';
 import connectDB from '@/utils/connectDB';
 import StoreSettings from '@/models/storeSettings';

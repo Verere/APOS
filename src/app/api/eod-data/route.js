@@ -75,7 +75,7 @@ export async function GET(request) {
     // Calculate total profit from orders for the date
     const orders = await Order.find({
       slug,
-      isCancelled: { $ne: true },
+      isCancelled: false,
       $or: [{ bDate: legacyDate }, { bDate: date }]
     }).lean();
     
@@ -96,7 +96,7 @@ export async function GET(request) {
         { bDate: date },
         { createdAt: { $gte: startOfDay, $lte: endOfDay } }
       ],
-      isCancelled: { $ne: true }
+      isCancelled: false
     }).lean();
 
     // Calculate totals

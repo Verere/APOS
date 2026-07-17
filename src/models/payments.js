@@ -115,10 +115,29 @@ const PaymentSchema = new mongoose.Schema({
     default: 'COMPLETED',
     index: true
   },
+  isCancelled: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
   paymentType: {
     type: String,
     enum: ['FULL', 'PARTIAL', 'CREDIT', 'COMPLIMENTARY'],
     default: 'FULL'
+  },
+  transactionType: {
+    type: String,
+    enum: ['STANDARD', 'COMPLIMENTARY'],
+    default: 'STANDARD'
+  },
+  approvedBy: {
+    type: String
+  },
+  reason: {
+    type: String
+  },
+  remarks: {
+    type: String
   },
 
   // Date and User Information

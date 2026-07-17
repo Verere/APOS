@@ -1,17 +1,14 @@
 'use client'
-import { addMenuStock } from '@/actions'
 import { GlobalContext } from '@/context'
 import { CartContext } from '@/context/CartContext'
 import { currencyFormat } from '@/utils/currency'
-import React, { useContext, useEffect, useState, useActionState } from 'react'
-import { useFormState } from 'react-dom';
+import React, { useContext, useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
-import {  usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 
 
 const CartItemPanel = ({item, allowPriceAdjustment = false}) => {
-  const [state, formAction, isPending] = useActionState(addMenuStock, {});
   const { replace } = useRouter();
 const {_id}= item
     const {cart, incr, decr, deleteItem, updateQty, updatePrice} = useContext(CartContext)  
@@ -29,17 +26,6 @@ const {_id}= item
     useEffect(()=>{
       setPriceInput(item.price)
     },[item.price])
-
-    useEffect(()=>{
-      const getError = async()=>{
-  
-        if(state.error){
-        await  toast.warn(state.error)
-        await setLoading(true)
-        }
-      }
-      getError()
-    },[state])
 
 // sales cancellation removed
 

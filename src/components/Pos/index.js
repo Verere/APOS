@@ -34,6 +34,7 @@ const PosPage = ({
   allowCreditSales = true,
   allowPriceAdjustment = false,
   allowPriceTypeSelection = false,
+  allowComplimentarySale = false
 }) => {
   const { location, setBusDate, setHotel, setStore, payment, cartValue, user } = useContext(GlobalContext);
   const { cart, order, setCart, setCPayment, setSelectedCustomer, setCreditSale } = useContext(CartContext);
@@ -530,22 +531,6 @@ const PosPage = ({
                     ×
                   </button>
                 </div>
-
-                {/* Customer Selection - Mobile */}
-                <div className="sm:hidden">
-                  <select
-                    value={selectedCustomerId}
-                    onChange={handleCustomerChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  >
-                    <option value="">Walk-in Customer</option>
-                    {customers?.map((customer) => (
-                      <option key={customer._id} value={customer._id}>
-                        {customer.name} - {customer.phone}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </header>
               
               {/* Cart Items Scroll Area */}
@@ -592,14 +577,17 @@ const PosPage = ({
                     </button>
                   )}
 
-                  {/* <button
-                    onClick={handleComplimentarySale}
-                    disabled={loading}
-                    className='bg-violet-700 text-white px-3 py-2 rounded-lg uppercase hover:bg-violet-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed'
-                    aria-label="Complimentary sale"
-                  >
-                    Complimentary
-                  </button> */}
+                 
+                     {allowComplimentarySale && (
+                      <button
+                        onClick={handleComplimentarySale}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-all shadow-lg hover:shadow-xl"
+                        aria-label="Complimentary sale"
+                      >
+                        <Receipt className="w-5 h-5" />
+                        Complimentary
+                      </button>
+                    )}
                   
                   <button 
                     onClick={() => {

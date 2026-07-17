@@ -11,7 +11,6 @@ import payments from "@/models/payments"
 
 import Paystack from "@/models/paystack"
 import Order from '@/models/order'
-import  MenuStock  from '@/models/menuStock';
 import StoreSub from '@/models/storesub'
 import { revalidatePath } from "next/cache";
 // signIn from NextAuth is not used server-side here; authenticate does DB check
@@ -26,11 +25,13 @@ import {fetchCountOrder, fetchLatestStockItem, fetchPaymentByOrder, fetchProduct
 } from "./fetch";
 import validateCheckout from '@/lib/checkout'
 import { buildOrderItemSnapshots } from '@/lib/orderItemSnapshot'
-import {updateAllPayment, updateOrderAmount, updateItemStock, updateMenuStock, updateCompletedOrderDetails, updateSuspendOrder, updateProduct } from "./update";
+import {updateAllPayment, updateOrderAmount, updateCompletedOrderDetails, updateSuspendOrder, updateProduct } from "./update";
 import Pos from './../app/[slug]/pos/page';
 import withTransaction from '@/lib/withTransaction'
 import InventoryTransaction from '@/models/models/InventoryTransaction'
+import { applyInventoryChange, reserveStockForSale, attachTransactionsToOrder } from '@/lib/inventoryService'
 import { getTokenFromCookies } from '@/lib/auth'
+import Complimentary from '@/models/complimentary'
 import mongoose from 'mongoose'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
@@ -441,11 +442,11 @@ items = []
 
 // add payment and create order from cart items atomically
 export const addPaymentWithOrder = async (prvState, formData) => {
-  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, customerId, customerName, isComplimentary } = Object.fromEntries(formData);
+  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, customerId, customerName, isComplimentary, transactionType, approvedBy, reason, remarks, location } = Object.fromEntries(formData);
   try {
     await connectToDB();
     const items = cartItems ? JSON.parse(cartItems) : [];
-    const complimentarySale = isComplimentary === 'true';
+    const complimentarySale = transactionType === 'COMPLIMENTARY' || isComplimentary === 'true';
     // require authenticated user via NextAuth server session
     const session = await getServerSession(authOptions);
     if (!session || !session.user) return { error: 'Unauthorized' };
@@ -456,6 +457,11 @@ export const addPaymentWithOrder = async (prvState, formData) => {
 
     if (!items.length) return { error: 'Cart is empty' };
 
+    if (complimentarySale) {
+      if (!String(approvedBy || '').trim()) return { error: 'approvedBy is required for complimentary transactions' };
+      if (!String(reason || '').trim()) return { error: 'reason is required for complimentary transactions' };
+    }
+
     // validate cart items against DB (existence, slug ownership, sufficient stock)
     try { await validateCheckout(items, slug) } catch (err) { return { error: err.message } }
 
@@ -463,52 +469,14 @@ export const addPaymentWithOrder = async (prvState, formData) => {
     try{
       const result = await withTransaction(async (session) => {
         // reserve stock and create inventory transactions
-        const updatedProducts = [];
         const ids = items.map(i => i.product);
-
-        // fetch fresh product docs (for stock and cost)
-        const prods = await Product.find({ _id: { $in: ids } }).session(session);
-        const prodMap = new Map(prods.map(p => [String(p._id), p]));
-
-        for (const it of items) {
-          const qtyToTake = Number(it.qty || 0);
-          if (qtyToTake <= 0) continue;
-          const p = prodMap.get(String(it.product));
-          if (!p) throw Object.assign(new Error(`Product not found ${it.product}`), { code: 'NOT_FOUND', product: it.product });
-          if (p.qty < qtyToTake) throw Object.assign(new Error(`Insufficient stock for ${it.name || it.item || p._id}`), { code: 'INSUFFICIENT', product: it.product });
-
-          // decrement
-          const updated = await Product.findOneAndUpdate(
-            { _id: p._id, qty: { $gte: qtyToTake } },
-            { 
-              $inc: { qty: -qtyToTake },
-              $set: { totalValue: (p.qty - qtyToTake) * p.price }
-            },
-            { new: true, session }
-          );
-          if (!updated) throw Object.assign(new Error(`Insufficient stock for ${it.name || it.item || it.product}`), { code: 'INSUFFICIENT', product: it.product });
-
-          // record inventory transaction
-          const inv = new InventoryTransaction({
-            productId: p._id,
-            slug,
-            type: 'SALE',
-            quantity: -qtyToTake,
-            previousStock: p.qty,
-            newStock: updated.qty,
-            orderId: null,
-            notes: `Sale during checkout by ${soldBy}`,
-          });
-          await inv.save({ session });
-
-          updatedProducts.push({ 
-            id: p._id, 
-            name: p.name,
-            qty: qtyToTake, 
-            cost: updated.cost || 0,
-            newQty: updated.qty
-          });
-        }
+        const { updatedProducts, transactionIds } = await reserveStockForSale({
+          slug,
+          items,
+          soldBy,
+          session,
+          orderId: null,
+        })
 
         // create order
         const num = await fetchCountOrder(slug) + 1;
@@ -518,9 +486,12 @@ export const addPaymentWithOrder = async (prvState, formData) => {
 
         const {
           orderItems: itemsWithCostProfit,
-          totalAmount: totalOrderAmount,
-          totalProfit: totalOrderProfit,
-        } = buildOrderItemSnapshots(items, updatedProducts);
+          totalAmount: computedOrderAmount,
+          totalProfit: computedOrderProfit,
+        } = buildOrderItemSnapshots(items, updatedProducts, { complimentary: complimentarySale });
+
+        const totalOrderAmount = complimentarySale ? 0 : computedOrderAmount;
+        const totalOrderProfit = complimentarySale ? 0 : computedOrderProfit;
 
         // payment amount sanity
         const paid = Number(amountPaid || 0);
@@ -533,10 +504,14 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         newOrder.status = 'Completed';
         newOrder.isCompleted = true;
         newOrder.bDate = bDate;
+        newOrder.transactionType = complimentarySale ? 'COMPLIMENTARY' : 'STANDARD';
+        newOrder.approvedBy = complimentarySale ? String(approvedBy).trim() : undefined;
+        newOrder.reason = complimentarySale ? String(reason).trim() : undefined;
+        newOrder.remarks = complimentarySale ? String(remarks || '').trim() : undefined;
         await newOrder.save({ session });
 
         // update inventory transactions to reference orderId
-        await InventoryTransaction.updateMany({ orderId: null, productId: { $in: ids } }, { $set: { orderId: newOrder._id } }, { session });
+        await attachTransactionsToOrder(transactionIds, newOrder._id, session)
 
         // save payment with new schema
         const paymentMethodsArray = [];
@@ -585,6 +560,10 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           change: complimentarySale ? 0 : Math.max(0, Number(amountPaid || 0) - totalOrderAmount),
           status: 'COMPLETED',
           paymentType: complimentarySale ? 'COMPLIMENTARY' : 'FULL',
+          transactionType: complimentarySale ? 'COMPLIMENTARY' : 'STANDARD',
+          approvedBy: complimentarySale ? String(approvedBy).trim() : undefined,
+          reason: complimentarySale ? String(reason).trim() : undefined,
+          remarks: complimentarySale ? String(remarks || '').trim() : undefined,
           recordedBy: soldBy,
           user: soldBy, 
           bDate: bDate,
@@ -599,6 +578,23 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           customerType: customerId ? 'REGISTERED' : 'WALK_IN'
         });
         await newPay.save({ session });
+
+        if (complimentarySale) {
+          await new Complimentary({
+            hotelId: store._id,
+            orderName: customerName || customerId || orderNum,
+            orderNum,
+            location: location || '',
+            amount: 0,
+            bDate: new Date(),
+            transactionType: 'COMPLIMENTARY',
+            approvedBy: String(approvedBy).trim(),
+            reason: String(reason).trim(),
+            remarks: String(remarks || '').trim(),
+            authorizedBy: String(approvedBy).trim(),
+            soldBy,
+          }).save({ session });
+        }
 
         // Update order with amount paid
         newOrder.amountPaid = complimentarySale ? 0 : Number(amountPaid || 0);
@@ -744,7 +740,7 @@ export async function fetchOrders(slug) {
  
   try {
     connectToDB();
-    const result = await Order.find({slug}).sort({createdAt:-1});
+    const result = await Order.find({slug, isCancelled:false}).sort({createdAt:-1});
 
     return JSON.parse(JSON.stringify(result));
   } catch (err) {
@@ -757,7 +753,7 @@ export async function fetchOrdersBySlug(slug) {
  
   try {
     connectToDB();
-    const result = await Order.find({slug, status:'pending'});
+    const result = await Order.find({slug, status:'pending', isCancelled:false});
 
     return JSON.parse(JSON.stringify(result));
   } catch (err) {
@@ -773,7 +769,7 @@ var currentDate = date.format('D/MM/YYYY');
  
   try {
     connectToDB();
-    const result = await Order.find({slug, orderDate:currentDate});
+    const result = await Order.find({slug, orderDate:currentDate, isCancelled:false});
 
     return JSON.parse(JSON.stringify(result));
   } catch (err) {
@@ -789,7 +785,7 @@ var currentDate = date.format('D/MM/YYYY');
  
   try {
     connectToDB();
-    const result = await Order.find({slug, orderDate:currentDate, isDeleted:false, status:'pending'});
+    const result = await Order.find({slug, orderDate:currentDate, isDeleted:false, status:'pending', isCancelled:false});
 
     return JSON.parse(JSON.stringify(result));
   } catch (err) {
@@ -805,7 +801,7 @@ var currentDate = date.format('D/MM/YYYY');
  
   try {
     connectToDB();
-    const result = await Order.find({slug, orderDate:currentDate, isDeleted:false, status:'completed'});
+    const result = await Order.find({slug, orderDate:currentDate, isDeleted:false, status:'completed', isCancelled:false});
 
     return JSON.parse(JSON.stringify(result));
   } catch (err) {
@@ -821,7 +817,7 @@ var currentDate = date.format('D/MM/YYYY');
  
   try {
     connectToDB();
-    const result = await Order.find({slug, orderDate:currentDate, isDeleted:false, status:'cancelled'});
+    const result = await Order.find({slug, orderDate:currentDate, isDeleted:false, status:'cancelled', isCancelled:true});
 
     return JSON.parse(JSON.stringify(result));
   } catch (err) {
@@ -1153,41 +1149,29 @@ export async function updateStoreSub(slug, sub,starts, ends, reference) {
 }
 //add new inventory
 export const addMenuStock= async (prevState, formData) => {
-  const {slug, itemId, item,  action,  qty, balanceStock, price,  user,  bDate, path} =
+  const {slug, itemId, action, qty, user, path} =
     Object.fromEntries(formData);
-    const prod = await fetchProductById(itemId)
- const pStock = prod[0].qty
- const balStock = parseInt(pStock) + parseInt(qty)
- const balStock2 = parseInt(pStock) - parseInt(qty)
+ const qtyNum = parseInt(qty)
+ const normalizedAction = String(action || '').toLowerCase()
+ const isReturn = normalizedAction === "return"
+ const isAddStock = normalizedAction === "addstock"
+ const delta = (isReturn || isAddStock) ? qtyNum : -qtyNum
   try {   
-    if(action==="Return"){
-   const totalValue = balStock * price
-   connectToDB(); 
-   await updateItemStock(itemId, balStock, totalValue, path)
-   const newMenu = new MenuStock({
-     slug, itemId, item,  stock: pStock, action,  qty, balanceStock:balStock, price, user,  bDate,
-    });
-    await newMenu.save();
-   revalidatePath(path);   
+    connectToDB();
+    const type = isReturn ? 'RETURN' : (isAddStock ? 'RESTOCK' : 'DAMAGED')
+    await applyInventoryChange({
+      productId: itemId,
+      slug,
+      quantityChange: delta,
+      type,
+      notes: `${action || type} by ${user || 'system'}`,
+    })
+    revalidatePath(path)
     return{
-      success:true
+      success:true,
+      deprecated: true,
+      message: 'Legacy addMenuStock path now uses unified inventory service only.'
     }
-    }else{
-    connectToDB(); 
-    const totalValue = balStock2 * price
-    await updateItemStock(itemId, balStock2, totalValue, path)
-
-     const newMenu = new MenuStock({
-      slug, itemId, item,  stock:pStock, action, qty, balanceStock:balStock2, price, user,  bDate,
-       });
-      
-      await newMenu.save();
-      revalidatePath(path); 
-  
-      return{
-        success:true,
-
-      }}
 
   } catch (err) {
     console.log(err);

@@ -25,13 +25,14 @@ async function getEodData(slug) {
   try {
     const payments = await Payment.find({
       storeId: store._id.toString(),
-      bDate
+      bDate,
+      isCancelled: false
     }).lean();
 
     const orders = await Order.find({
       slug,
       bDate,
-      isCancelled: { $ne: true }
+      isCancelled: false
     }).lean();
 
     const credits = await Credit.find({
@@ -56,7 +57,7 @@ async function getEodData(slug) {
         { bDate: isoDate },
         { createdAt: { $gte: startOfDay, $lte: endOfDay } }
       ],
-      isCancelled: { $ne: true }
+      isCancelled: false
     }).lean();
 
     let totalCash = 0;

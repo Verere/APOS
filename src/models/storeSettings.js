@@ -87,6 +87,10 @@ const StoreSettingsSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  allowComplimentarySale: {
+    type: Boolean,
+    default: false
+  },
   
   // Security Settings
   twoFactorEnabled: {

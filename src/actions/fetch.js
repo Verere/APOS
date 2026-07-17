@@ -6,7 +6,6 @@ import Store from "@/models/store"
 import Menu from "@/models/menu"
 import Location from "@/models/location"
 import Category from "@/models/category"
-import MenuStock from "@/models/menuStock"
 import Order from "@/models/order"
 // Sales model is retained (src/models/sales.js) but fetch helpers for sales are deprecated.
 import Credits from "@/models/credit"
@@ -115,53 +114,6 @@ export async function fetchMenuBySku(hotelId, sku, location) {
       return{error:"Failed to fetch product"};
     }
   }
-  // fetch menustock query by location
-  export async function fetchMenuStockSearch(slug, ) {
-    await connectToDB();
-  
-    try {
-      connectToDB();
-        const result = await MenuStock.find({$and:[{slug}  ]})
-        return JSON.parse(JSON.stringify(result));
-     
-     
-    } catch (err) {
-      console.log(err);
-      throw new Error("Failed to fetch menu!");
-    }
-  }
-  // fetch menuStock item details
-  export async function fetchMenuStockItemDetails(menuId) {
-    await connectToDB();
-  
-    try {
-      connectToDB();
-   
-        const result = await MenuStock.find({menuId}).sort({createdAt:-1})
-
-        return JSON.parse(JSON.stringify(result));  
-    } catch (err) {
-      console.log(err);
-     return{error:"Failed to fetch menu!"};
-    }
-  }
-
-  
-    // fetch menuStock item
-    export async function fetchLatestStockItem(menuId) {
-      await connectToDB();
-    
-      try {
-        connectToDB();     
-          const result = await MenuStock.find({menuId}).sort({createdAt:-1}).limit(1)
-          return JSON.parse(JSON.stringify(result));  
-      } catch (err) {
-        console.log(err);
-       return{error:"Failed to fetch menu!"};
-      }
-    }
-
-
  //fetch sub
 export async function fetchProductById(id) {
   await connectToDB();
@@ -361,7 +313,7 @@ export async function fetchCountOrder(slug ) {
    
     try {
       connectToDB();
-      const result = await Order.find({slug, }).countDocuments().exec()
+      const result = await Order.find({slug, isCancelled:false }).countDocuments().exec()
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -375,7 +327,7 @@ export async function fetchCountCompletedOrder(slug,  bDate) {
    
     try {
       connectToDB();
-      const result = await Order.find({slug,  bDate, isCompleted:true}).countDocuments().exec()
+      const result = await Order.find({slug,  bDate, isCompleted:true, isCancelled:false}).countDocuments().exec()
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -389,7 +341,7 @@ export async function fetchCountSuspendedOrder(slug,  bDate) {
    
     try {
       connectToDB();
-      const result = await Order.find({slug, bDate, isSuspended:true}).countDocuments().exec()
+      const result = await Order.find({slug, bDate, isSuspended:true, isCancelled:false}).countDocuments().exec()
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -418,7 +370,7 @@ export async function fetchOneOrder(slug) {
    
     try {
       connectToDB();
-      const result = await Order.find({slug}).sort({createdAt:-1}).limit(1)
+      const result = await Order.find({slug, isCancelled:false}).sort({createdAt:-1}).limit(1)
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -432,7 +384,7 @@ export async function fetchOrderItems(orderId) {
    
     try {
       connectToDB();
-      const result = await Order.find({orderNum:orderId})
+      const result = await Order.find({orderNum:orderId, isCancelled:false})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -448,7 +400,7 @@ export async function fetchSuspendedOrders(slug, bDate) {
    
     try {
       connectToDB();
-      const result = await Order.find({slug, bDate, isSuspended:true}).sort({createdAt:-1})
+      const result = await Order.find({slug, bDate, isSuspended:true, isCancelled:false}).sort({createdAt:-1})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -479,7 +431,7 @@ export async function fetchAllOrders(slug) {
    
     try {
       connectToDB();
-      const result = await Order.find({slug}).sort({createdAt:"desc"})
+      const result = await Order.find({slug, isCancelled:false}).sort({createdAt:"desc"})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -493,7 +445,7 @@ export async function fetchAllPaymentsByLocation(hotelId, location, bDate) {
    
     try {
       connectToDB();
-      const result = await payments.find({hotelId, location, bDate:{"$gte" : bDate}}).sort({createdAt:-1})
+      const result = await payments.find({hotelId, location, bDate:{"$gte" : bDate}, isCancelled:false}).sort({createdAt:-1})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -535,7 +487,7 @@ export async function fetchCompletedOrders(hotelId, location, bDate) {
    
     try {
       connectToDB();
-      const result = await Order.find({hotelId, location, bDate, isCompleted:true}).sort({createdAt:-1})
+      const result = await Order.find({hotelId, location, bDate, isCompleted:true, isCancelled:false}).sort({createdAt:-1})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -584,7 +536,7 @@ export async function fetchAllPaymentsByDates(slug) {
    
     try {
       connectToDB();
-      const result = await payments.find({slug}).sort({'createdAt':'desc'})
+      const result = await payments.find({slug, isCancelled:false}).sort({'createdAt':'desc'})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -599,7 +551,7 @@ export async function fetchAllPayments(slug) {
    
     try {
       connectToDB();
-      const result = await payments.find({slug, bDate}).sort({'createdAt':'desc'})
+      const result = await payments.find({slug, bDate, isCancelled:false}).sort({'createdAt':'desc'})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -615,7 +567,7 @@ export async function fetchAllPaymentsByDate(slug, Dte) {
    
     try {
       connectToDB();
-      const result = await payments.find({slug, bDate:Dte}).sort({'createdAt':'desc'})
+      const result = await payments.find({slug, bDate:Dte, isCancelled:false}).sort({'createdAt':'desc'})
   
       return JSON.parse(JSON.stringify(result));
     } catch (err) {
@@ -632,7 +584,7 @@ export async function fetchAllPaymentsByDate(slug, Dte) {
  
   try {
     connectToDB();
-    const result = await payments.find({orderId:order})
+    const result = await payments.find({orderId:order, isCancelled:false})
 
     return JSON.parse(JSON.stringify(result));
   } catch (err) {

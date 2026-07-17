@@ -77,6 +77,7 @@ export default function SettingsPageClient({ slug, user }) {
     allowCreditSales: true,
     allowPriceAdjustment: false,
     allowPriceTypeSelection: false,
+    allowComplimentarySale: false,
   })
 
   // Fetch settings on mount
@@ -95,6 +96,7 @@ export default function SettingsPageClient({ slug, user }) {
               defaultPriceTypeId: data.settings.defaultPriceTypeId || null,
               name: user?.name || prev.name,
               email: user?.email || prev.email,
+              allowComplimentarySale: data.settings.allowComplimentarySale || false,
             }))
             setPriceTypeUsage(data.priceTypeUsage || {})
           }
