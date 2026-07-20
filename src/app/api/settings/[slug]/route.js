@@ -68,7 +68,11 @@ export async function GET(request, { params }) {
         allowPriceTypeSelection: false,
         allowDecimalQuantity: false,
         priceTypes: [],
-        defaultPriceTypeId: null
+        defaultPriceTypeId: null,
+        receiptFontFamily: 'monospace',
+        receiptFontSize: 12,
+        receiptFooterNote: '',
+        receiptSpecialNote: ''
       });
       settings = settings.toObject();
     }

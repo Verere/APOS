@@ -51,6 +51,11 @@ const PosPage = ({
   const [paymentMode, setPaymentMode] = useState('payment');
   const [showCreditPaymentModal, setShowCreditPaymentModal] = useState(false);
   const [selectedPriceTypeId, setSelectedPriceTypeId] = useState('');
+  const [printingSettings, setPrintingSettings] = useState({
+    receiptFontFamily: 'monospace',
+    receiptFontSize: 12,
+    receiptFooterNote: '',
+  });
   
   const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
   const searchParams = useSearchParams();
@@ -61,6 +66,7 @@ const PosPage = ({
 
   const filteredProducts = useMemo(() => {
     if (!item) return menus;
+          const receiptSpecialNote = String(printingSettings?.receiptSpecialNote || '').trim();
     const searchTerm = item.toLowerCase();
     return menus.filter((menu) =>
       menu.name.toLowerCase().includes(searchTerm) || menu.barcode === item
@@ -91,9 +97,33 @@ const PosPage = ({
     return { ...selectedCustomerData, priceTypeId: selectedPriceTypeId };
   }, [selectedCustomerData, selectedPriceTypeId]);
 
+  const receiptFontFamily = printingSettings?.receiptFontFamily || "'Courier New', monospace";
+  const receiptFontSize = Math.min(18, Math.max(9, Number(printingSettings?.receiptFontSize) || 12));
+  const receiptFooterNote = String(printingSettings?.receiptFooterNote || '').trim();
+
   useEffect(() => {
     setSelectedPriceTypeId('');
   }, [slug]);
+
+  useEffect(() => {
+    const loadPrintingSettings = async () => {
+      try {
+        const response = await fetch(`/api/settings/${slug}`)
+        if (!response.ok) return
+        const data = await response.json()
+        const s = data?.settings || {}
+        setPrintingSettings({
+          receiptFontFamily: s.receiptFontFamily || 'monospace',
+          receiptFontSize: Number(s.receiptFontSize) || 12,
+          receiptFooterNote: s.receiptFooterNote || '',
+        })
+      } catch {
+        // Keep defaults if settings fetch fails.
+      }
+    }
+
+    if (slug) loadPrintingSettings()
+  }, [slug])
 
   // Barcode scan handler
   const handleBarcodeScan = async (barcode) => {
@@ -295,7 +325,7 @@ const PosPage = ({
         <title>Credit Sale Invoice - ${data.orderNum}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Courier New', monospace; padding: 20px; max-width: 800px; margin: 0 auto; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; padding: 20px; max-width: 800px; margin: 0 auto; }
           .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
           .header h1 { font-size: 24px; margin-bottom: 5px; }
           .header p { font-size: 12px; }
@@ -310,7 +340,11 @@ const PosPage = ({
           .footer { text-align: center; border-top: 2px solid #000; padding-top: 10px; margin-top: 20px; font-size: 12px; }
           .credit-notice { background-color: #fff3cd; border: 2px solid #ffc107; padding: 15px; margin: 20px 0; text-align: center; font-weight: bold; }
           @media print {
-            body { padding: 0; }
+            body {
+              padding: 0;
+              font-family: ${receiptFontFamily} !important;
+              font-size: ${receiptFontSize}px !important;
+            }
             .no-print { display: none; }
           }
         </style>
@@ -407,7 +441,9 @@ const PosPage = ({
 
         <div class="footer">
           <p>Thank you for your business!</p>
+          ${receiptSpecialNote ? `<p style="margin-top: 8px; font-size: 11px; font-style: italic;">${receiptSpecialNote}</p>` : ''}
           <p style="margin-top: 10px; font-size: 10px;">This is a computer-generated invoice</p>
+          ${receiptFooterNote ? `<p style="margin-top: 6px; font-size: 10px;">${receiptFooterNote}</p>` : ''}
           <p style="margin-top: 8px; font-size: 10px; font-weight: bold;">Powered by www.marketbook.app</p>
           <p style="margin-top: 2px; font-size: 10px;">+2349076361669</p>
           <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Print Invoice</button>
@@ -424,7 +460,7 @@ const PosPage = ({
     setTimeout(() => {
       invoiceWindow.print();
     }, 500);
-  }, [getHotel]);
+  }, [getHotel, receiptSpecialNote]);
      
   const handleSearch = useDebouncedCallback((e) => {
     const value = e.target.value;
@@ -692,6 +728,7 @@ const PosPage = ({
           onClose={() => setShowInvoiceModal(false)}
           invoiceData={invoiceData}
           storeInfo={getHotel?.[0]}
+          printingSettings={printingSettings}
         />
 
         {/* Payment Modal */}
@@ -712,6 +749,7 @@ const PosPage = ({
           pathname={pathname}
           isComplimentary={paymentMode === 'complimentary'}
           allowDecimalQuantity={allowDecimalQuantity}
+          printingSettings={printingSettings}
           customer={selectedCustomerData}
           onSuccess={() => {
             localStorage.removeItem('cart')

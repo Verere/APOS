@@ -21,6 +21,7 @@ export default function PosPaymentModal({
   pathname,
   isComplimentary = false,
   allowDecimalQuantity = false,
+  printingSettings = {},
   customer,
   onSuccess 
 }) {
@@ -40,6 +41,11 @@ export default function PosPaymentModal({
   const [approvedBy, setApprovedBy] = useState('')
   const [complimentaryReason, setComplimentaryReason] = useState('')
   const [complimentaryRemarks, setComplimentaryRemarks] = useState('')
+  const [receiptSettings, setReceiptSettings] = useState({
+    receiptFontFamily: 'monospace',
+    receiptFontSize: 12,
+    receiptFooterNote: '',
+  })
   const printRef = useRef(null)
   const successProcessedRef = useRef(false)
   
@@ -70,6 +76,11 @@ export default function PosPaymentModal({
     return cart?.cartItems || cart || []
   }, [cart])
 
+  const resolvedReceiptFontFamily = receiptSettings?.receiptFontFamily || 'monospace'
+  const resolvedReceiptFontSize = Math.min(18, Math.max(9, Number(receiptSettings?.receiptFontSize) || 12))
+  const resolvedReceiptFooterNote = String(receiptSettings?.receiptFooterNote || '').trim()
+  const receiptSpecialNote = String(printingSettings?.receiptSpecialNote || '').trim()
+
   const reactToPrintFn = useReactToPrint({ 
     contentRef: printRef,
     pageStyle: `
@@ -93,6 +104,26 @@ export default function PosPaymentModal({
     setComplimentaryReason('')
     setComplimentaryRemarks('')
   }, [isOpen, isComplimentary, cartValue])
+
+  useEffect(() => {
+    const loadReceiptSettings = async () => {
+      try {
+        const response = await fetch(`/api/settings/${slug}`)
+        if (!response.ok) return
+        const data = await response.json()
+        const s = data?.settings || {}
+        setReceiptSettings({
+          receiptFontFamily: s.receiptFontFamily || 'monospace',
+          receiptFontSize: Number(s.receiptFontSize) || 12,
+          receiptFooterNote: s.receiptFooterNote || '',
+        })
+      } catch {
+        // Keep defaults when settings fetch fails.
+      }
+    }
+
+    if (slug) loadReceiptSettings()
+  }, [slug])
 
   // Handle form state updates
   useEffect(() => {
@@ -576,12 +607,13 @@ export default function PosPaymentModal({
               </div>
 
               {/* Hidden Print Content */}
-              <div style={{display: 'none'}}>
-                <div ref={printRef} style={{ width: '80mm', fontFamily: 'monospace', fontSize: '12px', padding: '5mm' }}>
+              <div style={{display: 'none', fontFamily: resolvedReceiptFontFamily, fontSize: `${resolvedReceiptFontSize}px`}}>
+                <div ref={printRef} style={{ width: '80mm', fontFamily: 'Segoe UI, Arial, sans-serif', fontSize: '13px', padding: '5mm' }}>
                   <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-                    <h2 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>{store?.name || 'STORE'}</h2>
-                    <p style={{ margin: '2px 0', fontSize: '11px' }}>{store?.address || 'Address'}</p>
-                    <p style={{ margin: '2px 0', fontSize: '11px' }}>Tel: {store.number},  {store.whatsapp}</p>
+                    <h2 style={{ margin: '0', fontSize: '18px', fontWeight: '700' }}>{store?.name || 'STORE'}</h2>
+                    <p style={{ margin: '2px 0', fontSize: '12px' }}>{store?.address || 'Address'}</p>
+                    <p style={{ margin: '2px 0', fontSize: '12px' }}>Tel: {store.number},  {store.whatsapp}</p>
+                      {resolvedReceiptFooterNote ? <p>{resolvedReceiptFooterNote}</p> : null}
                     <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>
                   </div>
 

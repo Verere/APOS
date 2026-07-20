@@ -34,7 +34,8 @@ const Pos = async({params, searchParams})=>{
             allowPriceTypeSelection: false,
             allowDecimalQuantity: false,
             priceTypes: [],
-            defaultPriceTypeId: null
+            defaultPriceTypeId: null,
+            receiptSpecialNote: ''
           })
           settings = settings.toObject()
         }
@@ -52,6 +53,11 @@ const Pos = async({params, searchParams})=>{
                pricingSettings={{
                  priceTypes: Array.isArray(settings?.priceTypes) ? settings.priceTypes : [],
                  defaultPriceTypeId: settings?.defaultPriceTypeId ?? null,
+               }}
+               printingSettings={{
+                 receiptFormat: settings?.receiptFormat || 'standard',
+                 printerName: settings?.printerName || '',
+                 receiptSpecialNote: settings?.receiptSpecialNote || '',
                }}
                  allowCreditSales={settings?.allowCreditSales ?? true}
                  allowPriceAdjustment={settings?.allowPriceAdjustment ?? false}

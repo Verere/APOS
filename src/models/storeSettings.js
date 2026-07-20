@@ -137,6 +137,22 @@ const StoreSettingsSchema = new mongoose.Schema({
     default: false
   },
   printerName: String,
+  receiptFontFamily: {
+    type: String,
+    default: 'monospace'
+  },
+  receiptFontSize: {
+    type: Number,
+    default: 12
+  },
+  receiptFooterNote: {
+    type: String,
+    default: ''
+  },
+  receiptSpecialNote: {
+    type: String,
+    default: ''
+  },
   
   createdAt: {
     type: Date,

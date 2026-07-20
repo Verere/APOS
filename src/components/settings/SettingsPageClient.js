@@ -72,6 +72,10 @@ export default function SettingsPageClient({ slug, user }) {
     receiptFormat: 'standard',
     autoPrint: false,
     printerName: '',
+    receiptFontFamily: 'monospace',
+    receiptFontSize: 12,
+    receiptFooterNote: '',
+    receiptSpecialNote: '',
     
     // POS Settings
     allowCreditSales: true,
@@ -93,12 +97,16 @@ export default function SettingsPageClient({ slug, user }) {
             setFormData(prev => ({
               ...prev,
               ...data.settings,
+              receiptFontFamily: data.settings.receiptFontFamily || 'monospace',
+              receiptFontSize: Number(data.settings.receiptFontSize) || 12,
+              receiptFooterNote: data.settings.receiptFooterNote || '',
               priceTypes: Array.isArray(data.settings.priceTypes) ? data.settings.priceTypes : [],
               defaultPriceTypeId: data.settings.defaultPriceTypeId || null,
               name: user?.name || prev.name,
               email: user?.email || prev.email,
               allowComplimentarySale: data.settings.allowComplimentarySale || false,
               allowDecimalQuantity: data.settings.allowDecimalQuantity ?? false,
+              receiptSpecialNote: data.settings.receiptSpecialNote || '',
             }))
             setPriceTypeUsage(data.priceTypeUsage || {})
           }
@@ -997,6 +1005,47 @@ export default function SettingsPageClient({ slug, user }) {
             <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-orange-600"></div>
           </div>
         </label>
+
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-orange-300 transition-colors">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Receipt Font</label>
+              <select
+                value={formData.receiptFontFamily || 'monospace'}
+                onChange={(e) => handleInputChange('receiptFontFamily', e.target.value)}
+                className="w-full border-2 border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="monospace">Monospace</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="'Courier New', monospace">Courier New</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Receipt Text Size (px)</label>
+              <input
+                type="number"
+                min="9"
+                max="18"
+                value={formData.receiptFontSize ?? 12}
+                onChange={(e) => handleInputChange('receiptFontSize', Math.min(18, Math.max(9, Number(e.target.value) || 12)))}
+                className="w-full border-2 border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-orange-300 transition-colors">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Receipt Special Note</label>
+          <textarea
+            rows={3}
+            value={formData.receiptFooterNote || ''}
+            onChange={(e) => handleInputChange('receiptFooterNote', e.target.value)}
+            placeholder="Thank you for shopping with us"
+            className="w-full border-2 border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+          />
+          <p className="text-xs text-gray-500 mt-2">This note appears at the bottom of printed receipts.</p>
+        </div>
       </div>
     </div>
   )
@@ -1009,6 +1058,20 @@ export default function SettingsPageClient({ slug, user }) {
       </div>
 
       <div className="space-y-4">
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-orange-300 transition-colors">
+          <label className="block">
+            <div className="font-semibold text-gray-900 mb-1">Receipt Footer Special Note</div>
+            <div className="text-sm text-gray-500 mb-3">This message appears at the bottom of printed receipts.</div>
+            <textarea
+              value={formData.receiptSpecialNote || ''}
+              onChange={(e) => handleInputChange('receiptSpecialNote', e.target.value)}
+              rows={3}
+              maxLength={280}
+              placeholder="Thank you for your patronage. No refund after 24 hours."
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </label>
+        </div>
         {/* Allow Credit Sales */}
         <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
           <label className="flex items-center justify-between cursor-pointer">
