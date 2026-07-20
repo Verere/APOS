@@ -442,7 +442,7 @@ items = []
 
 // add payment and create order from cart items atomically
 export const addPaymentWithOrder = async (prvState, formData) => {
-  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, customerId, customerName, isComplimentary, transactionType, approvedBy, reason, remarks, location } = Object.fromEntries(formData);
+  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, customerId, customerName, isComplimentary, transactionType, approvedBy, reason, remarks, location, allowDecimalQuantity } = Object.fromEntries(formData);
   try {
     await connectToDB();
     const items = cartItems ? JSON.parse(cartItems) : [];
@@ -463,7 +463,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
     }
 
     // validate cart items against DB (existence, slug ownership, sufficient stock)
-    try { await validateCheckout(items, slug) } catch (err) { return { error: err.message } }
+    try { await validateCheckout(items, slug, { allowDecimalQuantity: allowDecimalQuantity === 'true' }) } catch (err) { return { error: err.message } }
 
     // run entire checkout flow inside a transaction
     try{
@@ -481,14 +481,22 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         // create order
         const num = await fetchCountOrder(slug) + 1;
         const orderNum = slug.substring(0, 3) + num;
-        const newOrder = new Order({ slug, orderNum, soldBy, bDate });
+        const newOrder = new Order({
+          slug,
+          orderNum,
+          soldBy,
+          bDate,
+          ...(customerId && { customerId }),
+          ...(customerName && { customerName }),
+          orderName: customerName || customerId || orderNum,
+        });
         await newOrder.save({ session });
 
         const {
           orderItems: itemsWithCostProfit,
           totalAmount: computedOrderAmount,
           totalProfit: computedOrderProfit,
-        } = buildOrderItemSnapshots(items, updatedProducts, { complimentary: complimentarySale });
+        } = buildOrderItemSnapshots(items, updatedProducts, { complimentary: complimentarySale, allowDecimalQuantity: allowDecimalQuantity === 'true' });
 
         const totalOrderAmount = complimentarySale ? 0 : computedOrderAmount;
         const totalOrderProfit = complimentarySale ? 0 : computedOrderProfit;
@@ -599,6 +607,9 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         // Update order with amount paid
         newOrder.amountPaid = complimentarySale ? 0 : Number(amountPaid || 0);
         newOrder.bal = complimentarySale ? 0 : Math.max(0, totalOrderAmount - Number(amountPaid || 0));
+        newOrder.customerName = customerName || newOrder.customerName;
+        newOrder.customerId = customerId || newOrder.customerId;
+        newOrder.orderName = customerName || customerId || newOrder.orderName || orderNum;
         await newOrder.save({ session });
 
         return { success: true, orderId: newOrder._id };

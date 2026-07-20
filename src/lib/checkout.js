@@ -3,7 +3,7 @@
 // - `cartItems` is an array of items with `product` (id) and `qty`
 // - each product exists
 // - each product belongs to the requesting store (`slug` matches product.slug)
-// - requested quantities are positive integers and do not exceed DB stock
+// - requested quantities are positive integers by default and do not exceed DB stock
 // Throws an Error with a descriptive message on any validation failure.
 
 import connectToDB from '@/utils/connectDB'
@@ -16,9 +16,10 @@ import Product from '@/models/product'
  * @returns {Promise<{valid: true, items: Array}>} resolves when valid
  * @throws {Error} descriptive validation error
  */
-export async function validateCheckout(cartItems, slug){
+export async function validateCheckout(cartItems, slug, options = {}){
 	if(!Array.isArray(cartItems)) throw new Error('cartItems must be an array')
 	if(!slug) throw new Error('store slug is required')
+	const allowDecimalQuantity = options?.allowDecimalQuantity === true
 
 	// normalize and validate basic shape
 	const normalized = cartItems.map((it, idx) => {
@@ -31,8 +32,8 @@ export async function validateCheckout(cartItems, slug){
 		const qty = Number(rawQty)
 		const priceTypeId = String(it.priceTypeId || 'legacy').trim() || 'legacy'
 		if(!product) throw new Error(`cartItems[${idx}]: missing product id`)
-		if(!Number.isFinite(qty) || qty <= 0 || !Number.isInteger(qty)){
-			throw new Error(`cartItems[${idx}]: qty must be a positive integer`)
+		if(!Number.isFinite(qty) || qty <= 0 || (!allowDecimalQuantity && !Number.isInteger(qty))){
+			throw new Error(`cartItems[${idx}]: qty must be a positive ${allowDecimalQuantity ? 'number' : 'integer'}`)
 		}
 		if(!Number.isFinite(unitPrice) || unitPrice < 0){
 			throw new Error(`cartItems[${idx}]: unitPrice must be a valid non-negative number`)

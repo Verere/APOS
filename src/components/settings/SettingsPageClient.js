@@ -77,6 +77,7 @@ export default function SettingsPageClient({ slug, user }) {
     allowCreditSales: true,
     allowPriceAdjustment: false,
     allowPriceTypeSelection: false,
+    allowDecimalQuantity: false,
     allowComplimentarySale: false,
   })
 
@@ -97,6 +98,7 @@ export default function SettingsPageClient({ slug, user }) {
               name: user?.name || prev.name,
               email: user?.email || prev.email,
               allowComplimentarySale: data.settings.allowComplimentarySale || false,
+              allowDecimalQuantity: data.settings.allowDecimalQuantity ?? false,
             }))
             setPriceTypeUsage(data.priceTypeUsage || {})
           }
@@ -1072,6 +1074,30 @@ export default function SettingsPageClient({ slug, user }) {
                 type="checkbox"
                 checked={formData.allowPriceTypeSelection}
                 onChange={(e) => handleInputChange('allowPriceTypeSelection', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-600"></div>
+            </div>
+          </label>
+        </div>
+
+        {/* Allow Decimal Quantity */}
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="bg-cyan-50 p-3 rounded-lg">
+                <ShoppingCart className="w-6 h-6 text-cyan-600" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Allow Decimal Quantities in Cart</div>
+                <div className="text-sm text-gray-500">Let POS users enter fractional quantities such as 0.5 or 1.25</div>
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={formData.allowDecimalQuantity}
+                onChange={(e) => handleInputChange('allowDecimalQuantity', e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-600"></div>

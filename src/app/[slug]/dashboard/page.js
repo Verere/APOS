@@ -245,7 +245,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
     .slice(0, 5) // Take first 5 (most recent)
     .map(order => ({
       id: order._id.toString(),
-      customer: order.orderName || order.customerName || 'Walk-in-Customer',
+      customer: order.customerName || order.orderName || 'Walk-in-Customer',
       date: new Date(order.createdAt).toLocaleDateString(),
       amount: order.totalAmount || order.amount || 0,
       status: order.status || 'pending',

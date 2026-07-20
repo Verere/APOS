@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 
 
-const CartItemPanel = ({item, allowPriceAdjustment = false}) => {
+const CartItemPanel = ({item, allowPriceAdjustment = false, allowDecimalQuantity = false}) => {
   const { replace } = useRouter();
 const {_id}= item
     const {cart, incr, decr, deleteItem, updateQty, updatePrice} = useContext(CartContext)  
@@ -103,7 +103,7 @@ const {_id}= item
           value={qtyInput}
           onChange={(e) => {
             setQtyInput(e.target.value)
-            updateQty(cart, item, e.target.value)
+            updateQty(cart, item, e.target.value, allowDecimalQuantity)
           }}
           onKeyPress={(e) => {
             if (e.key === 'Enter') {
@@ -111,6 +111,8 @@ const {_id}= item
             }
           }}
           min="0"
+          step={allowDecimalQuantity ? 'any' : '1'}
+          inputMode={allowDecimalQuantity ? 'decimal' : 'numeric'}
           className="w-16 sm:w-20 px-2 py-2.5 text-center font-bold text-sm sm:text-base text-gray-900 bg-white border-x-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <button

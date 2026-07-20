@@ -10,7 +10,7 @@ import React, { useContext, useEffect, useState, useMemo } from 'react'
 import CartItemPanel from '@/components/CartItem/CartItem'
 import {  usePathname, useRouter, useSearchParams } from "next/navigation";
 
-export const Cart = ({ slug, allowPriceAdjustment = false })=>{
+export const Cart = ({ slug, allowPriceAdjustment = false, allowDecimalQuantity = false })=>{
 const {cart, deleteItem} = useContext(CartContext)
 const {setCartTotal, setCartValue} = useContext(GlobalContext)
  const {location, setLocation, setLocationToState} = useContext(GlobalContext)
@@ -49,7 +49,7 @@ return(
       <main className="w-full bg-gray-50 p-2 sm:p-3 space-y-2">
       {items && items.length > 0 ? (
         items.map((item) => (
-          <CartItemPanel item={item} key={item._id || item.product} slug={slug} pathname={pathname} allowPriceAdjustment={allowPriceAdjustment} />
+          <CartItemPanel item={item} key={item._id || item.product} slug={slug} pathname={pathname} allowPriceAdjustment={allowPriceAdjustment} allowDecimalQuantity={allowDecimalQuantity} />
         ))
       ) : (
         <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-gray-400">

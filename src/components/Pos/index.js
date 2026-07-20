@@ -34,6 +34,7 @@ const PosPage = ({
   allowCreditSales = true,
   allowPriceAdjustment = false,
   allowPriceTypeSelection = false,
+  allowDecimalQuantity = false,
   allowComplimentarySale = false
 }) => {
   const { location, setBusDate, setHotel, setStore, payment, cartValue, user } = useContext(GlobalContext);
@@ -222,6 +223,7 @@ const PosPage = ({
           paymentAmount: paymentAmount,
           creditAmount: creditAmount,
           paymentMethod: paymentMethod,
+          allowDecimalQuantity,
         }),
       });
 
@@ -276,7 +278,7 @@ const PosPage = ({
       toast.error('Failed to process credit sale');
       setLoading(false);
     }
-  }, [slug, selectedCustomerId, cart, bDate, setCart, setSelectedCustomer, setCreditSale]);
+  }, [slug, selectedCustomerId, cart, bDate, setCart, setSelectedCustomer, setCreditSale, allowDecimalQuantity]);
 
   const printCreditInvoice = useCallback((data) => {
     const invoiceWindow = window.open('', '_blank');
@@ -536,7 +538,7 @@ const PosPage = ({
               {/* Cart Items Scroll Area */}
               <div className="flex-1 overflow-auto">
                 <ScrollArea type="always" scrollbars="vertical" className="h-full">
-                  <Cart allowPriceAdjustment={allowPriceAdjustment} />
+                  <Cart allowPriceAdjustment={allowPriceAdjustment} allowDecimalQuantity={allowDecimalQuantity} />
                 </ScrollArea>
               </div>
               
@@ -709,6 +711,7 @@ const PosPage = ({
           slug={slug}
           pathname={pathname}
           isComplimentary={paymentMode === 'complimentary'}
+          allowDecimalQuantity={allowDecimalQuantity}
           customer={selectedCustomerData}
           onSuccess={() => {
             localStorage.removeItem('cart')

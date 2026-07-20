@@ -66,6 +66,7 @@ export async function GET(request, { params }) {
         allowCreditSales: true,
         allowPriceAdjustment: false,
         allowPriceTypeSelection: false,
+        allowDecimalQuantity: false,
         priceTypes: [],
         defaultPriceTypeId: null
       });

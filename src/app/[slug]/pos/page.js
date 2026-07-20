@@ -32,6 +32,7 @@ const Pos = async({params, searchParams})=>{
             allowCreditSales: true,
             allowPriceAdjustment: false,
             allowPriceTypeSelection: false,
+            allowDecimalQuantity: false,
             priceTypes: [],
             defaultPriceTypeId: null
           })
@@ -55,6 +56,7 @@ const Pos = async({params, searchParams})=>{
                  allowCreditSales={settings?.allowCreditSales ?? true}
                  allowPriceAdjustment={settings?.allowPriceAdjustment ?? false}
                  allowPriceTypeSelection={settings?.allowPriceTypeSelection ?? false}
+                 allowDecimalQuantity={settings?.allowDecimalQuantity ?? false}
              />
             </>
         )

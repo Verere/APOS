@@ -43,6 +43,10 @@ const StoreSettingsSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  allowDecimalQuantity: {
+    type: Boolean,
+    default: false
+  },
 
   // Configurable store-specific price types (unlimited)
   priceTypes: {

@@ -5,6 +5,7 @@ function toNumber(value, fallback = NaN) {
 
 export function buildOrderItemSnapshots(cartItems = [], updatedProducts = [], options = {}) {
   const isComplimentary = options?.complimentary === true;
+  const allowDecimalQuantity = options?.allowDecimalQuantity === true;
   const updatedMap = new Map((updatedProducts || []).map((p) => [String(p.id), p]));
 
   let totalAmount = 0;
@@ -17,8 +18,8 @@ export function buildOrderItemSnapshots(cartItems = [], updatedProducts = [], op
     }
 
     const quantity = toNumber(item.quantity ?? item.qty, NaN);
-    if (!Number.isInteger(quantity) || quantity <= 0) {
-      throw new Error(`cartItems[${index}]: quantity must be a positive integer`);
+    if (!Number.isFinite(quantity) || quantity <= 0 || (!allowDecimalQuantity && !Number.isInteger(quantity))) {
+      throw new Error(`cartItems[${index}]: quantity must be a positive ${allowDecimalQuantity ? 'number' : 'integer'}`);
     }
 
     const unitPrice = isComplimentary ? 0 : toNumber(item.unitPrice ?? item.price, NaN);

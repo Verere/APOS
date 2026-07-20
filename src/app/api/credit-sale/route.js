@@ -21,7 +21,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { slug, customerId, cartItems, bDate, paymentAmount = 0, creditAmount, paymentMethod = 'CASH' } = await req.json()
+    const { slug, customerId, cartItems, bDate, paymentAmount = 0, creditAmount, paymentMethod = 'CASH', allowDecimalQuantity = false } = await req.json()
 
     if (!slug || !customerId || !cartItems || !cartItems.length) {
       return NextResponse.json(
@@ -56,7 +56,7 @@ export async function POST(req) {
 
     // Validate cart items
     try {
-      await validateCheckout(cartItems, slug)
+      await validateCheckout(cartItems, slug, { allowDecimalQuantity: allowDecimalQuantity === true })
     } catch (err) {
       return NextResponse.json({ error: err.message }, { status: 400 })
     }
@@ -77,7 +77,7 @@ export async function POST(req) {
         orderItems,
         totalAmount,
         totalProfit,
-      } = buildOrderItemSnapshots(cartItems, updatedProducts)
+      } = buildOrderItemSnapshots(cartItems, updatedProducts, { allowDecimalQuantity: allowDecimalQuantity === true })
 
       // Generate order number
       const orderCount = await Order.countDocuments({ slug })

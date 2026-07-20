@@ -54,6 +54,8 @@ const OrderSchema = new mongoose.Schema({
     slug:{
         type: String
     },
+   customerId:{type: String},
+   customerName:{type: String},
    orderName:{type: String},
    orderNum:{type: String},
     items:{type: [OrderItemSchema], default: []},

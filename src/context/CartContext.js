@@ -134,8 +134,9 @@ const [cpayment, setCPayment] = useState(0)
         setCartToState()
    }
         
-      const updateQty = async (cart, item, newQty) => {
-        const qty = parseInt(newQty) || 0
+      const updateQty = async (cart, item, newQty, allowDecimalQuantity = false) => {
+        const parsedQty = allowDecimalQuantity ? Number(newQty) : parseInt(newQty)
+        const qty = Number.isFinite(parsedQty) ? parsedQty : 0
         if (qty < 0) return
         
         const newData = [...cart?.cartItems ?? []]

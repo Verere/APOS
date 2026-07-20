@@ -20,6 +20,7 @@ export default function PosPaymentModal({
   slug,
   pathname,
   isComplimentary = false,
+  allowDecimalQuantity = false,
   customer,
   onSuccess 
 }) {
@@ -534,6 +535,7 @@ export default function PosPaymentModal({
                 <input type="hidden" name="customerName" value={customer?.name || ''} />
                 <input type="hidden" name="isComplimentary" value={isComplimentary ? 'true' : 'false'} />
                 <input type="hidden" name="transactionType" value={isComplimentary ? 'COMPLIMENTARY' : 'STANDARD'} />
+                <input type="hidden" name="allowDecimalQuantity" value={allowDecimalQuantity ? 'true' : 'false'} />
                 <input type="hidden" name="approvedBy" value={approvedBy} />
                 <input type="hidden" name="reason" value={complimentaryReason} />
                 <input type="hidden" name="remarks" value={complimentaryRemarks} />
