@@ -617,14 +617,14 @@ export default function PosPaymentModal({
                     <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>
                   </div>
 
-                  <div style={{ marginBottom: '10px', fontSize: '11px' }}>
+                  <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: '400' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Date:</span><span>{completedOrder?.bDate}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Receipt #:</span><span>{completedOrder?.orderNum}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', fontWeight: '500', justifyContent: 'space-between' }}>
                       <span>Customer:</span><span>{completedOrder?.customer?.name || 'Walk-in'}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -633,7 +633,7 @@ export default function PosPaymentModal({
                     <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>
                   </div>
 
-                  <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                  <table style={{ width: '100%', fontSize: '14px', fontWeight: '400', borderCollapse: 'collapse', marginBottom: '10px' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #000' }}>
                         <th style={{ textAlign: 'left', padding: '4px 0' }}>ITEM</th>
@@ -675,7 +675,7 @@ export default function PosPaymentModal({
                   <div style={{ borderTop: '2px dashed #000', margin: '10px 0' }}></div>
                   <div style={{ textAlign: 'center', fontSize: '12px' }}>
                     <p style={{ margin: '5px 0', fontWeight: 'bold' }}>Thanks for your Patronage!</p>
-                    <p style={{ margin: '5px 0', fontSize: '10px' }}>Powered by: www.marketbook.app</p>
+                    <p style={{ margin: '5px 0', fontSize: '10px',fontWeight: '500' }}>Powered by: www.marketbook.app</p>
                     
                   </div>
                 </div>
