@@ -31,6 +31,7 @@ const PosPage = ({
   pays,
   customers,
   pricingSettings = {},
+  printingSettings = {},
   allowCreditSales = true,
   allowPriceAdjustment = false,
   allowPriceTypeSelection = false,
@@ -51,12 +52,17 @@ const PosPage = ({
   const [paymentMode, setPaymentMode] = useState('payment');
   const [showCreditPaymentModal, setShowCreditPaymentModal] = useState(false);
   const [selectedPriceTypeId, setSelectedPriceTypeId] = useState('');
-  const [printingSettings, setPrintingSettings] = useState({
-    receiptFontFamily: 'monospace',
-    receiptFontSize: 12,
-    receiptFooterNote: '',
+  const [printingSettingsState, setPrintingSettingsState] = useState({
+    receiptFontFamily: printingSettings?.receiptFontFamily || 'monospace',
+    receiptFontSize: Number(printingSettings?.receiptFontSize) || 12,
+    receiptFooterNote: printingSettings?.receiptFooterNote || printingSettings?.receiptSpecialNote || '',
   });
-  
+
+  const receiptFontFamily = printingSettingsState.receiptFontFamily || 'monospace';
+  const receiptFontSize = Number(printingSettingsState.receiptFontSize) || 12;
+  const receiptFooterNote = printingSettingsState.receiptFooterNote || '';
+  const receiptSpecialNote = receiptFooterNote;
+
   const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
   const searchParams = useSearchParams();
   const { replace } = useRouter();
@@ -97,10 +103,6 @@ const PosPage = ({
     return { ...selectedCustomerData, priceTypeId: selectedPriceTypeId };
   }, [selectedCustomerData, selectedPriceTypeId]);
 
-  const receiptFontFamily = printingSettings?.receiptFontFamily || "'Courier New', monospace";
-  const receiptFontSize = Math.min(18, Math.max(9, Number(printingSettings?.receiptFontSize) || 12));
-  const receiptFooterNote = String(printingSettings?.receiptFooterNote || '').trim();
-
   useEffect(() => {
     setSelectedPriceTypeId('');
   }, [slug]);
@@ -112,7 +114,7 @@ const PosPage = ({
         if (!response.ok) return
         const data = await response.json()
         const s = data?.settings || {}
-        setPrintingSettings({
+        setPrintingSettingsState({
           receiptFontFamily: s.receiptFontFamily || 'monospace',
           receiptFontSize: Number(s.receiptFontSize) || 12,
           receiptFooterNote: s.receiptFooterNote || '',
@@ -441,9 +443,8 @@ const PosPage = ({
 
         <div class="footer">
           <p>Thank you for your business!</p>
-          ${receiptSpecialNote ? `<p style="margin-top: 8px; font-size: 11px; font-style: italic;">${receiptSpecialNote}</p>` : ''}
           <p style="margin-top: 10px; font-size: 10px;">This is a computer-generated invoice</p>
-          ${receiptFooterNote ? `<p style="margin-top: 6px; font-size: 10px;">${receiptFooterNote}</p>` : ''}
+          ${receiptSpecialNote ? `<p style="margin-top: 6px; font-size: 10px;">${receiptSpecialNote}</p>` : ''}
           <p style="margin-top: 8px; font-size: 10px; font-weight: bold;">Powered by www.marketbook.app</p>
           <p style="margin-top: 2px; font-size: 10px;">+2349076361669</p>
           <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Print Invoice</button>
@@ -460,7 +461,7 @@ const PosPage = ({
     setTimeout(() => {
       invoiceWindow.print();
     }, 500);
-  }, [getHotel, receiptSpecialNote]);
+  }, [getHotel, receiptSpecialNote, receiptFontFamily, receiptFontSize]);
      
   const handleSearch = useDebouncedCallback((e) => {
     const value = e.target.value;
@@ -728,7 +729,7 @@ const PosPage = ({
           onClose={() => setShowInvoiceModal(false)}
           invoiceData={invoiceData}
           storeInfo={getHotel?.[0]}
-          printingSettings={printingSettings}
+          printingSettings={printingSettingsState}
         />
 
         {/* Payment Modal */}
@@ -749,7 +750,7 @@ const PosPage = ({
           pathname={pathname}
           isComplimentary={paymentMode === 'complimentary'}
           allowDecimalQuantity={allowDecimalQuantity}
-          printingSettings={printingSettings}
+          printingSettings={printingSettingsState}
           customer={selectedCustomerData}
           onSuccess={() => {
             localStorage.removeItem('cart')
@@ -769,7 +770,6 @@ const PosPage = ({
           customerName={selectedCustomerData?.name || 'Customer'}
           onConfirm={handleConfirmCreditPayment}
         />
-      {/* ...existing code... */}
       </>
     )
 }
