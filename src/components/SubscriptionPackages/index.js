@@ -106,7 +106,7 @@ export default function SubscriptionPackages() {
       borderColor: 'border-blue-200',
       isPopular: true,
       features: {
-        maxStores: 2,
+        maxStores: 1,
         maxProducts: 500,
         maxUsers: 5,
         maxOrders: 1000,
@@ -134,7 +134,7 @@ export default function SubscriptionPackages() {
       color: 'from-purple-500 to-pink-600',
       borderColor: 'border-purple-300',
       features: {
-        maxStores: 5,
+        maxStores: 3,
         maxProducts: 5000,
         maxUsers: 20,
         maxOrders: 10000,

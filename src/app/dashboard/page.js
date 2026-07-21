@@ -66,6 +66,7 @@ export default async function DashboardPage() {
               <ul className="space-y-3">
                 <StoreMembershipListClient memberships={memberships.map(m => ({
                   ...m,
+                  userName: session.user.name || session.user.email,
                   storeId: typeof m.storeId === 'object' && m.storeId !== null && m.storeId.toString ? m.storeId.toString() : m.storeId
                 }))} isCashierOnly={isCashierOnly} />
               </ul>
@@ -167,6 +168,7 @@ export default async function DashboardPage() {
             <ul className="space-y-3">
               <StoreMembershipListClient memberships={memberships.map(m => ({
                 ...m,
+                userName: session.user.name || session.user.email,
                 storeId: typeof m.storeId === 'object' && m.storeId !== null && m.storeId.toString ? m.storeId.toString() : m.storeId
               }))} isCashierOnly={isCashierOnly} />
             </ul>

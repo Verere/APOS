@@ -8,6 +8,7 @@ export default function StoreMembershipCardClient({
   storeId,
   role,
   isCashierOnly,
+  userName,
   children,
 }) {
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,11 @@ export default function StoreMembershipCardClient({
         aria-disabled={loading}
       >
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 p-4 sm:p-5 transition-all duration-200 transform hover:-translate-y-1 cursor-pointer">
+          {userName ? (
+            <div className="mb-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+              User: <span className="font-semibold text-gray-800 dark:text-gray-100">{userName}</span>
+            </div>
+          ) : null}
           {children}
         </div>
       </a>

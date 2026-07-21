@@ -49,8 +49,12 @@ export default async function withTransaction(callback, maxRetries = 3){
 	let lastError
 	
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
-		// Start session from the mongoose connection to ensure same MongoClient
-		const session = await mongoose.connection.startSession()
+		// Start session from the exact native Mongo client backing mongoose models.
+		const client = mongoose.connection.getClient?.()
+		if (!client) {
+			throw new Error('Mongo client not available for transaction session')
+		}
+		const session = await client.startSession()
 		try{
 			session.startTransaction()
 			const result = await callback(session)

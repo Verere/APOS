@@ -739,6 +739,7 @@ const PosPage = ({
             setShowPaymentModal(false)
             setPaymentMode('payment')
           }}
+          rcpt={orderRcpt}
           cartValue={cartValue}
           cart={cart}
           order={order}

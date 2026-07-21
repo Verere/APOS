@@ -19,6 +19,7 @@ export default function PosPaymentModal({
   store,
   slug,
   pathname,
+  rcpt,
   isComplimentary = false,
   allowDecimalQuantity = false,
   printingSettings = {},
@@ -145,6 +146,7 @@ export default function PosPaymentModal({
       setPaymentsData(paymentsList)
       setCompletedOrder({
         ...order,
+        orderNum: state?.orderNum || order?.orderNum || '',
         bDate: busDate,
         amount: orderTotal,
         amountPaid: totalPayment,
@@ -153,6 +155,7 @@ export default function PosPaymentModal({
         isComplimentary,
         customer: customer || null
       })
+      console.log('Completed Order:', completedOrder)
       setOrderItems(cartItems)
       setShowPrintModal(true)
       
@@ -334,7 +337,7 @@ export default function PosPaymentModal({
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Order #:</span>
-                    <span className="font-mono font-semibold">{order?.orderNum || 'N/A'}</span>
+                    <span className="font-mono font-semibold">{rcpt || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Date:</span>
@@ -611,8 +614,8 @@ export default function PosPaymentModal({
                 <div ref={printRef} style={{ width: '80mm', fontFamily: 'Segoe UI, Arial, sans-serif', fontSize: '13px', padding: '5mm' }}>
                   <div style={{ textAlign: 'center', marginBottom: '10px' }}>
                     <h2 style={{ margin: '0', fontSize: '18px', fontWeight: '700' }}>{store?.name || 'STORE'}</h2>
-                    <p style={{ margin: '2px 0', fontSize: '12px' }}>{store?.address || 'Address'}</p>
-                    <p style={{ margin: '2px 0', fontSize: '12px' }}>Tel: {store.number},  {store.whatsapp}</p>
+                    <p style={{ margin: '2px 0', fontSize: '12px', fontWeight: '500' }}>{store?.address || 'Address'}</p>
+                    <p style={{ margin: '2px 0', fontSize: '12px', fontWeight: '500' }}>Tel: {store.number},  {store.whatsapp}</p>
                       {resolvedReceiptFooterNote ? <p>{resolvedReceiptFooterNote}</p> : null}
                     <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>
                   </div>
@@ -621,13 +624,13 @@ export default function PosPaymentModal({
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Date:</span><span>{completedOrder?.bDate}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Receipt #:</span><span>{completedOrder?.orderNum}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' , fontWeight: '400'}}>
+                      <span>Receipt #:</span><span>{rcpt}</span>
                     </div>
                     <div style={{ display: 'flex', fontWeight: '500', justifyContent: 'space-between' }}>
                       <span>Customer:</span><span>{completedOrder?.customer?.name || 'Walk-in'}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '400' }}>
                       <span>Cashier:</span><span>{user?.name}</span>
                     </div>
                     <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>

@@ -12,6 +12,7 @@ export default function StoreMembershipListClient({ memberships, isCashierOnly }
             storeId={m.storeId}
             role={m.role}
             isCashierOnly={isCashierOnly}
+            userName={m.userName}
           >
             <div className="flex justify-between items-center gap-4">
               <div className="flex-1 min-w-0">

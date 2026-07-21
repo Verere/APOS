@@ -198,7 +198,7 @@ export const addStore = async (prvState, formData) => {
   // ignore any slug provided by client: remove it before destructuring
   const formObj = Object.fromEntries(formData);
   if (Object.prototype.hasOwnProperty.call(formObj, 'slug')) delete formObj.slug;
-  const { name, address, email, state, lga, opens, closes, phone, whatsapp, /* user, */ logo, image, sub, starts, ends } = formObj;
+  const { name, address, email, state, lga, opens, closes, number, whatsapp, /* user, */ logo, image, sub, starts, ends } = formObj;
   console.log('email from formData:', email);
  
   try {
@@ -453,7 +453,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
 
     const store = await getStoreBySlug(slug);
 
-    const soldBy = session.user.email || user;
+    const soldBy = session.user.name || user;
 
     if (!items.length) return { error: 'Cart is empty' };
 
@@ -612,12 +612,12 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         newOrder.orderName = customerName || customerId || newOrder.orderName || orderNum;
         await newOrder.save({ session });
 
-        return { success: true, orderId: newOrder._id };
+        return { success: true, orderId: newOrder._id, orderNum };
       });
 
       if (result && result.success) {
         revalidatePath(path);
-        return { success: 'Order and payment saved', orderId: String(result.orderId) };
+        return { success: 'Order and payment saved', orderId: String(result.orderId), orderNum: String(result.orderNum || '') };
       }
     }catch(err){
       console.log('transaction error', err);

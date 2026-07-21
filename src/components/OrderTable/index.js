@@ -1,19 +1,19 @@
-
 "use client"
-import Link from "next/link";
-import { Table } from "@radix-ui/themes";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { GlobalContext } from "@/context";
-import {useEffect,  useContext, useState, useActionState, useMemo, useCallback } from "react";
-import { format } from 'date-fns';
-import Search from "../search/search";
-import { addOrder } from "@/actions";
-import { updateCancelOrder } from "@/actions/update";
-import { toast } from "react-toastify";
-import { currencyFormat } from '@/utils/currency';
-import { formatTime } from "@/utils/date";
-import DatePicker from "react-datepicker";
-   import moment from 'moment'
+
+import { useCallback, useContext, useMemo, useRef, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Table } from '@radix-ui/themes'
+import DatePicker from 'react-datepicker'
+import { format } from 'date-fns'
+import moment from 'moment'
+import { useReactToPrint } from 'react-to-print'
+import { CheckCircle, Printer } from 'lucide-react'
+
+import { GlobalContext } from '@/context'
+import { currencyFormat } from '@/utils/currency'
+import { formatTime } from '@/utils/date'
+import { updateCancelOrder } from '@/actions/update'
+import { toast } from 'react-toastify'
 
 function CancelConfirmToast({ onConfirm, onClose }) {
   const [reason, setReason] = useState('')
@@ -56,103 +56,77 @@ function CancelConfirmToast({ onConfirm, onClose }) {
   )
 }
 
-const OrderTable = ({patients}) => {
-  const [slug, setSlug]=useState(null)
-  const {user }= useContext(GlobalContext)
-  const [state, formAction, isPending] = useActionState(addOrder, {});
-  const pathname = usePathname();
-  const { replace } = useRouter();
+const OrderTable = ({ patients = [] }) => {
+  const { user, store } = useContext(GlobalContext)
+  const pathname = usePathname()
+  const { replace } = useRouter()
+  const printRef = useRef(null)
 
-   
-       const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
-       const [selectedDate, setSelectedDate] = useState(null);
-      const [cancelingOrderId, setCancelingOrderId] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null)
+  const [cancelingOrderId, setCancelingOrderId] = useState(null)
+  const [showPrintModal, setShowPrintModal] = useState(false)
+  const [completedOrder, setCompletedOrder] = useState(null)
 
-const filteredOrders = useMemo(() => {
-  if (selectedDate) {
-    const targetDate = format(selectedDate, 'd/MM/yyyy');
-    return patients.filter((order) => order.bDate === targetDate);
-  }
-  return patients.filter((order) => order.bDate === bDate);
-}, [selectedDate, patients, bDate]);
+  const bDate = useMemo(() => moment().format('D/MM/YYYY'), [])
 
-useEffect(()=>{
-  const getSlug=()=>{
-  const slg = JSON.parse(localStorage.getItem('slug'))
-setSlug(slg)
-  }
-  getSlug()
-})
-   useEffect(()=>{
-    const getState=()=>{
-  
-  if(state.error){
-   toast.error(state.error)
-  }
-  if(state.success){
-   toast.success(state.success)
-  }
-  }
-  getState()
-   },[state])
-  
- 
-    // const [item, setItem] = useState([...initialTests])
-    const [code, setCode]= useState('')
-    
+  const filteredOrders = useMemo(() => {
+    const targetDate = selectedDate ? format(selectedDate, 'd/MM/yyyy') : bDate
+    return (patients || []).filter((order) => order?.bDate === targetDate)
+  }, [patients, selectedDate, bDate])
 
-    const handleSearch = useCallback(async(code) => {       
-        
-        if (code && code.length) {
-          const items = await fetchPatientListByLab(slug, code)
-          setItem(items)
-          setCode("")
-        } else{
-          setItem(initialTests)
-          setCode("")
-        }
-        
-      }, [slug])
+  const selectedOrderItems = useMemo(() => completedOrder?.items || [], [completedOrder])
 
-    const handleCancelOrder = useCallback(async (orderId, cancellationReason) => {
-      try {
-        setCancelingOrderId(orderId)
-        const cancelledBy = user?.email || user?.name || 'system'
-        const result = await updateCancelOrder(orderId, cancellationReason, cancelledBy)
-        if (result?.error) {
-          throw new Error(result.error)
-        }
-        toast.success('Order cancelled successfully')
-        replace(pathname)
-      } catch (error) {
-        console.error('Cancel order error:', error)
-        toast.error(error?.message || 'Failed to cancel order')
-      } finally {
-        setCancelingOrderId(null)
+  const openReceipt = useCallback((order) => {
+    setCompletedOrder(order)
+    setShowPrintModal(true)
+  }, [])
+
+  const handleCancelOrder = useCallback(async (orderId, cancellationReason) => {
+    try {
+      setCancelingOrderId(orderId)
+      const cancelledBy = user?.email || user?.name || 'system'
+      const result = await updateCancelOrder(orderId, cancellationReason, cancelledBy)
+      if (result?.error) {
+        throw new Error(result.error)
       }
-    }, [pathname, replace, user])
+      toast.success('Order cancelled successfully')
+      replace(pathname)
+    } catch (error) {
+      console.error('Cancel order error:', error)
+      toast.error(error?.message || 'Failed to cancel order')
+    } finally {
+      setCancelingOrderId(null)
+    }
+  }, [pathname, replace, user])
 
-    const requestCancelOrder = useCallback((orderId) => {
-      toast.warning(
-        ({ closeToast }) => (
-          <CancelConfirmToast
-            onClose={closeToast}
-            onConfirm={async (reason) => {
-              closeToast()
-              await handleCancelOrder(orderId, reason)
-            }}
-          />
-        ),
-        { autoClose: false, closeOnClick: false, draggable: false }
-      )
-    }, [handleCancelOrder])
+  const requestCancelOrder = useCallback((orderId) => {
+    toast.warning(
+      ({ closeToast }) => (
+        <CancelConfirmToast
+          onClose={closeToast}
+          onConfirm={async (reason) => {
+            closeToast()
+            await handleCancelOrder(orderId, reason)
+          }}
+        />
+      ),
+      { autoClose: false, closeOnClick: false, draggable: false }
+    )
+  }, [handleCancelOrder])
 
-    return (
+  const reactToPrintFn = useReactToPrint({
+    contentRef: printRef,
+    pageStyle: `
+      @page { size: 80mm auto; margin: 0; }
+      @media print { body { margin: 0; padding: 0; } }
+    `
+  })
+
+  return (
     <div className="p-6 -mt-[6px]">
-      {/* Header Section */}
       <div className="mb-6 bg-white rounded-lg shadow-sm p-4 border border-gray-200">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Orders</h2>
-        
+
         <div className="flex flex-col sm:flex-row sm:items-end gap-4">
           <div className="flex-1 max-w-xs">
             <label className="block mb-2 text-sm font-semibold text-gray-700">Filter by Date:</label>
@@ -170,15 +144,13 @@ setSlug(slg)
               />
             </div>
           </div>
-          
-          {selectedDate && (
+
+          {selectedDate ? (
             <div className="flex items-center gap-2 bg-blue-50 px-4 py-3 rounded-lg border border-blue-200">
               <span className="text-sm text-gray-600">Showing orders for:</span>
               <span className="font-semibold text-blue-600">{format(selectedDate, 'dd/MM/yyyy')}</span>
             </div>
-          )}
-          
-          {!selectedDate && (
+          ) : (
             <div className="flex items-center gap-2 bg-green-50 px-4 py-3 rounded-lg border border-green-200">
               <span className="text-sm text-gray-600">Showing today&apos;s orders:</span>
               <span className="font-semibold text-green-600">{bDate}</span>
@@ -186,28 +158,26 @@ setSlug(slg)
           )}
         </div>
 
-        {/* Summary Stats */}
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
             <p className="text-sm text-gray-600 mb-1">Total Orders</p>
-            <p className="text-2xl font-bold text-blue-700">{filteredOrders?.length || 0}</p>
+            <p className="text-2xl font-bold text-blue-700">{filteredOrders.length}</p>
           </div>
           <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
             <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
             <p className="text-2xl font-bold text-green-700">
-              {currencyFormat(filteredOrders?.reduce((sum, order) => sum + (order?.amount || 0), 0))}
+              {currencyFormat(filteredOrders.reduce((sum, order) => sum + Number(order?.amount || 0), 0))}
             </p>
           </div>
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
             <p className="text-sm text-gray-600 mb-1">Amount Collected</p>
             <p className="text-2xl font-bold text-purple-700">
-              {currencyFormat(filteredOrders?.reduce((sum, order) => sum + (order?.amountPaid || 0), 0))}
+              {currencyFormat(filteredOrders.reduce((sum, order) => sum + Number(order?.amountPaid || 0), 0))}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Table Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <Table.Root layout="auto" variant="surface" className="w-full">
@@ -223,27 +193,22 @@ setSlug(slg)
                 <Table.ColumnHeaderCell className="font-semibold text-gray-700">Action</Table.ColumnHeaderCell>
               </Table.Row>
             </Table.Header>
-          
+
             <Table.Body>
-              {filteredOrders && filteredOrders?.length > 0 ? (
-                filteredOrders.map((patient) => (
-                  <Table.Row key={patient?._id} className="hover:bg-gray-50 transition-colors">
-                    <Table.RowHeaderCell className="font-semibold text-blue-600">
-                      #{patient?.orderNum}
-                    </Table.RowHeaderCell>
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map((order) => (
+                  <Table.Row key={order?._id} className="hover:bg-gray-50 transition-colors">
+                    <Table.RowHeaderCell className="font-semibold text-blue-600">#{order?.orderNum || 'N/A'}</Table.RowHeaderCell>
                     <Table.Cell>
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                        {patient?.orderName || patient?.customerName || 'Walk-in Customer'}
+                        {order?.orderName || order?.customerName || 'Walk-in Customer'}
                       </span>
                     </Table.Cell>
                     <Table.Cell>
-                      {patient?.items && patient.items.length > 0 ? (
+                      {Array.isArray(order?.items) && order.items.length > 0 ? (
                         <div className="space-y-1">
-                          {patient.items.map((item, i) => (
-                            <div 
-                              key={i} 
-                              className="flex items-center gap-2 text-sm bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200"
-                            >
+                          {order.items.map((item, index) => (
+                            <div key={index} className="flex items-center gap-2 text-sm bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200">
                               <span className="font-semibold text-blue-600 min-w-[30px]">{item.qty}×</span>
                               <span className="text-gray-700 uppercase">{item.item || item.name}</span>
                             </div>
@@ -253,38 +218,41 @@ setSlug(slg)
                         <span className="text-gray-400 text-sm italic">No items</span>
                       )}
                     </Table.Cell>
-                    <Table.Cell className="font-semibold text-gray-800">
-                      {currencyFormat(patient?.amount)}
-                    </Table.Cell>
+                    <Table.Cell className="font-semibold text-gray-800">{currencyFormat(order?.amount)}</Table.Cell>
                     <Table.Cell>
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
-                        {currencyFormat(patient?.amountPaid)}
+                        {currencyFormat(order?.amountPaid)}
                       </span>
                     </Table.Cell>
                     <Table.Cell>
                       <div className="text-gray-700">
-                        <div className="font-medium">{patient?.bDate}</div>
-                        <div className="text-xs text-gray-500">{formatTime(patient?.createdAt)}</div>
+                        <div className="font-medium">{order?.bDate}</div>
+                        <div className="text-xs text-gray-500">{formatTime(order?.createdAt)}</div>
                       </div>
                     </Table.Cell>
                     <Table.Cell>
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                        {patient.user}
+                        {order?.soldBy || order?.user || 'N/A'}
                       </span>
                     </Table.Cell>
-                    <Table.Cell>
-                      {patient?.isCancelled ? (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
-                          Cancelled
-                        </span>
+                    <Table.Cell className="flex space-x-2">
+                      <button
+                        onClick={() => openReceipt(order)}
+                        className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 transition-all font-semibold flex items-center justify-center gap-2"
+                      >
+                        <Printer className="w-5 h-5" />
+                        Print
+                      </button>
+                      {order?.isCancelled ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">Cancelled</span>
                       ) : (
                         <button
                           type="button"
-                          onClick={() => requestCancelOrder(patient?._id)}
-                          disabled={cancelingOrderId === patient?._id}
+                          onClick={() => requestCancelOrder(order?._id)}
+                          disabled={cancelingOrderId === order?._id}
                           className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                          {cancelingOrderId === patient?._id ? 'Cancelling...' : 'Cancel Order'}
+                          {cancelingOrderId === order?._id ? 'Cancelling...' : 'Cancel Order'}
                         </button>
                       )}
                     </Table.Cell>
@@ -300,9 +268,7 @@ setSlug(slg)
                         </svg>
                       </div>
                       <p className="text-gray-500 font-medium">No orders found</p>
-                      <p className="text-gray-400 text-sm">
-                        {selectedDate ? 'Try selecting a different date' : 'No orders for today yet'}
-                      </p>
+                      <p className="text-gray-400 text-sm">{selectedDate ? 'Try selecting a different date' : 'No orders for today yet'}</p>
                     </div>
                   </Table.Cell>
                 </Table.Row>
@@ -311,7 +277,110 @@ setSlug(slg)
           </Table.Root>
         </div>
       </div>
+
+      {showPrintModal && completedOrder && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <CheckCircle className="w-10 h-10 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Receipt</h2>
+              <p className="text-gray-600">Receipt #{completedOrder?.orderNum || 'N/A'}</p>
+            </div>
+
+            <div style={{ display: 'none' }}>
+              <div ref={printRef} style={{ width: '80mm', fontFamily: 'monospace', fontSize: '12px', padding: '5mm' }}>
+                <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                  <h2 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>{store?.name || 'STORE'}</h2>
+                  <p style={{ margin: '2px 0', fontSize: '11px' }}>{store?.address || 'Address'}</p>
+                  <p style={{ margin: '2px 0', fontSize: '11px' }}>Tel: {store?.number || ''} {store?.whatsapp || ''}</p>
+                  <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }} />
+                </div>
+
+                <div style={{ marginBottom: '10px', fontSize: '11px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Date:</span><span>{completedOrder?.bDate || 'N/A'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Receipt #:</span><span>{completedOrder?.orderNum || 'N/A'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Customer:</span><span>{completedOrder?.orderName || completedOrder?.customerName || 'Walk-in Customer'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Cashier:</span><span>{completedOrder?.soldBy || user?.name || 'N/A'}</span>
+                  </div>
+                  <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }} />
+                </div>
+
+                <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #000' }}>
+                      <th style={{ textAlign: 'left', padding: '4px 0' }}>ITEM</th>
+                      <th style={{ textAlign: 'center', padding: '4px 0' }}>QTY</th>
+                      <th style={{ textAlign: 'right', padding: '4px 0' }}>AMOUNT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedOrderItems.map((item, index) => (
+                      <tr key={index} style={{ borderBottom: '1px dotted #ccc' }}>
+                        <td style={{ padding: '4px 0' }}>{item?.name || item?.item || item?.productName || 'Item'}</td>
+                        <td style={{ textAlign: 'center', padding: '4px 0' }}>{item?.qty ?? item?.quantity ?? 0}</td>
+                        <td style={{ textAlign: 'right', padding: '4px 0' }}>{currencyFormat(item?.amount ?? item?.total ?? 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div style={{ borderTop: '2px solid #000', margin: '8px 0' }} />
+                <div style={{ fontSize: '11px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                    <span>TOTAL:</span><span>{currencyFormat(completedOrder?.amount || 0)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>PAID:</span><span>{currencyFormat(completedOrder?.amountPaid || 0)}</span>
+                  </div>
+                  {(completedOrder?.bal ?? 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>BALANCE:</span><span>{currencyFormat(completedOrder?.bal || 0)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ borderTop: '2px dashed #000', margin: '10px 0' }} />
+                <div style={{ textAlign: 'center', fontSize: '12px' }}>
+                  <p style={{ margin: '5px 0', fontWeight: 'bold' }}>Thank you for your patronage</p>
+                  <p style={{ margin: '5px 0', fontSize: '10px', fontWeight: '500' }}>Powered by: www.marketbook.app</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={reactToPrintFn}
+                  className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 transition-all font-semibold flex items-center justify-center gap-2"
+                >
+                  <Printer className="w-5 h-5" />
+                  Print
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  setShowPrintModal(false)
+                  setCompletedOrder(null)
+                }}
+                className="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-300 transition-all font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
 }
+
 export default OrderTable

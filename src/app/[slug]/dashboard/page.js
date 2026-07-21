@@ -59,17 +59,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
     status: { $in: ['ACTIVE', 'TRIAL'] }
   }).sort({ createdAt: -1 })
 
-  console.log('Checking subscription for:', {
-    role: membership.role,
-    ownerId: ownerToCheck?.toString(),
-    ownerFound: !!owner,
-    hasCurrentSubscription: !!owner?.currentSubscription,
-    currentSubscriptionId: owner?.currentSubscription?._id?.toString(),
-    subscriptionStatus: owner?.currentSubscription?.status,
-    directSubscriptionFound: !!directSubscription,
-    directSubscriptionStatus: directSubscription?.status,
-    allUserSubscriptions: await UserSubscription.find({ userId: ownerToCheck }).select('status packageName createdAt').lean()
-  })
+
 
   const hasActiveSubscription = (owner?.currentSubscription && 
     ['ACTIVE', 'TRIAL'].includes(owner.currentSubscription.status)) ||
