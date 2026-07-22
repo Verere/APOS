@@ -12,6 +12,7 @@ const Orders = async({params})=>{
         <>            
        <OrderTable
        patients={orders} 
+       slug={slug}
       
        />
         </>

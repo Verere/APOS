@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useContext, useMemo, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Table } from '@radix-ui/themes'
 import DatePicker from 'react-datepicker'
@@ -56,7 +56,7 @@ function CancelConfirmToast({ onConfirm, onClose }) {
   )
 }
 
-const OrderTable = ({ patients = [] }) => {
+const OrderTable = ({ patients = [], slug }) => {
   const { user, store } = useContext(GlobalContext)
   const pathname = usePathname()
   const { replace } = useRouter()
@@ -66,6 +66,32 @@ const OrderTable = ({ patients = [] }) => {
   const [cancelingOrderId, setCancelingOrderId] = useState(null)
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [completedOrder, setCompletedOrder] = useState(null)
+   const [receiptSettings, setReceiptSettings] = useState({
+      receiptFontFamily: 'monospace',
+      receiptFontSize: 12,
+      receiptFooterNote: '',
+    })
+   const resolvedReceiptFooterNote = String(receiptSettings?.receiptFooterNote || '').trim()
+ 
+   useEffect(() => {
+    const loadReceiptSettings = async () => {
+      try {
+        const response = await fetch(`/api/settings/${slug}`)
+        if (!response.ok) return
+        const data = await response.json()
+        const s = data?.settings || {}
+        setReceiptSettings({
+          receiptFontFamily: s.receiptFontFamily || 'monospace',
+          receiptFontSize: Number(s.receiptFontSize) || 12,
+          receiptFooterNote: s.receiptFooterNote || '',
+        })
+      } catch {
+        // Keep defaults when settings fetch fails.
+      }
+    }
+
+    if (slug) loadReceiptSettings()
+  }, [slug])
 
   const bDate = useMemo(() => moment().format('D/MM/YYYY'), [])
 
@@ -278,6 +304,8 @@ const OrderTable = ({ patients = [] }) => {
         </div>
       </div>
 
+   
+
       {showPrintModal && completedOrder && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
@@ -292,20 +320,21 @@ const OrderTable = ({ patients = [] }) => {
             <div style={{ display: 'none' }}>
               <div ref={printRef} style={{ width: '80mm', fontFamily: 'monospace', fontSize: '12px', padding: '5mm' }}>
                 <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-                  <h2 style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>{store?.name || 'STORE'}</h2>
-                  <p style={{ margin: '2px 0', fontSize: '11px' }}>{store?.address || 'Address'}</p>
-                  <p style={{ margin: '2px 0', fontSize: '11px' }}>Tel: {store?.number || ''} {store?.whatsapp || ''}</p>
+                  <h2 style={{ margin: '0', fontSize: '18px', fontWeight: 'bold' }}>{store?.name || 'STORE'}</h2>
+                  <p style={{ margin: '2px 0', fontSize: '12px' , fontWeight: '500'}}>{store?.address || 'Address'}</p>
+                  <p style={{ margin: '2px 0', fontSize: '12px' , fontWeight: '500'}}>Tel: 0{store?.number || ''} 0{store?.whatsapp || ''}</p>
+                  {resolvedReceiptFooterNote ? <p>{resolvedReceiptFooterNote}</p> : null}
                   <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }} />
                 </div>
 
                 <div style={{ marginBottom: '10px', fontSize: '11px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' , fontWeight: '500'}}>
                     <span>Date:</span><span>{completedOrder?.bDate || 'N/A'}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '500' }}>
                     <span>Receipt #:</span><span>{completedOrder?.orderNum || 'N/A'}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '500' }}>
                     <span>Customer:</span><span>{completedOrder?.orderName || completedOrder?.customerName || 'Walk-in Customer'}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -324,8 +353,8 @@ const OrderTable = ({ patients = [] }) => {
                   </thead>
                   <tbody>
                     {selectedOrderItems.map((item, index) => (
-                      <tr key={index} style={{ borderBottom: '1px dotted #ccc' }}>
-                        <td style={{ padding: '4px 0' }}>{item?.name || item?.item || item?.productName || 'Item'}</td>
+                      <tr key={index} style={{ borderBottom: '1px dotted #ccc', fontWeight: '500' }}>
+                        <td style={{ padding: '4px 0', fontSize: '13px' , fontWeight: '500' }}>{item?.name || item?.item || item?.productName || 'Item'}</td>
                         <td style={{ textAlign: 'center', padding: '4px 0' }}>{item?.qty ?? item?.quantity ?? 0}</td>
                         <td style={{ textAlign: 'right', padding: '4px 0' }}>{currencyFormat(item?.amount ?? item?.total ?? 0)}</td>
                       </tr>
@@ -334,15 +363,15 @@ const OrderTable = ({ patients = [] }) => {
                 </table>
 
                 <div style={{ borderTop: '2px solid #000', margin: '8px 0' }} />
-                <div style={{ fontSize: '11px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '500' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                     <span>TOTAL:</span><span>{currencyFormat(completedOrder?.amount || 0)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '500' }}>
                     <span>PAID:</span><span>{currencyFormat(completedOrder?.amountPaid || 0)}</span>
                   </div>
                   {(completedOrder?.bal ?? 0) > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '500' }}>
                       <span>BALANCE:</span><span>{currencyFormat(completedOrder?.bal || 0)}</span>
                     </div>
                   )}

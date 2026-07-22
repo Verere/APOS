@@ -14,6 +14,7 @@ const Orders = async({params})=>{
         <TopBar />          
        <OrderTable
        patients={orders} 
+       slug={slug}
       
        />
         </>

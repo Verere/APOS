@@ -147,6 +147,7 @@ export default function PosPaymentModal({
       setCompletedOrder({
         ...order,
         orderNum: state?.orderNum || order?.orderNum || '',
+        cashier: user?.name || order?.soldBy || '',
         bDate: busDate,
         amount: orderTotal,
         amountPaid: totalPayment,
@@ -248,7 +249,7 @@ export default function PosPaymentModal({
       `Date: ${completedOrder?.bDate}\n` +
       `Receipt #: ${completedOrder?.orderNum}\n` +
       `Customer: ${customerData?.name || 'Walk-in'}\n` +
-      `Cashier: ${user?.name}\n\n` +
+      `Cashier: ${completedOrder?.cashier || user?.name || ''}\n\n` +
       `*ITEMS*\n${itemsList}\n\n` +
       `*TOTAL:* ${currencyFormat(completedOrder?.amount)}\n\n` +
       `*PAYMENT*\n${paymentsList}\n` +
@@ -605,8 +606,28 @@ export default function PosPaymentModal({
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
                   <CheckCircle className="w-10 h-10 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
-                <p className="text-gray-600">Would you like to print the receipt?</p>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
+                  <p className="text-gray-600">Would you like to print the receipt?</p>
+                  <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">Order #</span>
+                      <span className="font-semibold text-gray-900">{completedOrder?.orderNum || 'N/A'}</span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span className="font-medium">Cashier</span>
+                      <span className="font-semibold text-gray-900">{completedOrder?.soldBy || user?.name || user?.email || 'N/A'}</span>
+                    </div>
+                  </div>
+                <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm text-left">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Order #:</span>
+                    <span className="font-semibold text-gray-900">{completedOrder?.orderNum || rcpt || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-gray-500">Cashier:</span>
+                    <span className="font-semibold text-gray-900">{completedOrder?.cashier || user?.name || 'N/A'}</span>
+                  </div>
+                </div>
               </div>
 
               {/* Hidden Print Content */}
@@ -625,13 +646,13 @@ export default function PosPaymentModal({
                       <span>Date:</span><span>{completedOrder?.bDate}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' , fontWeight: '400'}}>
-                      <span>Receipt #:</span><span>{rcpt}</span>
+                      <span>Receipt #:</span><span>{completedOrder?.orderNum || rcpt}</span>
                     </div>
                     <div style={{ display: 'flex', fontWeight: '500', justifyContent: 'space-between' }}>
                       <span>Customer:</span><span>{completedOrder?.customer?.name || 'Walk-in'}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '400' }}>
-                      <span>Cashier:</span><span>{user?.name}</span>
+                      <span>Cashier:</span><span>{completedOrder?.cashier || user?.name}</span>
                     </div>
                     <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>
                   </div>
