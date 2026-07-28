@@ -53,7 +53,7 @@ const bDate = date.format('D/MM/YYYY')
         storeId: store._id,
         isDeleted: false 
       })
-        .select('name email phone address totalSpent priceTypeId')
+        .select('name email phone address totalSpent priceTypeId walletBalance')
         .sort({ name: 1 })
         .lean();
   

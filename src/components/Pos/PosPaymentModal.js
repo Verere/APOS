@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect, useRef, useActionState } from 'react'
-import { X, DollarSign, CreditCard, Smartphone, Banknote, ArrowRightLeft, Receipt, CheckCircle, AlertCircle, Printer, History, ShoppingCart, User, Calendar, MessageCircle } from 'lucide-react'
+import { X, DollarSign, CreditCard, Smartphone, Banknote, ArrowRightLeft, Receipt, CheckCircle, AlertCircle, Printer, History, ShoppingCart, User, Calendar, MessageCircle, Wallet } from 'lucide-react'
 import { addPaymentWithOrder } from "@/actions"
 import { toast } from "react-toastify"
 import { useReactToPrint } from 'react-to-print'
@@ -32,6 +32,7 @@ export default function PosPaymentModal({
     POS: 0,
     TRANSFER: 0,
     OTHER: 0,
+    WALLET: 0,
     COMPLIMENTARY: 0
   })
   const [showHistory, setShowHistory] = useState(false)
@@ -42,6 +43,7 @@ export default function PosPaymentModal({
   const [approvedBy, setApprovedBy] = useState('')
   const [complimentaryReason, setComplimentaryReason] = useState('')
   const [complimentaryRemarks, setComplimentaryRemarks] = useState('')
+  const [walletAmount, setWalletAmount] = useState(0)
   const [receiptSettings, setReceiptSettings] = useState({
     receiptFontFamily: 'monospace',
     receiptFontSize: 12,
@@ -57,10 +59,11 @@ export default function PosPaymentModal({
     { value: 'POS', label: 'POS', icon: CreditCard, color: 'blue' },
     { value: 'TRANSFER', label: 'Transfer', icon: ArrowRightLeft, color: 'purple' },
     { value: 'OTHER', label: 'Other', icon: DollarSign, color: 'gray' },
+    { value: 'WALLET', label: 'Wallet', icon: Wallet, color: 'emerald' },
     { value: 'COMPLIMENTARY', label: 'Complimentary', icon: Receipt, color: 'violet' }
   ], [])
 
-  const totalPayment = useMemo(() => {
+  const manualPaymentTotal = useMemo(() => {
     if (isComplimentary) return 0
     return selectedMethods.reduce((sum, method) => {
       return sum + (parseFloat(paymentAmounts[method]) || 0)
@@ -68,10 +71,46 @@ export default function PosPaymentModal({
   }, [isComplimentary, selectedMethods, paymentAmounts])
 
   const orderTotal = useMemo(() => parseFloat(cartValue || 0) || 0, [cartValue])
+  const customerWalletBalance = useMemo(() => Number(customer?.walletBalance || 0), [customer])
+  const canUseWallet = useMemo(
+    () => Boolean(customer) && !isComplimentary && customerWalletBalance > 0,
+    [customer, isComplimentary, customerWalletBalance]
+  )
+  const maxWalletUsable = useMemo(() => Math.min(customerWalletBalance, orderTotal), [customerWalletBalance, orderTotal])
+  const walletSelected = selectedMethods.includes('WALLET')
+  const walletUsed = useMemo(() => {
+    if (!walletSelected || isComplimentary) return 0
+    return Math.min(Math.max(0, Number(walletAmount || 0)), maxWalletUsable)
+  }, [walletSelected, isComplimentary, walletAmount, maxWalletUsable])
+  const invoiceRemainingAfterWallet = useMemo(() => {
+    if (!walletSelected || isComplimentary) return orderTotal
+    return Math.max(0, orderTotal - walletUsed)
+  }, [walletSelected, isComplimentary, orderTotal, walletUsed])
+  const walletBalanceAfterUse = useMemo(() => {
+    if (!walletSelected || isComplimentary) return customerWalletBalance
+    return Math.max(0, customerWalletBalance - walletUsed)
+  }, [walletSelected, isComplimentary, customerWalletBalance, walletUsed])
+  const totalPayment = useMemo(() => {
+    if (isComplimentary) return 0
+    return manualPaymentTotal + walletUsed
+  }, [isComplimentary, manualPaymentTotal, walletUsed])
   const balance = useMemo(() => (isComplimentary ? 0 : Math.max(0, orderTotal - totalPayment)), [isComplimentary, orderTotal, totalPayment])
   const change = useMemo(() => (isComplimentary ? 0 : Math.max(0, totalPayment - orderTotal)), [isComplimentary, totalPayment, orderTotal])
   const isOverpayment = totalPayment > orderTotal
   const isUnderpayment = !isComplimentary && totalPayment < orderTotal
+  const submittedPaymentMethods = useMemo(() => {
+    const methods = new Set(selectedMethods.filter((method) => method !== 'WALLET' || walletUsed > 0))
+    if (walletSelected && walletUsed > 0) {
+      methods.add('WALLET')
+    }
+    return Array.from(methods)
+  }, [selectedMethods, walletSelected, walletUsed])
+  const hasInvalidWalletAmount = useMemo(() => {
+    if (!walletSelected || isComplimentary) return false
+    const parsed = Number(walletAmount)
+    if (!Number.isFinite(parsed) || parsed < 0) return true
+    return parsed > maxWalletUsable
+  }, [walletSelected, isComplimentary, walletAmount, maxWalletUsable])
 
   const cartItems = useMemo(() => {
     return cart?.cartItems || cart || []
@@ -99,12 +138,32 @@ export default function PosPaymentModal({
       POS: 0,
       TRANSFER: 0,
       OTHER: 0,
+      WALLET: 0,
       COMPLIMENTARY: 0
     })
     setApprovedBy('')
     setComplimentaryReason('')
     setComplimentaryRemarks('')
+    setWalletAmount(0)
   }, [isOpen, isComplimentary, cartValue])
+
+  useEffect(() => {
+    if (!walletSelected || isComplimentary) {
+      if (walletAmount !== 0) setWalletAmount(0)
+      return
+    }
+
+    if (walletAmount > maxWalletUsable) {
+      setWalletAmount(maxWalletUsable)
+    }
+  }, [walletSelected, isComplimentary, walletAmount, maxWalletUsable])
+
+  useEffect(() => {
+    if (!canUseWallet && walletSelected) {
+      setSelectedMethods(prev => prev.filter(method => method !== 'WALLET'))
+      setWalletAmount(0)
+    }
+  }, [canUseWallet, walletSelected])
 
   useEffect(() => {
     const loadReceiptSettings = async () => {
@@ -142,6 +201,10 @@ export default function PosPaymentModal({
             mop: paymentMethods.find(m => m.value === method)?.label || method,
             amount: parseFloat(paymentAmounts[method]) || 0
           })).filter(p => p.amount > 0)
+
+      if (!isComplimentary && walletSelected && walletUsed > 0) {
+        paymentsList.push({ mop: 'Wallet', amount: walletUsed })
+      }
       
       setPaymentsData(paymentsList)
       setCompletedOrder({
@@ -153,6 +216,7 @@ export default function PosPaymentModal({
         amountPaid: totalPayment,
         bal: balance,
         change: Math.max(0, totalPayment - orderTotal),
+        walletUsed,
         isComplimentary,
         customer: customer || null
       })
@@ -163,43 +227,69 @@ export default function PosPaymentModal({
       // Call success callback to clear cart
       if (onSuccess) onSuccess()
     }
-  }, [state, isComplimentary, selectedMethods, paymentMethods, paymentAmounts, order, busDate, orderTotal, totalPayment, balance, customer, cartItems, onSuccess])
+  }, [state, isComplimentary, selectedMethods, paymentMethods, paymentAmounts, order, busDate, orderTotal, totalPayment, balance, customer, cartItems, onSuccess, walletSelected, walletUsed])
 
   const togglePaymentMethod = useCallback((method) => {
     setSelectedMethods(prev => {
       if (prev.includes(method)) {
-        // Remove method and clear amount
-        setPaymentAmounts(amounts => ({ ...amounts, [method]: 0 }))
+        if (method === 'WALLET') {
+          setWalletAmount(0)
+        } else {
+          setPaymentAmounts(amounts => ({ ...amounts, [method]: 0 }))
+        }
         return prev.filter(m => m !== method)
+      }
+
+      if (method === 'WALLET' && maxWalletUsable > 0 && Number(walletAmount || 0) === 0) {
+        setWalletAmount(maxWalletUsable)
       }
       return [...prev, method]
     })
-  }, [])
+  }, [maxWalletUsable, walletAmount])
 
   const handleAmountChange = useCallback((method, value) => {
-    const numValue = parseFloat(value) || 0
-    setPaymentAmounts(prev => ({ ...prev, [method]: numValue }))
-  }, [])
+    const parsedValue = Number(value)
+    const cleanValue = Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 0
+
+    setPaymentAmounts(prev => {
+      const otherMethodsTotal = selectedMethods.reduce((sum, selectedMethod) => {
+        if (selectedMethod === method) return sum
+        return sum + (Number(prev[selectedMethod]) || 0)
+      }, 0)
+
+      const maxAllowedForMethod = Math.max(0, invoiceRemainingAfterWallet - otherMethodsTotal)
+      const boundedValue = Math.min(cleanValue, maxAllowedForMethod)
+
+      return { ...prev, [method]: boundedValue }
+    })
+  }, [selectedMethods, invoiceRemainingAfterWallet])
 
   const handlePayFull = useCallback(() => {
     if (selectedMethods.length === 1) {
+      if (selectedMethods[0] === 'WALLET') {
+        setWalletAmount(invoiceRemainingAfterWallet)
+        return
+      }
       setPaymentAmounts(prev => ({
         ...prev,
-        [selectedMethods[0]]: orderTotal
+        [selectedMethods[0]]: invoiceRemainingAfterWallet
       }))
     }
-  }, [selectedMethods, orderTotal])
+  }, [selectedMethods, invoiceRemainingAfterWallet])
 
   const handleSplitEvenly = useCallback(() => {
-    if (selectedMethods.length > 0) {
-      const amountPerMethod = orderTotal / selectedMethods.length
+    const splitMethods = selectedMethods.filter(method => method !== 'WALLET')
+    if (splitMethods.length > 0) {
+      const amountPerMethod = invoiceRemainingAfterWallet / splitMethods.length
       const newAmounts = {}
-      selectedMethods.forEach(method => {
+      splitMethods.forEach(method => {
         newAmounts[method] = parseFloat(amountPerMethod.toFixed(2))
       })
       setPaymentAmounts(prev => ({ ...prev, ...newAmounts }))
+    } else if (selectedMethods.length === 1 && selectedMethods[0] === 'WALLET') {
+      setWalletAmount(invoiceRemainingAfterWallet)
     }
-  }, [selectedMethods, orderTotal])
+  }, [selectedMethods, invoiceRemainingAfterWallet])
 
   const validateBeforeSubmit = useCallback((e) => {
     if (isComplimentary) {
@@ -211,13 +301,88 @@ export default function PosPaymentModal({
       return true
     }
 
+    if (!selectedMethods.length && !(walletSelected && walletUsed > 0)) {
+      e.preventDefault()
+      toast.error('Select at least one payment method')
+      return false
+    }
+
+    const hasInvalidMethodAmount = selectedMethods.some((method) => {
+      const amount = Number(paymentAmounts[method])
+      return !Number.isFinite(amount) || amount < 0
+    })
+
+    if (hasInvalidMethodAmount) {
+      e.preventDefault()
+      toast.error('Each payment amount must be a valid positive number')
+      return false
+    }
+
     if (isUnderpayment) {
       e.preventDefault()
       toast.error('Payment amount is less than order total')
       return false
     }
+
+    if (isOverpayment) {
+      e.preventDefault()
+      toast.error('Total payment cannot exceed order total')
+      return false
+    }
+
+    if (walletSelected) {
+      if (!customer) {
+        e.preventDefault()
+        toast.error('Select a customer before using wallet')
+        return false
+      }
+
+      const parsedWalletAmount = Number(walletAmount || 0)
+
+      if (!Number.isFinite(parsedWalletAmount) || parsedWalletAmount < 0) {
+        e.preventDefault()
+        toast.error('Wallet amount must be a valid positive number')
+        return false
+      }
+
+      if (parsedWalletAmount === 0) {
+        e.preventDefault()
+        toast.error('Enter wallet amount greater than 0')
+        return false
+      }
+
+      if (parsedWalletAmount > customerWalletBalance) {
+        e.preventDefault()
+        toast.error('Wallet amount cannot exceed wallet balance')
+        return false
+      }
+
+      if (parsedWalletAmount > orderTotal) {
+        e.preventDefault()
+        toast.error('Wallet amount cannot exceed invoice total')
+        return false
+      }
+    }
+
     return true
-  }, [isComplimentary, isUnderpayment])
+  }, [isComplimentary, isUnderpayment, isOverpayment, walletSelected, walletAmount, customerWalletBalance, orderTotal, selectedMethods, paymentAmounts, customer])
+
+  const handleWalletAmountChange = useCallback((value) => {
+    const normalizedValue = String(value || '').trim()
+    if (normalizedValue === '') {
+      setWalletAmount(0)
+      return
+    }
+
+    const parsedValue = Number(normalizedValue)
+
+    if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+      setWalletAmount(0)
+      return
+    }
+
+    setWalletAmount(Math.min(parsedValue, maxWalletUsable))
+  }, [maxWalletUsable])
 
   const handleSendWhatsApp = useCallback(() => {
     const customerData = completedOrder?.customer
@@ -314,6 +479,10 @@ export default function PosPaymentModal({
                         <span>{customer.email}</span>
                       </div>
                     )}
+                     <div className="flex justify-between text-black bg-green-500 p-2 rounded-lg border border-purple-200">
+                              <span>Wallet Balance</span>
+                              <span className="font-semibold text-gray-900">{currencyFormat(customerWalletBalance)}</span>
+                            </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -425,6 +594,7 @@ export default function PosPaymentModal({
                         Payment Methods {selectedMethods.length > 1 && <span className="text-blue-600">(Split Payment)</span>}
                       </label>
                       <div className="grid grid-cols-2 gap-2">
+                   
                         {paymentMethods.filter(({ value }) => value !== 'COMPLIMENTARY').map(({ value, label, icon: Icon, color }) => (
                           <button
                             key={value}
@@ -440,7 +610,78 @@ export default function PosPaymentModal({
                             <span>{label}</span>
                           </button>
                         ))}
+
                       </div>
+
+                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <Wallet className="w-5 h-5 text-emerald-700" />
+                            <div>
+                              <p className="text-sm font-semibold text-emerald-900">Use Wallet</p>
+                              <p className="text-xs text-emerald-700">
+                                Available: {currencyFormat(customerWalletBalance)}
+                              </p>
+                            </div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={walletSelected}
+                            onChange={() => togglePaymentMethod('WALLET')}
+                            disabled={!canUseWallet}
+                            className="h-5 w-5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
+                          />
+                        </div>
+
+                        {walletSelected && (
+                          <>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">Wallet Amount</label>
+                              <div className="relative">
+                                <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600" />
+                                <span className="absolute left-11 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₦</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={walletAmount}
+                                  onChange={(e) => handleWalletAmountChange(e.target.value)}
+                                  className="w-full pl-16 pr-4 py-3 border-2 border-emerald-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-lg font-semibold transition-all"
+                                  placeholder="0.00"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                              <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
+                                <p className="text-gray-500">Max wallet usable</p>
+                                <p className="font-semibold text-gray-900">{currencyFormat(maxWalletUsable)}</p>
+                              </div>
+                              <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
+                                <p className="text-gray-500">Invoice remaining</p>
+                                <p className="font-semibold text-gray-900">{currencyFormat(invoiceRemainingAfterWallet)}</p>
+                              </div>
+                              <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2 col-span-2">
+                                <p className="text-gray-500">Wallet balance after payment</p>
+                                <p className="font-semibold text-gray-900">{currencyFormat(walletBalanceAfterUse)}</p>
+                              </div>
+                            </div>
+
+                            {hasInvalidWalletAmount && (
+                              <p className="text-xs text-red-600">
+                                Wallet amount must be between 0 and {currencyFormat(maxWalletUsable)}
+                              </p>
+                            )}
+                          </>
+                        )}
+
+                        {!canUseWallet && (
+                          <p className="text-xs text-amber-700">
+                            Select a customer with wallet balance to use wallet payment.
+                          </p>
+                        )}
+                      </div>
+                
 
                       {selectedMethods.length > 1 && (
                         <button
@@ -454,7 +695,7 @@ export default function PosPaymentModal({
                     </div>
 
                     <div className="space-y-3">
-                      {selectedMethods.map(method => {
+                      {selectedMethods.filter(method => method !== 'WALLET').map(method => {
                         const methodInfo = paymentMethods.find(m => m.value === method)
                         const Icon = methodInfo?.icon || Banknote
                         
@@ -480,7 +721,7 @@ export default function PosPaymentModal({
                         )
                       })}
                     </div>
-
+                  
                     {selectedMethods.length === 1 && (
                       <button
                         type="button"
@@ -529,6 +770,16 @@ export default function PosPaymentModal({
                 )}
 
                 {/* Error/Warning Messages */}
+                {hasInvalidWalletAmount && (
+                  <div className="bg-red-50 border-l-4 border-red-500 rounded-lg px-4 py-3 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-red-900 text-sm">Invalid Wallet Amount</p>
+                      <p className="text-sm text-red-700">Wallet cannot be greater than {currencyFormat(maxWalletUsable)}</p>
+                    </div>
+                  </div>
+                )}
+
                 {isOverpayment && (
                   <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg px-4 py-3 flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -556,10 +807,11 @@ export default function PosPaymentModal({
                 <input type="hidden" name="orderNum" value={order?.orderNum || ''} />
                 <input type="hidden" name="orderName" value={order?.orderName || ''} />
                 <input type="hidden" name="orderAmount" value={orderTotal} />
-                <input type="hidden" name="mop" value={selectedMethods.join(',')} />
+                <input type="hidden" name="mop" value={submittedPaymentMethods.join(',')} />
                 <input type="hidden" name="cashPaid" value={paymentAmounts.CASH || 0} />
                 <input type="hidden" name="posPaid" value={paymentAmounts.POS || 0} />
                 <input type="hidden" name="transferPaid" value={paymentAmounts.TRANSFER || 0} />
+                <input type="hidden" name="walletPaid" value={walletSelected ? walletUsed : 0} />
                 <input type="hidden" name="amountPaid" value={totalPayment} />
                 <input type="hidden" name="bal" value={balance} />
                 <input type="hidden" name="location" value={location || ''} />
@@ -578,7 +830,7 @@ export default function PosPaymentModal({
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isPending || isUnderpayment}
+                  disabled={isPending || isUnderpayment || isOverpayment || hasInvalidWalletAmount}
                   className="w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-bold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isPending ? (

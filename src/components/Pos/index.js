@@ -21,6 +21,7 @@ import PosPaymentModal from './PosPaymentModal';
 import CreditPaymentModal from './CreditPaymentModal';
 import BarcodeScanner from './BarcodeScanner';
 import { resolveSellingPriceDetails } from '@/lib/pricingService';
+import { Wallet } from 'lucide-react';
 
 const PosPage = ({
   slug,
@@ -83,6 +84,10 @@ const PosPage = ({
     if (!selectedCustomerId) return null;
     return customers?.find(c => c._id === selectedCustomerId) || null;
   }, [selectedCustomerId, customers]);
+
+  const selectedCustomerWalletBalance = useMemo(() => {
+    return Number(selectedCustomerData?.walletBalance || 0)
+  }, [selectedCustomerData])
 
   const availablePriceTypes = useMemo(() => {
     const all = Array.isArray(pricingSettings?.priceTypes) ? pricingSettings.priceTypes : [];
@@ -546,7 +551,7 @@ const PosPage = ({
                   <h2 className="text-xl font-semibold text-blue-800 shrink-0">Sales Cart</h2>
                   
                   {/* Customer Selection - Desktop/Tablet */}
-                  <div className="hidden sm:flex flex-1 max-w-xs">
+                  <div className=" sm:flex flex-1 max-w-xs">
                     <select
                       value={selectedCustomerId}
                       onChange={handleCustomerChange}
@@ -570,6 +575,30 @@ const PosPage = ({
                     ×
                   </button>
                 </div>
+
+                {selectedCustomerData ? (
+                  <div className="mt-3 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 p-4 text-white shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-emerald-100">Customer Wallet</p>
+                        <p className="mt-1 text-sm font-semibold">{selectedCustomerData?.name}</p>
+                      </div>
+                      <div className="rounded-lg bg-white/15 p-2 backdrop-blur-sm">
+                        <Wallet className="w-5 h-5" />
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-lg bg-white/10 px-3 py-3">
+                        <p className="text-xs text-emerald-100">Wallet Balance</p>
+                        <p className="mt-1 text-lg font-bold">{currencyFormat(selectedCustomerWalletBalance)}</p>
+                      </div>
+                      <div className="rounded-lg bg-white/10 px-3 py-3">
+                        <p className="text-xs text-emerald-100">Available Wallet</p>
+                        <p className="mt-1 text-lg font-bold">{currencyFormat(selectedCustomerWalletBalance)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </header>
               
               {/* Cart Items Scroll Area */}

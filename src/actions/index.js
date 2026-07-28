@@ -32,6 +32,8 @@ import InventoryTransaction from '@/models/models/InventoryTransaction'
 import { applyInventoryChange, reserveStockForSale, attachTransactionsToOrder } from '@/lib/inventoryService'
 import { getTokenFromCookies } from '@/lib/auth'
 import Complimentary from '@/models/complimentary'
+import Customer from '@/models/customer'
+import WalletTransaction from '@/models/walletTransaction'
 import mongoose from 'mongoose'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
@@ -442,7 +444,7 @@ items = []
 
 // add payment and create order from cart items atomically
 export const addPaymentWithOrder = async (prvState, formData) => {
-  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, customerId, customerName, isComplimentary, transactionType, approvedBy, reason, remarks, location, allowDecimalQuantity } = Object.fromEntries(formData);
+  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, walletPaid, customerId, customerName, isComplimentary, transactionType, approvedBy, reason, remarks, location, allowDecimalQuantity } = Object.fromEntries(formData);
   try {
     await connectToDB();
     const items = cartItems ? JSON.parse(cartItems) : [];
@@ -500,9 +502,38 @@ export const addPaymentWithOrder = async (prvState, formData) => {
 
         const totalOrderAmount = complimentarySale ? 0 : computedOrderAmount;
         const totalOrderProfit = complimentarySale ? 0 : computedOrderProfit;
+        const paid = Number(amountPaid || 0);
+        const walletAmount = complimentarySale ? 0 : Number(walletPaid || 0);
+
+        if (walletAmount < 0) {
+          throw Object.assign(new Error('Wallet amount cannot be negative'), { code: 'BAD_WALLET' });
+        }
+        if (walletAmount > totalOrderAmount) {
+          throw Object.assign(new Error('Wallet amount cannot exceed order total'), { code: 'BAD_WALLET' });
+        }
+        if (walletAmount > paid) {
+          throw Object.assign(new Error('Wallet amount cannot exceed total paid amount'), { code: 'BAD_WALLET' });
+        }
+
+        let walletBalanceBefore = 0;
+        let walletCustomer = null;
+        if (walletAmount > 0) {
+          if (!customerId) {
+            throw Object.assign(new Error('A registered customer is required to use wallet payment'), { code: 'BAD_WALLET' });
+          }
+
+          walletCustomer = await Customer.findById(customerId).session(session);
+          if (!walletCustomer || walletCustomer.isDeleted) {
+            throw Object.assign(new Error('Customer not found for wallet payment'), { code: 'BAD_WALLET' });
+          }
+
+          walletBalanceBefore = Number(walletCustomer.walletBalance || 0);
+          if (walletAmount > walletBalanceBefore) {
+            throw Object.assign(new Error('Wallet amount exceeds customer wallet balance'), { code: 'BAD_WALLET' });
+          }
+        }
 
         // payment amount sanity
-        const paid = Number(amountPaid || 0);
         if (paid > totalOrderAmount) throw Object.assign(new Error('Payment amount exceeds order total based on checkout snapshot prices'), { code: 'BAD_PAYMENT' });
 
         // finalize order with items, amount, and profit
@@ -524,6 +555,9 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         // save payment with new schema
         const paymentMethodsArray = [];
         const methods = (mop || '').split(',').filter(Boolean);
+        if (walletAmount > 0 && !methods.includes('WALLET')) {
+          methods.push('WALLET');
+        }
         
         // Build paymentMethods array
         if (complimentarySale) {
@@ -537,6 +571,9 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           }
           if (methods.includes('TRANSFER') && Number(transferPaid || 0) > 0) {
             paymentMethodsArray.push({ method: 'TRANSFER', amount: Number(transferPaid) });
+          }
+          if (walletAmount > 0) {
+            paymentMethodsArray.push({ method: 'WALLET', amount: walletAmount });
           }
 
           if (paymentMethodsArray.length === 0) {
@@ -587,6 +624,26 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         });
         await newPay.save({ session });
 
+        if (walletAmount > 0 && walletCustomer) {
+          const walletBalanceAfter = walletBalanceBefore - walletAmount;
+          walletCustomer.walletBalance = walletBalanceAfter;
+          await walletCustomer.save({ session });
+
+          await new WalletTransaction({
+            customer: walletCustomer._id,
+            invoice: orderNum,
+            type: 'Sale',
+            amount: walletAmount,
+            balanceBefore: walletBalanceBefore,
+            balanceAfter: walletBalanceAfter,
+            paymentMethod: 'WALLET',
+            reference: `${orderNum}-wallet`,
+            remarks: `Wallet used for checkout order ${orderNum}`,
+            createdBy: soldBy,
+            createdAt: new Date(),
+          }).save({ session });
+        }
+
         if (complimentarySale) {
           await new Complimentary({
             hotelId: store._id,
@@ -605,8 +662,8 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         }
 
         // Update order with amount paid
-        newOrder.amountPaid = complimentarySale ? 0 : Number(amountPaid || 0);
-        newOrder.bal = complimentarySale ? 0 : Math.max(0, totalOrderAmount - Number(amountPaid || 0));
+        newOrder.amountPaid = complimentarySale ? 0 : paid;
+        newOrder.bal = complimentarySale ? 0 : Math.max(0, totalOrderAmount - paid);
         newOrder.customerName = customerName || newOrder.customerName;
         newOrder.customerId = customerId || newOrder.customerId;
         newOrder.orderName = customerName || customerId || newOrder.orderName || orderNum;
@@ -636,6 +693,9 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         return { error: err.message, stockUpdates };
       }
       if(err && err.code === 'BAD_PAYMENT'){
+        return { error: err.message };
+      }
+      if(err && err.code === 'BAD_WALLET'){
         return { error: err.message };
       }
       return { error: err.message || 'Failed to create order and payment' };

@@ -62,7 +62,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
       submenu: [
         { icon: List, label: 'Customers', path: `/${slug}/dashboard/customers` },
         { icon: Plus, label: 'Add New Customer', path: `/${slug}/dashboard/customers/new` },
-        { icon: UserPlus, label: 'Customer Reports', path: `/${slug}/dashboard/customers/reports` },
+        { icon: UserPlus, label: 'Deposit', path: `/${slug}/dashboard/customers/deposit` },
       ]
     },
     { icon: ShoppingCart, label: 'Sales', path: `/${slug}/dashboard/orders` },

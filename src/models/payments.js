@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 const PaymentMethodSchema = new mongoose.Schema({
   method: {
     type: String,
-    enum: ['CASH', 'POS', 'TRANSFER', 'CHEQUE', 'OTHER', 'COMPLIMENTARY'],
+    enum: ['CASH', 'POS', 'TRANSFER', 'CHEQUE', 'OTHER', 'WALLET', 'COMPLIMENTARY'],
     required: true
   },
   amount: {
