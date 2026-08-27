@@ -1,3 +1,5 @@
+import OfflineActions from './OfflineActions'
+
 export const metadata = {
   title: 'Offline | MarketBook POS',
 }
@@ -13,6 +15,7 @@ export default function OfflinePage() {
         <p className="text-xs text-slate-500">
           Reconnect to continue server-backed actions like wallet validation and account updates.
         </p>
+        <OfflineActions />
       </div>
     </main>
   )

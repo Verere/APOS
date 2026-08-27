@@ -49,7 +49,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.className} suppressHydrationWarning>
         <head>    
+        <link rel="manifest" href="/manifest.webmanifest" />
         <link rel='icon' href='/nlogo.svg'/>
+        <meta name="theme-color" content="#2563eb" />
         <meta name="google-site-verification" content="KWSs8Woy63tW1YiEI9i6ZX597xC6KbP7D74a5Sn9cIk" />
         {/* Google Tag Manager */}
         <script dangerouslySetInnerHTML={{ __html: `

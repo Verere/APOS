@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marketbook-pos-v2'
+const CACHE_NAME = 'marketbook-pos-v3'
 const OFFLINE_FALLBACK_URL = '/offline'
 const PRECACHE_URLS = ['/', OFFLINE_FALLBACK_URL, '/manifest.webmanifest']
 
@@ -87,9 +87,18 @@ self.addEventListener('fetch', (event) => {
           if (isPublicNavigation) {
             const cachedPage = await caches.match(event.request)
             if (cachedPage) return cachedPage
+
+            const cachedHome = await caches.match('/')
+            if (cachedHome) return cachedHome
           }
 
-          return caches.match(OFFLINE_FALLBACK_URL)
+          // Avoid false offline screens on transient production failures.
+          // Show the dedicated offline fallback only when connectivity is clearly offline.
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            return caches.match(OFFLINE_FALLBACK_URL)
+          }
+
+          return Response.error()
         })
     )
     return
