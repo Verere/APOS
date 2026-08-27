@@ -1,4 +1,4 @@
-const CACHE_NAME = 'marketbook-pos-v3'
+const CACHE_NAME = 'marketbook-pos-v4'
 const OFFLINE_FALLBACK_URL = '/offline'
 const PRECACHE_URLS = ['/', OFFLINE_FALLBACK_URL, '/manifest.webmanifest']
 
@@ -42,7 +42,7 @@ function isStaticAsset(request) {
   const url = new URL(request.url)
   return (
     url.pathname.startsWith('/_next/static/') ||
-    /\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff2?)$/i.test(url.pathname)
+    /\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff2?|webmanifest)$/i.test(url.pathname)
   )
 }
 
@@ -92,20 +92,32 @@ self.addEventListener('fetch', (event) => {
             if (cachedHome) return cachedHome
           }
 
-          // Avoid false offline screens on transient production failures.
-          // Show the dedicated offline fallback only when connectivity is clearly offline.
-          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-            return caches.match(OFFLINE_FALLBACK_URL)
-          }
+          // If navigation fails, prefer offline fallback instead of surfacing a network exception.
+          const offlineFallback = await caches.match(OFFLINE_FALLBACK_URL)
+          if (offlineFallback) return offlineFallback
 
-          return Response.error()
+          return new Response('Offline', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
         })
     )
     return
   }
 
   if (!shouldCacheAsset) {
-    event.respondWith(fetch(event.request))
+    event.respondWith(
+      fetch(event.request).catch(async () => {
+        const cached = await caches.match(event.request)
+        if (cached) return cached
+
+        return new Response('', {
+          status: 503,
+          statusText: 'Service Unavailable',
+        })
+      })
+    )
     return
   }
 
@@ -121,11 +133,14 @@ self.addEventListener('fetch', (event) => {
         const responseClone = response.clone()
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone))
         return response
-      }).catch(() => {
-        if (isNavigation) {
-          return caches.match('/')
-        }
-        return Response.error()
+      }).catch(async () => {
+        const cached = await caches.match(event.request)
+        if (cached) return cached
+
+        return new Response('', {
+          status: 503,
+          statusText: 'Service Unavailable',
+        })
       })
     })
   )
