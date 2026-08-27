@@ -17,6 +17,7 @@ export function isLocalFirstCheckoutEligible({
   if (!offlineEnabled) return false
   if (isComplimentary) return false
   if (walletSelected) return false
+  if (typeof navigator !== 'undefined' && navigator.onLine) return false
 
   return hasLocalPaymentMethod(selectedMethods, paymentAmounts)
 }
