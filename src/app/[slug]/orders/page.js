@@ -6,7 +6,10 @@ import TopBar from '@/components/topbar/topbar';
 const Orders = async({params})=>{
     const {slug} = await params   
 
-   const     orders= await fetchAllOrders(slug) 
+    const result = await fetchAllOrders(slug, { withMeta: true })
+    const orders = Array.isArray(result?.orders) ? result.orders : []
+    const serverUnavailable = Boolean(result?.serverUnavailable)
+    const serverErrorMessage = String(result?.serverErrorMessage || '')
        
 
     return(
@@ -15,6 +18,8 @@ const Orders = async({params})=>{
        <OrderTable
        patients={orders} 
        slug={slug}
+         serverUnavailable={serverUnavailable}
+         serverErrorMessage={serverErrorMessage}
       
        />
         </>

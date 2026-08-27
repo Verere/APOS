@@ -4,7 +4,7 @@ import StoreMembership from '@/models/storeMembership'
 import Store from '@/models/store'
 import User from '@/models/user'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions } from '@/auth'
 
 export async function POST(req) {
   try {

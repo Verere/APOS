@@ -3,12 +3,19 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/auth";
 import connectDB from "@/utils/connectDB";
 import Store from "@/models/store";
+import StoreMembership from "@/models/storeMembership";
 import Payment from "@/models/payments";
 import Order from "@/models/order";
 import Credit from "@/models/credit";
 import CreditPayment from "@/models/creditPayment";
 import Expense from "@/models/expense";
+import Customer from "@/models/customer";
+import WalletTransaction from "@/models/walletTransaction";
+import Product from "@/models/product";
+import InventoryTransaction from "@/models/models/InventoryTransaction";
 import EodDisplay from "@/components/Eod/EodDisplay";
+import { summarizeEod } from "@/lib/eodSummary";
+import { isDatabaseConnectivityError } from "@/lib/dbError";
 import moment from 'moment';
 import TopBar from "@/components/topbar/topbar";
 
@@ -22,34 +29,24 @@ async function getEodData(slug) {
   const store = await Store.findOne({ slug }).lean();
   if (!store) return null;
 
-  try {
-    const payments = await Payment.find({
-      storeId: store._id.toString(),
-      bDate,
-      isCancelled: false
-    }).lean();
+  const customerIds = (await Customer.find({ storeId: store._id, isDeleted: { $ne: true } }, { _id: 1 }).lean()).map((customer) => customer._id);
 
-    const orders = await Order.find({
-      slug,
-      bDate,
-      isCancelled: false
-    }).lean();
-
-    const credits = await Credit.find({
+  const [payments, orders, credits, creditPayments, expenses, customers, walletTransactions, products, inventoryTransactions] = await Promise.all([
+    Payment.find({ storeId: store._id.toString(), bDate, isCancelled: false }).lean(),
+    Order.find({ slug, bDate, isCancelled: false }).lean(),
+    Credit.find({
       storeId: store._id,
+      isCancelled: { $ne: true },
       $or: [
         { bDate: { $gte: startOfDay, $lte: endOfDay } },
         { createdAt: { $gte: startOfDay, $lte: endOfDay } }
-      ],
-      isCancelled: { $ne: true }
-    }).lean();
-
-    const creditPayments = await CreditPayment.find({
+      ]
+    }).lean(),
+    CreditPayment.find({
       storeId: store._id,
       paymentDate: { $gte: startOfDay, $lte: endOfDay }
-    }).lean();
-
-    const expenses = await Expense.find({
+    }).lean(),
+    Expense.find({
       storeId: store._id,
       slug,
       $or: [
@@ -58,77 +55,80 @@ async function getEodData(slug) {
         { createdAt: { $gte: startOfDay, $lte: endOfDay } }
       ],
       isCancelled: false
-    }).lean();
+    }).lean(),
+    Customer.find({ storeId: store._id, isDeleted: { $ne: true } }).lean(),
+    WalletTransaction.find({
+      customer: { $in: customerIds },
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    }).lean(),
+    Product.find({ slug, isDeleted: { $ne: true } }).lean(),
+    InventoryTransaction.find({
+      slug,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    }).lean(),
+  ]);
 
-    let totalCash = 0;
-    let totalPos = 0;
-    let totalTransfer = 0;
-    let totalOther = 0;
-
-    payments.forEach(payment => {
-      if (payment.paymentMethods && Array.isArray(payment.paymentMethods)) {
-        payment.paymentMethods.forEach(method => {
-          switch (method.method) {
-            case 'CASH':
-              totalCash += method.amount || 0;
-              break;
-            case 'POS':
-              totalPos += method.amount || 0;
-              break;
-            case 'TRANSFER':
-              totalTransfer += method.amount || 0;
-              break;
-            case 'OTHER':
-            case 'CHEQUE':
-              totalOther += method.amount || 0;
-              break;
-          }
-        });
-      } else {
-        totalCash += payment.cash || 0;
-        totalPos += payment.pos || 0;
-        totalTransfer += payment.transfer || 0;
-        totalOther += payment.card || 0;
-      }
-    });
-
-    const totalPayment = totalCash + totalPos + totalTransfer + totalOther;
-    const totalRevenue = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
-    const totalProfit = orders.reduce((sum, order) => sum + (order.profit || 0), 0);
-    const totalCredit = credits.reduce((sum, credit) => sum + (credit.amount || 0), 0);
-    const totalCreditPaid = creditPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-    const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
-
-    return {
-      date: bDate,
-      totalRevenue,
-      totalPayment,
-      totalCash,
-      totalPos,
-      totalTransfer,
-      totalOther,
-      totalCredit,
-      totalCreditPaid,
-      totalProfit,
-      totalExpenses,
-      transactionCount: orders.length,
-      creditCount: credits.length
-    };
-  } catch (error) {
-    console.error("Error fetching EOD data:", error);
-    return null;
-  }
+  return summarizeEod({
+    orders,
+    payments,
+    expenses,
+    credits,
+    creditPayments,
+    walletTransactions,
+    inventoryTransactions,
+    customers,
+    products,
+    date: bDate,
+  });
 }
 
 export default async function EodPage({ params }) {
   const session = await getServerSession(authOptions);
-  
-  if (!session) {
+
+  if (!session || !session.user) {
     redirect("/login");
   }
 
   const { slug } = await params;
-  const eodData = await getEodData(slug);
+  let eodData = null;
+
+  try {
+    await connectDB();
+    const store = await Store.findOne({ slug }).lean();
+    if (!store) {
+      redirect('/dashboard');
+    }
+
+    const membership = await StoreMembership.findOne({
+      userId: session.user.id,
+      storeId: store._id,
+      isDeleted: { $ne: true },
+    }).lean();
+
+    if (!membership || !['OWNER', 'MANAGER'].includes(membership.role)) {
+      redirect(`/${slug}`);
+    }
+
+    eodData = await getEodData(slug);
+  } catch (error) {
+    if (isDatabaseConnectivityError(error)) {
+      return (
+        <>
+          <TopBar />
+          <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6 bg-gray-50">
+            <div className="w-full max-w-xl rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center shadow-sm">
+              <h1 className="text-2xl font-bold text-amber-900 mb-2">Database Temporarily Unavailable</h1>
+              <p className="text-amber-800">
+                Unable to load End of Day report right now. Please check internet connection and try again.
+              </p>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    throw error;
+  }
 
   if (!eodData) {
     return (

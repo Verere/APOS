@@ -62,7 +62,15 @@ export default async function VerifyPage({ searchParams }){
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="w-full max-w-md bg-white rounded-lg shadow p-6 text-center">
           <h1 className="text-2xl font-semibold mb-2">Email Verified</h1>
-          <p className="text-sm text-gray-600 mb-4">Your email has been successfully verified. You can now <Link href="/login" className="text-blue-600">log in</Link> or return to the <Link href="/" className="text-blue-600">homepage</Link>.</p>
+          <p className="text-sm text-gray-600 mb-4">Your email has been successfully verified. Sign in next to continue straight to store setup.</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link href="/login?callbackUrl=/store" className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700">
+              Continue to store setup
+            </Link>
+            <Link href="/" className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50">
+              Back to homepage
+            </Link>
+          </div>
         </div>
       </div>
     )

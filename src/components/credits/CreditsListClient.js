@@ -114,9 +114,6 @@ export default function CreditsListClient({ credits, stats, slug }) {
       )
     )
     toast.success(`Payment of ${currencyFormat(data.payment.amount)} recorded successfully!`)
-    // Close modal and refresh
-    setShowPaymentModal(false)
-    setSelectedCredit(null)
   }, [])
 
   return (
@@ -486,6 +483,7 @@ export default function CreditsListClient({ credits, stats, slug }) {
       {showPaymentModal && selectedCredit && (
         <PaymentModal
           credit={selectedCredit}
+          slug={slug}
           onClose={() => {
             setShowPaymentModal(false)
             setSelectedCredit(null)

@@ -53,7 +53,7 @@ const bDate = date.format('D/MM/YYYY')
         storeId: store._id,
         isDeleted: false 
       })
-        .select('name email phone address totalSpent priceTypeId walletBalance')
+        .select('name email phone address totalSpent priceTypeId walletBalance outstandingBalance')
         .sort({ name: 1 })
         .lean();
   
@@ -425,18 +425,40 @@ export async function fetchEods(slug,  bDate) {
   }
   
   //fetch All  orders
-export async function fetchAllOrders(slug) {
+export async function fetchAllOrders(slug, options = {}) {
+    const withMeta = Boolean(options?.withMeta)
+    const DB_TIMEOUT_MS = Number(options?.dbTimeoutMs || 2500)
 
-    await connectToDB();
-   
     try {
-      connectToDB();
+      await Promise.race([
+        connectToDB(),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error(`Database connection timed out after ${DB_TIMEOUT_MS}ms`)), DB_TIMEOUT_MS)
+        })
+      ])
+
       const result = await Order.find({slug, isCancelled:false}).sort({createdAt:"desc"})
-  
-      return JSON.parse(JSON.stringify(result));
+
+      const serialized = JSON.parse(JSON.stringify(result))
+      if (withMeta) {
+        return {
+          orders: serialized,
+          serverUnavailable: false,
+          serverErrorMessage: '',
+        }
+      }
+
+      return serialized;
     } catch (err) {
       console.log(err);
-      return{error:"Failed to fetch Order !"};
+      if (withMeta) {
+        return {
+          orders: [],
+          serverUnavailable: true,
+          serverErrorMessage: String(err?.message || 'Database is temporarily unavailable'),
+        }
+      }
+      return [];
     }
   }
   //fetch All  payments by location

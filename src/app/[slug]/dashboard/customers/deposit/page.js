@@ -47,11 +47,16 @@ export default async function CustomerDepositPage({ params }) {
       phone: customer.phone || '',
       email: customer.email || '',
       walletBalance: Number(customer.walletBalance || 0),
+      outstandingBalance: Number(customer.outstandingBalance || 0),
     }))
 
     return (
       <div className="container mx-auto px-4 py-6">
-        <CustomerDepositPageClient slug={slug} initialCustomers={formattedCustomers} />
+        <CustomerDepositPageClient
+          slug={slug}
+          storeName={store.name || ''}
+          initialCustomers={formattedCustomers}
+        />
       </div>
     )
   } catch (error) {

@@ -1,59 +1,147 @@
 'use client'
 
-import { X, Printer, Mail, Download, MessageCircle } from 'lucide-react'
-import { useState, useCallback } from 'react'
+import { X, Printer, Mail, MessageCircle } from 'lucide-react'
+import { useState, useCallback, useMemo } from 'react'
 import { toast } from 'react-toastify'
 import { currencyFormat } from '@/utils/currency'
 
-export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo }) {
+export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, printingSettings = {} }) {
   const [sendingEmail, setSendingEmail] = useState(false)
+
+  const receiptFontFamily = printingSettings?.receiptFontFamily || 'monospace'
+  const receiptFontSize = Math.min(18, Math.max(9, Number(printingSettings?.receiptFontSize) || 12))
+  const receiptFooterNote = String(printingSettings?.receiptFooterNote || printingSettings?.receiptSpecialNote || '').trim()
+
+  const invoiceBalances = useMemo(() => {
+    const outstandingBalance = Number(invoiceData?.outstandingBalance ?? invoiceData?.customer?.outstandingBalance ?? invoiceData?.creditAmount ?? 0)
+    const walletBalance = Number(invoiceData?.walletBalance ?? invoiceData?.customer?.walletBalance ?? 0)
+    return { outstandingBalance, walletBalance }
+  }, [invoiceData])
+
+  const formatDateTime = useCallback((date) => {
+    return new Date(date).toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
+  }, [])
 
   const handlePrint = useCallback(() => {
     if (!invoiceData) return
-    
-    const printContent = document.getElementById('invoice-content')
-    const printWindow = window.open('', '', 'width=800,height=600')
+
+    const printWindow = window.open('', '', 'width=420,height=800')
     
     if (!printWindow) {
       toast.error('Please allow popups to print')
       return
     }
-    
-    printWindow.document.write(`
+
+    const itemsRows = (invoiceData.items || []).map((item, index) => `
+      <tr>
+        <td style="padding: 4px 0; vertical-align: top;">${index + 1}. ${item.productName || item.name || ''}<div style="font-size: 10px; color: #666; margin-top: 2px;">@ ${currencyFormat(item.unitPrice ?? item.price ?? 0)}</div></td>
+        <td style="padding: 4px 0; text-align: center; vertical-align: top;">${item.quantity ?? item.qty ?? 0}</td>
+        <td style="padding: 4px 0; text-align: right; vertical-align: top;">${currencyFormat(item.total ?? item.amount ?? 0)}</td>
+      </tr>
+    `).join('')
+
+    const invoiceHTML = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Invoice - ${invoiceData.orderNum}</title>
+          <title>Invoice - ${invoiceData.orderNum || ''}</title>
           <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: 'Courier New', monospace; padding: 20px; max-width: 800px; margin: 0 auto; }
-            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-            .header h1 { font-size: 24px; margin-bottom: 5px; }
-            .header p { font-size: 12px; }
-            .section { margin-bottom: 20px; }
-            .section h2 { font-size: 14px; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px; }
-            .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
-            .info-label { font-weight: bold; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th, td { text-align: left; padding: 8px; font-size: 12px; border-bottom: 1px solid #ddd; }
-            th { background-color: #f0f0f0; font-weight: bold; }
-            .total-row { font-weight: bold; font-size: 14px; background-color: #f9f9f9; }
-            .footer { text-align: center; border-top: 2px solid #000; padding-top: 10px; margin-top: 20px; font-size: 12px; }
-            .credit-notice { background-color: #fff3cd; border: 2px solid #ffc107; padding: 15px; margin: 20px 0; text-align: center; font-weight: bold; }
+            @page { size: 80mm auto; margin: 0; }
+            * { box-sizing: border-box; }
+            html, body { margin: 0; padding: 0; width: 80mm; }
+            body {
+              font-family: ${receiptFontFamily}, Arial, sans-serif;
+              font-size: ${receiptFontSize}px;
+              color: #0f172a;
+              padding: 4mm;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .center { text-align: center; }
+            .title { font-size: 16px; font-weight: 700; margin: 0; }
+            .subtle { font-size: 10px; color: #475569; }
+            .divider { border-top: 1px dashed #0f172a; margin: 6px 0; }
+            .section { margin-bottom: 8px; }
+            .row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; margin: 2px 0; }
+            .row strong { font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; }
+            th, td { padding: 4px 0; vertical-align: top; }
+            th { text-align: left; border-bottom: 1px solid #0f172a; font-size: 10px; }
+            .num { text-align: right; }
+            .qty { text-align: center; }
+            .total-line { border-top: 1px solid #0f172a; padding-top: 4px; margin-top: 4px; }
+            .footer { text-align: center; font-size: 10px; margin-top: 8px; }
+            .emphasis { font-weight: 700; }
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
+          <div class="center section">
+            <p class="title">${storeInfo?.name || 'Store Name'}</p>
+            <p class="subtle">${storeInfo?.address || ''}</p>
+            <p class="subtle">Tel: ${storeInfo?.number || ''}${storeInfo?.whatsapp ? ` | ${storeInfo.whatsapp}` : ''}</p>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="section">
+            <div class="row"><strong>Invoice #:</strong><span>${invoiceData.orderNum || ''}</span></div>
+            <div class="row"><strong>Date:</strong><span>${formatDateTime(new Date())}</span></div>
+            <div class="row"><strong>Customer:</strong><span>${invoiceData.customer?.name || ''}</span></div>
+            <div class="row"><strong>Phone:</strong><span>${invoiceData.customer?.phone || ''}</span></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="section">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th class="qty">Qty</th>
+                  <th class="num">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsRows}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="section">
+            <div class="row"><strong>Total Amount:</strong><span>${currencyFormat(invoiceData.totalAmount || 0)}</span></div>
+            <div class="row"><strong>Amount Paid:</strong><span>${currencyFormat(invoiceData.paymentAmount || 0)}</span></div>
+            <div class="row"><strong>Outstanding Balance:</strong><span>${currencyFormat(invoiceBalances.outstandingBalance)}</span></div>
+            <div class="row"><strong>Wallet Balance:</strong><span>${currencyFormat(invoiceBalances.walletBalance)}</span></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="footer">
+            <p class="emphasis">Thank you for your patronage</p>
+            ${receiptFooterNote ? `<p style="margin-top: 4px;">${receiptFooterNote}</p>` : ''}
+            <p style="margin-top: 4px;">Powered by www.marketbook.app</p>
+          </div>
         </body>
       </html>
-    `)
+    `
+    
+    printWindow.document.write(invoiceHTML)
     
     printWindow.document.close()
     setTimeout(() => {
       printWindow.print()
       printWindow.close()
     }, 250)
-  }, [invoiceData])
+  }, [invoiceData, invoiceBalances, receiptFontFamily, receiptFontSize, receiptFooterNote, formatDateTime, storeInfo])
 
   const handleSendEmail = useCallback(async () => {
     if (!invoiceData?.customer?.email) {
@@ -120,6 +208,9 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo }
     }
 
     // Create invoice message
+    const outstandingBalance = invoiceBalances.outstandingBalance
+    const walletBalance = invoiceBalances.walletBalance
+
     const message = `
 *CREDIT SALES INVOICE*
 ━━━━━━━━━━━━━━━━━━━━
@@ -144,6 +235,8 @@ ${invoiceData.items?.map((item, i) =>
 *Total Amount:* ${currencyFormat(invoiceData.totalAmount)}
 *Amount Paid:* ${currencyFormat(invoiceData.paymentAmount || 0)}
 *Balance Due:* ${currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}
+*Outstanding Balance:* ${currencyFormat(outstandingBalance)}
+*Wallet Balance:* ${currencyFormat(walletBalance)}
 
 Thanks for your patronage!
 powered by:  www.marketbook.app
@@ -199,6 +292,17 @@ powered by:  www.marketbook.app
                   <span className="font-semibold text-gray-700">Date:</span>
                   <span className="ml-2 text-gray-900">{formatDate(new Date())}</span>
                 </div>
+              </div>
+            </div>
+
+            <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.08em] text-slate-500">Outstanding Balance</div>
+                <div className="mt-1 text-lg font-bold text-slate-900">{currencyFormat(invoiceBalances.outstandingBalance)}</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.08em] text-slate-500">Wallet Balance</div>
+                <div className="mt-1 text-lg font-bold text-slate-900">{currencyFormat(invoiceBalances.walletBalance)}</div>
               </div>
             </div>
 
@@ -314,6 +418,14 @@ powered by:  www.marketbook.app
                   <div className="flex justify-between items-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg border-2 border-yellow-400">
                     <span className="font-bold text-gray-800 text-base">Balance Due:</span>
                     <span className="font-bold text-red-600 text-xl">{currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <span className="font-semibold text-gray-700 text-sm">Outstanding Balance:</span>
+                    <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceBalances.outstandingBalance)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <span className="font-semibold text-gray-700 text-sm">Wallet Balance:</span>
+                    <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceBalances.walletBalance)}</span>
                   </div>
                 </div>
               </div>

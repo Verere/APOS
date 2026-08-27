@@ -21,7 +21,9 @@ import PosPaymentModal from './PosPaymentModal';
 import CreditPaymentModal from './CreditPaymentModal';
 import BarcodeScanner from './BarcodeScanner';
 import { resolveSellingPriceDetails } from '@/lib/pricingService';
-import { Wallet } from 'lucide-react';
+import { Receipt, Wallet } from 'lucide-react';
+import { getLatestSyncFailureInfo, getSyncQueueSummary, syncPendingTransactions } from '@/lib/pos/syncEngine';
+import { getLocalCatalogLastSyncedAt, getLocalCustomersBySlug, getLocalProductsBySlug, hydrateLocalCatalog, shouldUseLocalCatalog } from '@/lib/pos/localCatalogService';
 
 const PosPage = ({
   slug,
@@ -31,6 +33,8 @@ const PosPage = ({
   getHotel,
   pays,
   customers,
+  serverUnavailable = false,
+  serverErrorMessage = '',
   pricingSettings = {},
   printingSettings = {},
   allowCreditSales = true,
@@ -53,6 +57,13 @@ const PosPage = ({
   const [paymentMode, setPaymentMode] = useState('payment');
   const [showCreditPaymentModal, setShowCreditPaymentModal] = useState(false);
   const [selectedPriceTypeId, setSelectedPriceTypeId] = useState('');
+  const [onlineStatus, setOnlineStatus] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [syncQueueSummary, setSyncQueueSummary] = useState({ total: 0, pending: 0, syncing: 0, failed: 0, synced: 0 });
+  const [syncFailureInfo, setSyncFailureInfo] = useState(null);
+  const [isSyncingQueue, setIsSyncingQueue] = useState(false);
+  const [localMenus, setLocalMenus] = useState([]);
+  const [localCustomers, setLocalCustomers] = useState([]);
+  const [localCatalogLastSyncedAt, setLocalCatalogLastSyncedAt] = useState('');
   const [printingSettingsState, setPrintingSettingsState] = useState({
     receiptFontFamily: printingSettings?.receiptFontFamily || 'monospace',
     receiptFontSize: Number(printingSettings?.receiptFontSize) || 12,
@@ -71,19 +82,109 @@ const PosPage = ({
   const pathname = usePathname();
   const inputRef = useRef(null);
 
+  const effectiveMenus = useMemo(() => {
+    if (Array.isArray(menus) && menus.length > 0) return menus;
+    return localMenus;
+  }, [menus, localMenus]);
+
+  const effectiveCustomers = useMemo(() => {
+    if (Array.isArray(customers) && customers.length > 0) return customers;
+    return localCustomers;
+  }, [customers, localCustomers]);
+
+  const localCatalogLastSyncedLabel = useMemo(() => {
+    if (!localCatalogLastSyncedAt) return 'Unknown'
+
+    const date = new Date(localCatalogLastSyncedAt)
+    if (Number.isNaN(date.getTime())) return 'Unknown'
+
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date)
+  }, [localCatalogLastSyncedAt]);
+
+  const localCatalogFreshness = useMemo(() => {
+    if (!localCatalogLastSyncedAt) {
+      return {
+        status: 'Unknown',
+        classes: 'bg-red-100 text-red-700',
+      }
+    }
+
+    const lastSyncedAt = new Date(localCatalogLastSyncedAt).getTime()
+    if (!Number.isFinite(lastSyncedAt)) {
+      return {
+        status: 'Unknown',
+        classes: 'bg-red-100 text-red-700',
+      }
+    }
+
+    const ageMinutes = (Date.now() - lastSyncedAt) / 60000
+
+    if (ageMinutes <= 30) {
+      return {
+        status: 'Fresh',
+        classes: 'bg-emerald-100 text-emerald-700',
+      }
+    }
+
+    if (ageMinutes <= 240) {
+      return {
+        status: 'Stale',
+        classes: 'bg-amber-100 text-amber-700',
+      }
+    }
+
+    return {
+      status: 'Old',
+      classes: 'bg-red-100 text-red-700',
+    }
+  }, [localCatalogLastSyncedAt]);
+
+  const syncRetryLabel = useMemo(() => {
+    const retryAt = syncFailureInfo?.nextRetryAt ? new Date(syncFailureInfo.nextRetryAt) : null;
+    if (!retryAt || Number.isNaN(retryAt.getTime())) return 'soon';
+
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(retryAt);
+  }, [syncFailureInfo]);
+
+  const dbRetryIssue = useMemo(() => {
+    const message = String(syncFailureInfo?.lastError || '').toLowerCase();
+    const classification = String(syncFailureInfo?.classification || '').toUpperCase();
+
+    if (!message && !classification) return false;
+
+    return (
+      classification === 'TRANSIENT' &&
+      (
+        message.includes('db_unavailable') ||
+        message.includes('database is temporarily unavailable') ||
+        message.includes('querysrv') ||
+        message.includes('eservfail') ||
+        message.includes('server selection timed out') ||
+        message.includes('enotfound') ||
+        message.includes('econnrefused')
+      )
+    );
+  }, [syncFailureInfo]);
+
   const filteredProducts = useMemo(() => {
-    if (!item) return menus;
+    if (!item) return effectiveMenus;
           const receiptSpecialNote = String(printingSettings?.receiptSpecialNote || '').trim();
     const searchTerm = item.toLowerCase();
-    return menus.filter((menu) =>
+    return effectiveMenus.filter((menu) =>
       menu.name.toLowerCase().includes(searchTerm) || menu.barcode === item
     );
-  }, [item, menus]);
+  }, [item, effectiveMenus]);
 
   const selectedCustomerData = useMemo(() => {
     if (!selectedCustomerId) return null;
-    return customers?.find(c => c._id === selectedCustomerId) || null;
-  }, [selectedCustomerId, customers]);
+    return effectiveCustomers?.find(c => c._id === selectedCustomerId) || null;
+  }, [selectedCustomerId, effectiveCustomers]);
 
   const selectedCustomerWalletBalance = useMemo(() => {
     return Number(selectedCustomerData?.walletBalance || 0)
@@ -113,6 +214,102 @@ const PosPage = ({
   }, [slug]);
 
   useEffect(() => {
+    const syncCatalog = async () => {
+      if (!slug || typeof window === 'undefined') return;
+
+      if (!shouldUseLocalCatalog({ serverUnavailable, menus })) {
+        await hydrateLocalCatalog({
+          slug,
+          products: menus,
+          customers,
+        });
+        const syncedAt = await getLocalCatalogLastSyncedAt(slug)
+        setLocalCatalogLastSyncedAt(syncedAt || '')
+        return;
+      }
+
+      const [productsFromLocal, customersFromLocal] = await Promise.all([
+        getLocalProductsBySlug(slug),
+        getLocalCustomersBySlug(slug),
+      ]);
+
+      setLocalMenus(productsFromLocal);
+      setLocalCustomers(customersFromLocal);
+      const syncedAt = await getLocalCatalogLastSyncedAt(slug)
+      setLocalCatalogLastSyncedAt(syncedAt || '')
+    };
+
+    void syncCatalog();
+  }, [slug, serverUnavailable, menus, customers]);
+
+  const refreshSyncQueueStatus = useCallback(async () => {
+    try {
+      const [summary, latestFailure] = await Promise.all([
+        getSyncQueueSummary(),
+        getLatestSyncFailureInfo(),
+      ]);
+      setSyncQueueSummary(summary);
+      setSyncFailureInfo(latestFailure);
+    } catch {
+      setSyncQueueSummary({ total: 0, pending: 0, syncing: 0, failed: 0, synced: 0 });
+      setSyncFailureInfo(null);
+    }
+  }, []);
+
+  const triggerQueueSync = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await refreshSyncQueueStatus();
+      return;
+    }
+
+    setIsSyncingQueue(true);
+    try {
+      const result = await syncPendingTransactions();
+      await refreshSyncQueueStatus();
+      if (result?.pending && result.pending > 0 && result?.error) {
+        toast.info(result.error);
+      }
+    } catch {
+      toast.error('Unable to sync queued sales right now.');
+    } finally {
+      setIsSyncingQueue(false);
+    }
+  }, [refreshSyncQueueStatus]);
+
+  useEffect(() => {
+    const syncStatus = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    setOnlineStatus(syncStatus);
+    void refreshSyncQueueStatus();
+
+    if (typeof window === 'undefined') return;
+
+    const handleOnline = () => {
+      setOnlineStatus(true);
+      void triggerQueueSync();
+    };
+
+    const handleOffline = () => {
+      setOnlineStatus(false);
+    };
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        void refreshSyncQueueStatus();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [refreshSyncQueueStatus, triggerQueueSync]);
+
+  useEffect(() => {
     const loadPrintingSettings = async () => {
       try {
         const response = await fetch(`/api/settings/${slug}`)
@@ -138,7 +335,7 @@ const PosPage = ({
     // Prevent rapid duplicate scans
     setShowScanner(false);
     try {
-      const found = menus.find(menu => menu.barcode === barcode);
+      const found = effectiveMenus.find(menu => menu.barcode === barcode);
       if (!found) {
         toast.error("Product not found for barcode: " + barcode);
         setScannerLoading(false);
@@ -209,9 +406,9 @@ const PosPage = ({
   const handleCustomerChange = useCallback((e) => {
     const customerId = e.target.value;
     setSelectedCustomerId(customerId);
-    const customer = customers?.find(c => c._id === customerId);
+    const customer = effectiveCustomers?.find(c => c._id === customerId);
     setSelectedCustomer(customer || null);
-  }, [customers, setSelectedCustomer]);
+  }, [effectiveCustomers, setSelectedCustomer]);
 
   const handleCreditSale = useCallback(async () => {
     if (!selectedCustomerId) {
@@ -238,6 +435,18 @@ const PosPage = ({
 
     setCPayment(0);
     setPaymentMode('complimentary');
+    setShowPaymentModal(true);
+  }, [cart, setCPayment]);
+
+  const openPaymentModal = useCallback(() => {
+    const items = cart?.cartItems || cart || [];
+    if (!items || items.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
+
+    setCPayment(0);
+    setPaymentMode('payment');
     setShowPaymentModal(true);
   }, [cart, setCPayment]);
 
@@ -511,6 +720,15 @@ const PosPage = ({
             setShowCart={setShowCart}
           />
 
+          {serverUnavailable ? (
+            <div className="mx-3 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <div>{serverErrorMessage || 'Server is unreachable. POS is running in local-first mode. Sales will be queued and synced later.'}</div>
+              <div className="mt-1 text-xs text-amber-800">
+                Local catalog last synced: {localCatalogLastSyncedLabel}
+              </div>
+            </div>
+          ) : null}
+
           {/* Backdrop - Mobile only, semi-transparent overlay */}
           <div 
             className={`
@@ -558,7 +776,7 @@ const PosPage = ({
                       className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     >
                       <option value="">Walk-in Customer</option>
-                      {customers?.map((customer) => (
+                      {effectiveCustomers?.map((customer) => (
                         <option key={customer._id} value={customer._id}>
                           {customer.name} - {customer.phone}
                         </option>
@@ -658,11 +876,7 @@ const PosPage = ({
                     )}
                   
                   <button 
-                    onClick={() => {
-                      setCPayment(0)
-                      setPaymentMode('payment')
-                      setShowPaymentModal(true)
-                    }} 
+                    onClick={openPaymentModal}
                     className='bg-green-700 text-white px-3 py-2 rounded-lg uppercase hover:bg-green-800 transition-colors'
                     aria-label="Make payment"
                   >
@@ -692,6 +906,37 @@ const PosPage = ({
             <main className="w-full lg:w-1/2 bg-white flex flex-col">
               {/* Search Bar */}
               <div className='p-3 border-b bg-slate-200 sticky top-0 z-10 shrink-0'>
+                <div className="flex items-center justify-between gap-3 w-full md:w-3/4 xl:w-2/3 mx-auto mb-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ${onlineStatus ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <span className={`h-2 w-2 rounded-full ${onlineStatus ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                      {onlineStatus ? 'Online' : 'Offline'}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ${localCatalogFreshness.classes}`} title="Local catalog freshness">
+                      Catalog ({localCatalogFreshness.status}): {localCatalogLastSyncedLabel}
+                    </span>
+                    {syncQueueSummary.pending > 0 && (
+                      <button
+                        type="button"
+                        onClick={triggerQueueSync}
+                        disabled={isSyncingQueue}
+                        className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-1 text-sky-700 hover:bg-sky-200 disabled:opacity-60"
+                      >
+                        {isSyncingQueue ? 'Syncing...' : `${syncQueueSummary.pending} queued`}
+                      </button>
+                    )}
+                  </div>
+                  {syncQueueSummary.failed > 0 && (
+                    <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+                      {syncQueueSummary.failed} failed
+                    </span>
+                  )}
+                </div>
+                {syncQueueSummary.failed > 0 && dbRetryIssue && (
+                  <div className="w-full md:w-3/4 xl:w-2/3 mx-auto mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    DB unavailable, auto-retrying. Next retry: {syncRetryLabel}.
+                  </div>
+                )}
                 <div className="flex items-center border border-gray-400 w-full md:w-3/4 xl:w-2/3 rounded-lg p-2 mx-auto bg-white shadow-sm">
                   <MdSearch className="text-gray-500 text-2xl flex-shrink-0" />
                   <input 

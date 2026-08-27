@@ -44,17 +44,13 @@ function isTransientError(error) {
  */
 export default async function withTransaction(callback, maxRetries = 3){
 	// ensure DB connection
-	await connectToDB()
+	const connection = await connectToDB()
 
 	let lastError
 	
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
-		// Start session from the exact native Mongo client backing mongoose models.
-		const client = mongoose.connection.getClient?.()
-		if (!client) {
-			throw new Error('Mongo client not available for transaction session')
-		}
-		const session = await client.startSession()
+		// Start the session from the exact connection used by the models in this process.
+		const session = await connection.startSession()
 		try{
 			session.startTransaction()
 			const result = await callback(session)

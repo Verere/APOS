@@ -11,7 +11,9 @@ import '@radix-ui/themes/styles.css';
 import { Theme } from '@radix-ui/themes';
 import { Providers } from "./provider";
 import { generateMetadata as genMeta } from '@/lib/seo';
- import { Analytics } from "@vercel/analytics/react"
+import { Analytics } from "@vercel/analytics/react";
+import { NavigationLoadingProvider } from "@/components/navigation/NavigationLoadingContext";
+import { NavigationLoading } from "@/components/navigation/NavigationLoading";
 
 
 
@@ -38,7 +40,8 @@ export const metadata = genMeta({
     'sales tracking',
     'small business POS'
   ],
-
+  manifest: '/manifest.webmanifest',
+  themeColor: '#2563eb',
 })
 
 
@@ -59,20 +62,22 @@ export default function RootLayout({ children }) {
       </head>
       <body  className="bg-slate-300 dark:bg-slate-900">
         <Analytics />
-         <GlobalState>
-        <CartProvider>
-          <ToastContainer position="top-right"/>
-       <main className='flex min-h-screen flex-col'>
-        <Theme >
-        <Providers>
-        {children}
-        </Providers>
-        </Theme >
-        </main> 
-       </CartProvider>
-        </GlobalState>
-
-        </body>
+        <NavigationLoadingProvider>
+          <NavigationLoading />
+          <GlobalState>
+            <CartProvider>
+              <ToastContainer position="top-right"/>
+              <main className='flex min-h-screen flex-col'>
+                <Theme >
+                  <Providers>
+                    {children}
+                  </Providers>
+                </Theme >
+              </main>
+            </CartProvider>
+          </GlobalState>
+        </NavigationLoadingProvider>
+      </body>
     </html>
   )
 }

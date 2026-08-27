@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { X, DollarSign, CreditCard, Smartphone, FileText, Banknote, MoreHorizontal, Receipt, User, Phone, MapPin, CheckCircle, AlertCircle } from 'lucide-react'
+import { currencyFormat } from '@/utils/currency'
 
-export default function PaymentModal({ credit, onClose, onSuccess }) {
+export default function PaymentModal({ credit, onClose, onSuccess, slug }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [receiptData, setReceiptData] = useState(null)
   const [formData, setFormData] = useState({
     amount: '',
     paymentMethod: 'CASH',
@@ -31,16 +33,6 @@ export default function PaymentModal({ credit, onClose, onSuccess }) {
     { value: 'CHEQUE', label: 'Cheque', icon: FileText, color: 'indigo' },
     { value: 'OTHER', label: 'Other', icon: MoreHorizontal, color: 'gray' }
   ], [])
-
-  // Auto-dismiss success message
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        onClose()
-      }, 1500)
-      return () => clearTimeout(timer)
-    }
-  }, [success, onClose])
 
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target
@@ -90,6 +82,7 @@ export default function PaymentModal({ credit, onClose, onSuccess }) {
         throw new Error(data.error || 'Failed to record payment')
       }
 
+      setReceiptData(data.receipt || null)
       setSuccess(true)
       onSuccess(data)
     } catch (err) {
@@ -98,6 +91,104 @@ export default function PaymentModal({ credit, onClose, onSuccess }) {
       setLoading(false)
     }
   }, [formData, credit._id, remainingBalance, onSuccess])
+
+  const handlePrintReceipt = useCallback(() => {
+    if (!receiptData) return
+
+    const printWindow = window.open('', '_blank', 'width=360,height=760')
+    if (!printWindow) {
+      setError('Unable to open print window. Please allow pop-ups and try again.')
+      return
+    }
+
+    const row = (label, value) => `
+      <div class="row"><span>${label}</span><span>${value}</span></div>
+    `
+
+    const storeDisplayName = receiptData.storeName || slug || 'APOS Store'
+    const storeDisplaySlug = receiptData.storeSlug || slug || ''
+    const qrPayload = [
+      `Receipt:${receiptData.receiptNumber || ''}`,
+      `Store:${storeDisplayName}`,
+      `Customer:${receiptData.customerName || ''}`,
+      `AmountPaid:${receiptData.paymentAmount || 0}`,
+      `Outstanding:${receiptData.currentOutstandingBalance || 0}`,
+      `Wallet:${receiptData.currentWalletBalance || 0}`,
+      `Date:${new Date(receiptData.paymentDate).toISOString()}`,
+    ].join('|')
+    const qrUrl = `https://quickchart.io/qr?size=140&text=${encodeURIComponent(qrPayload)}`
+
+    const html = `
+      <!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Credit Payment Receipt</title>
+        <style>
+          @page { size: 80mm auto; margin: 2mm; }
+          * { box-sizing: border-box; }
+          body {
+            width: 76mm;
+            margin: 0 auto;
+            padding: 2mm;
+            font-family: 'Courier New', monospace;
+            color: #111;
+            font-size: 12px;
+            line-height: 1.35;
+          }
+          .center { text-align: center; }
+          .title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+          .sub { font-size: 11px; margin-bottom: 6px; }
+          .divider { border-top: 1px dashed #000; margin: 6px 0; }
+          .row { display: flex; justify-content: space-between; gap: 8px; margin: 3px 0; }
+          .row span:last-child { text-align: right; font-weight: 700; }
+          .muted { color: #333; }
+          .bold { font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <div class="center">
+          <div class="title">${storeDisplayName}</div>
+          ${storeDisplaySlug ? `<div class="sub">${storeDisplaySlug}</div>` : ''}
+          <div class="divider"></div>
+          <div class="title">CREDIT PAYMENT RECEIPT</div>
+          <div class="sub">${receiptData.customerName || 'Customer'}</div>
+        </div>
+        <div class="divider"></div>
+
+        ${row('Receipt No:', receiptData.receiptNumber || 'N/A')}
+        ${row('Date:', new Date(receiptData.paymentDate).toLocaleString())}
+        ${row('Method:', receiptData.paymentMethod || 'CASH')}
+        ${receiptData.orderNumber ? row('Order No:', receiptData.orderNumber) : ''}
+        ${receiptData.customerPhone ? row('Phone:', receiptData.customerPhone) : ''}
+
+        <div class="divider"></div>
+        ${row('Amount Paid:', currencyFormat(receiptData.paymentAmount || 0))}
+        ${row('Outstanding Balance:', currencyFormat(receiptData.currentOutstandingBalance || 0))}
+        ${row('Wallet Balance:', currencyFormat(receiptData.currentWalletBalance || 0))}
+
+        ${receiptData.notes ? `<div class="divider"></div><div class="muted">Note: ${receiptData.notes}</div>` : ''}
+
+        <div class="divider"></div>
+        <div class="center">
+          <img src="${qrUrl}" alt="receipt qr" width="110" height="110" style="margin:4px auto 2px;display:block;" />
+          <div class="muted" style="font-size:10px;">Scan for receipt details</div>
+        </div>
+        <div class="divider"></div>
+        <div class="center muted">Thank you</div>
+
+        <script>
+          window.onload = function () { window.print(); window.close(); };
+        </script>
+      </body>
+      </html>
+    `
+
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
+  }, [receiptData, slug])
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
@@ -131,9 +222,33 @@ export default function PaymentModal({ credit, onClose, onSuccess }) {
               <CheckCircle className="w-6 h-6 text-green-600 animate-in zoom-in" />
               <div>
                 <p className="font-semibold text-green-900">Payment Recorded Successfully!</p>
-                <p className="text-sm text-green-700">Closing automatically...</p>
+                <p className="text-sm text-green-700">Receipt is ready to print.</p>
               </div>
             </div>
+            {receiptData && (
+              <div className="mt-3 bg-white border border-green-200 rounded-lg p-3">
+                <p className="text-xs font-semibold text-gray-700 mb-2">80mm Receipt Summary</p>
+                <div className="grid grid-cols-2 gap-y-1 text-xs text-gray-700">
+                  <span>Store</span>
+                  <span className="text-right font-semibold">{receiptData.storeName || slug || 'APOS Store'}</span>
+                  <span>Receipt No.</span>
+                  <span className="text-right font-semibold">{receiptData.receiptNumber}</span>
+                  <span>Amount Paid</span>
+                  <span className="text-right font-semibold">{currencyFormat(receiptData.paymentAmount || 0)}</span>
+                  <span>Outstanding Balance</span>
+                  <span className="text-right font-semibold text-red-600">{currencyFormat(receiptData.currentOutstandingBalance || 0)}</span>
+                  <span>Wallet Balance</span>
+                  <span className="text-right font-semibold text-blue-700">{currencyFormat(receiptData.currentWalletBalance || 0)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePrintReceipt}
+                  className="mt-3 w-full px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-md hover:bg-black transition-colors"
+                >
+                  Print 80mm Receipt (With QR)
+                </button>
+              </div>
+            )}
           </div>
         )}
 

@@ -3,6 +3,7 @@ const nextConfig = {
   outputFileTracingRoot: process.cwd(),
   experimental: {
     optimizeCss: false,
+    webpackBuildWorker: false,
   },
 };
 

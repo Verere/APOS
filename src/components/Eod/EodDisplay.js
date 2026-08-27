@@ -1,265 +1,303 @@
 "use client";
 
-import { Calendar, TrendingUp, DollarSign, CreditCard, Smartphone, Receipt, Clock, CheckCircle, Printer, ArrowDownCircle } from "lucide-react";
+import {
+  Calendar,
+  TrendingUp,
+  DollarSign,
+  CreditCard,
+  Smartphone,
+  Receipt,
+  Printer,
+  Wallet,
+  AlertTriangle,
+  Archive,
+  Box,
+  BriefcaseBusiness,
+  ArrowDownCircle,
+  CheckCircle,
+} from "lucide-react";
 import { currencyFormat } from "@/utils/currency";
 import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 
+const safeNumber = (value) => Number(value || 0);
+
 export default function EodDisplay({ eodData, slug }) {
-  const printRef = useRef();
+  const printRef = useRef(null);
+  const summary = eodData?.businessSummary || eodData || {};
+  const settlement = eodData?.settlement || {};
+  const expensesSummary = eodData?.expensesSummary || { totalExpenses: safeNumber(eodData?.totalExpenses), expenseCount: 0, breakdown: [] };
+  const inventorySummary = eodData?.inventorySummary || { openingStockValue: 0, purchasesStockReceived: 0, stockSoldOrCogs: 0, stockReturns: 0, stockAdjustments: 0, closingStockValue: 0, alerts: [] };
+  const debtors = eodData?.debtors || { creditSalesToday: 0, debtPaymentsReceivedToday: 0, netDebtChange: 0, totalOutstandingDebt: 0, numberOfDebtors: 0, overdueDebtAmount: 0, debtorsRequiringAttention: [] };
+  const wallet = eodData?.wallet || { summary: { salesUsingWallet: 0, topUpsReceived: 0, refundsIssued: 0, openingDepositBalance: 0 }, activity: [] };
+  const attentionRequired = eodData?.attentionRequired || [];
+  const statusLabel = eodData?.status || "✅ EOD Balanced";
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `EOD-Report-${eodData.date}`
+    contentRef: printRef,
+    documentTitle: `EOD-Report-${eodData?.date || 'today'}`
   });
+
+  const metricCards = [
+    { label: "Revenue", value: summary.revenue ?? eodData?.totalRevenue ?? 0, tone: "green", icon: TrendingUp },
+    { label: "Gross Profit", value: summary.grossProfit ?? eodData?.totalProfit ?? 0, tone: "indigo", icon: TrendingUp },
+    { label: "Net Profit", value: summary.netProfit ?? 0, tone: "emerald", icon: CheckCircle },
+    { label: "Money Received", value: settlement?.moneyReceivedToday?.amount ?? eodData?.totalPayment ?? 0, tone: "cyan", icon: DollarSign },
+    { label: "Expenses", value: expensesSummary.totalExpenses ?? eodData?.totalExpenses ?? 0, tone: "amber", icon: ArrowDownCircle },
+    { label: "Outstanding Debt", value: debtors.totalOutstandingDebt ?? 0, tone: "red", icon: BriefcaseBusiness },
+  ];
+
+  const paymentRows = [
+    { label: 'Cash', amount: settlement?.cash?.amount ?? eodData?.totalCash ?? 0, count: settlement?.cash?.count ?? 0 },
+    { label: 'POS/Card', amount: settlement?.pos?.amount ?? eodData?.totalPos ?? 0, count: settlement?.pos?.count ?? 0 },
+    { label: 'Bank Transfer', amount: settlement?.transfer?.amount ?? eodData?.totalTransfer ?? 0, count: settlement?.transfer?.count ?? 0 },
+    { label: 'Wallet', amount: settlement?.wallet?.amount ?? 0, count: settlement?.wallet?.count ?? 0 },
+    { label: 'Other', amount: settlement?.other?.amount ?? eodData?.totalOther ?? 0, count: settlement?.other?.count ?? 0 },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="bg-white/20 p-2 sm:p-3 rounded-xl">
-                <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+              <div className="bg-white/20 p-3 rounded-xl">
+                <Calendar className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">End of Day Report</h1>
-                <p className="text-blue-100 text-sm sm:text-base md:text-lg mt-1">{eodData.date}</p>
+                <h1 className="text-2xl font-bold text-white">EOD</h1>
+                <p className="text-blue-100">{eodData?.date || 'Business Date'}</p>
               </div>
             </div>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-white hover:bg-blue-50 text-blue-600 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg text-sm sm:text-base w-full sm:w-auto justify-center"
-            >
-              <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
-              Print Report
-            </button>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${attentionRequired.length ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                {statusLabel}
+              </span>
+              <button
+                onClick={handlePrint}
+                className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-600 shadow-md hover:bg-blue-50"
+              >
+                <Printer className="w-4 h-4" />
+                Print / Export
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Printable Content */}
         <div ref={printRef} className="space-y-8">
-          {/* Primary Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-            {/* Total Revenue */}
-            <div className="bg-white rounded-xl shadow-lg border-2 border-green-200 p-6 hover:shadow-xl transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-green-100 p-3 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="text-sm font-semibold text-gray-700">Total Revenue</h3>
-              </div>
-              <p className="text-3xl font-bold text-green-700 mb-2">{currencyFormat(eodData.totalRevenue)}</p>
-              <p className="text-sm text-gray-600">{eodData.transactionCount} orders</p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+            {metricCards.map((card) => {
+              const Icon = card.icon;
+              const toneClasses = {
+                green: 'border-green-200 bg-green-50',
+                indigo: 'border-indigo-200 bg-indigo-50',
+                emerald: 'border-emerald-200 bg-emerald-50',
+                cyan: 'border-cyan-200 bg-cyan-50',
+                amber: 'border-amber-200 bg-amber-50',
+                red: 'border-red-200 bg-red-50'
+              }[card.tone] || 'border-slate-200 bg-white';
 
-            {/* Total Credit */}
-            <div className="bg-white rounded-xl shadow-lg border-2 border-red-200 p-6 hover:shadow-xl transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-red-100 p-3 rounded-lg">
-                  <Clock className="w-6 h-6 text-red-600" />
+              return (
+                <div key={card.label} className={`rounded-xl border p-4 shadow-sm ${toneClasses}`}>
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="rounded-lg bg-white p-2 shadow-sm">
+                      <Icon className="h-5 w-5 text-slate-700" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-slate-700">{card.label}</h3>
+                  </div>
+                  <p className="text-2xl font-bold text-slate-900">{currencyFormat(card.value)}</p>
                 </div>
-                <h3 className="text-sm font-semibold text-gray-700">Total Credit</h3>
-              </div>
-              <p className="text-3xl font-bold text-red-700 mb-2">{currencyFormat(eodData.totalCredit)}</p>
-              <p className="text-sm text-gray-600">{eodData.creditCount || 0} credit sales</p>
-            </div>
-
-            {/* Total Debt Paid */}
-            <div className="bg-white rounded-xl shadow-lg border-2 border-teal-200 p-6 hover:shadow-xl transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-teal-100 p-3 rounded-lg">
-                  <CheckCircle className="w-6 h-6 text-teal-600" />
-                </div>
-                <h3 className="text-sm font-semibold text-gray-700">Debt Paid</h3>
-              </div>
-              <p className="text-3xl font-bold text-teal-700">{currencyFormat(eodData.totalCreditPaid)}</p>
-            </div>
-
-            {/* Total Profit */}
-            <div className="bg-white rounded-xl shadow-lg border-2 border-indigo-200 p-6 hover:shadow-xl transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-indigo-100 p-3 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-indigo-600" />
-                </div>
-                <h3 className="text-sm font-semibold text-gray-700">Total Profit</h3>
-              </div>
-              <p className="text-3xl font-bold text-indigo-700 mb-2">{currencyFormat(eodData.totalProfit)}</p>
-              <p className="text-sm text-gray-600">{eodData.transactionCount} orders</p>
-            </div>
-
-            {/* Total Expenses */}
-            <div className="bg-white rounded-xl shadow-lg border-2 border-amber-200 p-6 hover:shadow-xl transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-amber-100 p-3 rounded-lg">
-                  <ArrowDownCircle className="w-6 h-6 text-amber-600" />
-                </div>
-                <h3 className="text-sm font-semibold text-gray-700">Total Expenses</h3>
-              </div>
-              <p className="text-3xl font-bold text-amber-700">{currencyFormat(eodData.totalExpenses || 0)}</p>
-            </div>
+              );
+            })}
           </div>
 
-          {/* Total Payment Section with Breakdown */}
-          <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl shadow-xl border-2 border-cyan-200 p-4 sm:p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <div className="bg-cyan-100 p-3 sm:p-4 rounded-xl">
-                <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800">Total Payment</h3>
-                <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-cyan-600 mt-1 sm:mt-2">{currencyFormat(eodData.totalPayment)}</p>
-              </div>
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              <h2 className="text-xl font-bold text-slate-900">Business Performance</h2>
             </div>
-
-            {/* Payment Methods Breakdown */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6">
-              {/* Cash */}
-              <div className="bg-white rounded-xl shadow-md border border-emerald-200 p-4 sm:p-5 hover:shadow-lg transition-shadow">
-                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                  <div className="bg-emerald-100 p-1.5 sm:p-2 rounded-lg">
-                    <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
-                  </div>
-                  <h4 className="text-xs sm:text-sm font-semibold text-gray-700">Cash</h4>
-                </div>
-                <p className="text-xl sm:text-2xl font-bold text-emerald-700">{currencyFormat(eodData.totalCash)}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${eodData.totalPayment > 0 ? ((eodData.totalCash / eodData.totalPayment) * 100).toFixed(1) : 0}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
-                    {eodData.totalPayment > 0 ? ((eodData.totalCash / eodData.totalPayment) * 100).toFixed(1) : 0}%
-                  </span>
-                </div>
-              </div>
-
-              {/* POS */}
-              <div className="bg-white rounded-xl shadow-md border border-blue-200 p-4 sm:p-5 hover:shadow-lg transition-shadow">
-                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                  <div className="bg-blue-100 p-1.5 sm:p-2 rounded-lg">
-                    <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-                  </div>
-                  <h4 className="text-xs sm:text-sm font-semibold text-gray-700">POS</h4>
-                </div>
-                <p className="text-xl sm:text-2xl font-bold text-blue-700">{currencyFormat(eodData.totalPos)}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${eodData.totalPayment > 0 ? ((eodData.totalPos / eodData.totalPayment) * 100).toFixed(1) : 0}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
-                    {eodData.totalPayment > 0 ? ((eodData.totalPos / eodData.totalPayment) * 100).toFixed(1) : 0}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Transfer */}
-              <div className="bg-white rounded-xl shadow-md border border-purple-200 p-4 sm:p-5 hover:shadow-lg transition-shadow">
-                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                  <div className="bg-purple-100 p-1.5 sm:p-2 rounded-lg">
-                    <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
-                  </div>
-                  <h4 className="text-xs sm:text-sm font-semibold text-gray-700">Transfer</h4>
-                </div>
-                <p className="text-xl sm:text-2xl font-bold text-purple-700">{currencyFormat(eodData.totalTransfer)}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-purple-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${eodData.totalPayment > 0 ? ((eodData.totalTransfer / eodData.totalPayment) * 100).toFixed(1) : 0}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
-                    {eodData.totalPayment > 0 ? ((eodData.totalTransfer / eodData.totalPayment) * 100).toFixed(1) : 0}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Others */}
-              <div className="bg-white rounded-xl shadow-md border border-orange-200 p-4 sm:p-5 hover:shadow-lg transition-shadow">
-                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                  <div className="bg-orange-100 p-1.5 sm:p-2 rounded-lg">
-                    <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
-                  </div>
-                  <h4 className="text-xs sm:text-sm font-semibold text-gray-700">Others</h4>
-                </div>
-                <p className="text-xl sm:text-2xl font-bold text-orange-700">{currencyFormat(eodData.totalOther)}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-orange-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${eodData.totalPayment > 0 ? ((eodData.totalOther / eodData.totalPayment) * 100).toFixed(1) : 0}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">
-                    {eodData.totalPayment > 0 ? ((eodData.totalOther / eodData.totalPayment) * 100).toFixed(1) : 0}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Breakdown */}
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">Payment Method Breakdown</h3>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               {[
-                { label: 'Cash', amount: eodData.totalCash, color: 'bg-emerald-500', icon: DollarSign, iconColor: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-                { label: 'POS', amount: eodData.totalPos, color: 'bg-blue-500', icon: CreditCard, iconColor: 'text-blue-600', bgColor: 'bg-blue-50' },
-                { label: 'Transfer', amount: eodData.totalTransfer, color: 'bg-purple-500', icon: Smartphone, iconColor: 'text-purple-600', bgColor: 'bg-purple-50' },
-                { label: 'Others', amount: eodData.totalOther, color: 'bg-orange-500', icon: Receipt, iconColor: 'text-orange-600', bgColor: 'bg-orange-50' }
-              ].map((item, idx) => {
-                const percent = eodData.totalPayment > 0 
-                  ? ((item.amount / eodData.totalPayment) * 100).toFixed(1) 
-                  : 0;
-                const Icon = item.icon;
-
-                return (
-                  <div key={idx} className={`${item.bgColor} p-4 rounded-lg`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <Icon className={`w-5 h-5 ${item.iconColor}`} />
-                        <span className="font-semibold text-gray-800">{item.label}</span>
-                      </div>
-                      <span className="text-gray-700 font-medium">{currencyFormat(item.amount)} ({percent}%)</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className={`${item.color} h-3 rounded-full transition-all duration-500`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
+                ['Revenue', summary.revenue ?? eodData?.totalRevenue ?? 0],
+                ['Complementary', summary.complementary ?? 0],
+                ['Returns / Refunds', summary.returnsRefunds ?? 0],
+                ['Net Sales', summary.netSales ?? 0],
+                ['COGS', summary.cogs ?? 0],
+                ['Gross Profit', summary.grossProfit ?? 0],
+                ['Gross Margin %', summary.grossMarginPercent ?? 0],
+                ['Operating Expenses', summary.operatingExpenses ?? expensesSummary.totalExpenses ?? 0],
+                ['Net Profit', summary.netProfit ?? 0],
+                ['Transactions', summary.totalTransactions ?? 0],
+                ['Avg Transaction Value', summary.averageTransactionValue ?? 0],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900">
+                    {label.includes('%') ? `${Number(value).toFixed(1)}%` : (label === 'Transactions' || label === 'Avg Transaction Value' ? `${Number(value).toFixed(0)}` : currencyFormat(value))}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
-          </div>
+          </section>
 
-          {/* Summary Section */}
-          <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl shadow-lg p-8 text-white">
-            <h3 className="text-2xl font-bold mb-6">Daily Summary</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <p className="text-gray-400 text-sm mb-1">Total Collections</p>
-                <p className="text-3xl font-bold">{currencyFormat(eodData.totalPayment + eodData.totalCreditPaid)}</p>
-                <p className="text-xs text-gray-500 mt-1">Payments + Debt Paid</p>
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <DollarSign className="h-5 w-5 text-cyan-600" />
+              <h2 className="text-xl font-bold text-slate-900">Settlement / Money Received</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {paymentRows.map((item) => (
+                <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-sm font-semibold text-slate-600">{item.label}</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-900">{currencyFormat(item.amount)}</div>
+                  <div className="mt-1 text-xs text-slate-500">{item.count} transactions</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+              {[
+                ['Sales settled today', settlement?.salesSettledToday?.amount ?? 0],
+                ['Money actually received today', settlement?.moneyReceivedToday?.amount ?? 0],
+                ['Debt collected today', settlement?.debtCollectedToday?.amount ?? 0],
+                ['Customer deposits received today', settlement?.customerDepositsReceivedToday?.amount ?? 0],
+                ['Wallet top-ups/funding', settlement?.walletTopUpsFunding?.amount ?? 0],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="text-xs uppercase tracking-[0.08em] text-slate-500">{label}</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900">{currencyFormat(value)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <Box className="h-5 w-5 text-violet-600" />
+              <h2 className="text-xl font-bold text-slate-900">Expenses</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-xs uppercase tracking-[0.08em] text-slate-500">Total expenses</div>
+                <div className="mt-2 text-2xl font-bold text-slate-900">{currencyFormat(expensesSummary.totalExpenses || 0)}</div>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-1">Outstanding Credit</p>
-                <p className="text-3xl font-bold text-red-400">{currencyFormat(eodData.totalCredit)}</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-xs uppercase tracking-[0.08em] text-slate-500">Expense count</div>
+                <div className="mt-2 text-2xl font-bold text-slate-900">{expensesSummary.expenseCount || 0}</div>
               </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-1">Net Profit</p>
-                <p className="text-3xl font-bold text-green-400">{currencyFormat(eodData.totalProfit)}</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-xs uppercase tracking-[0.08em] text-slate-500">Categories</div>
+                <div className="mt-2 text-2xl font-bold text-slate-900">{expensesSummary.breakdown?.length || 0}</div>
               </div>
             </div>
-          </div>
+            <div className="mt-6 space-y-3">
+              {(expensesSummary.breakdown || []).map((item) => (
+                <div key={item.category} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <span className="font-medium text-slate-700">{item.category}</span>
+                  <span className="font-bold text-slate-900">{currencyFormat(item.total)} ({item.count})</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <Archive className="h-5 w-5 text-violet-600" />
+              <h2 className="text-xl font-bold text-slate-900">Inventory / Stock Summary</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+              {[
+                ['Opening stock value', inventorySummary.openingStockValue || 0],
+                ['Purchases / stock received', inventorySummary.purchasesStockReceived || 0],
+                ['Stock sold / COGS', inventorySummary.stockSoldOrCogs || 0],
+                ['Stock returns', inventorySummary.stockReturns || 0],
+                ['Stock adjustments', inventorySummary.stockAdjustments || 0],
+                ['Closing stock value', inventorySummary.closingStockValue || 0],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs uppercase tracking-[0.08em] text-slate-500">{label}</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900">{currencyFormat(value)}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6">
+              <div className="text-sm font-semibold text-slate-700">Alerts</div>
+              <div className="mt-3 space-y-2">
+                {(inventorySummary.alerts || []).length ? inventorySummary.alerts.map((alert, index) => (
+                  <div key={`${alert.type}-${index}`} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    {alert.description}
+                  </div>
+                )) : <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">No inventory anomalies detected.</div>}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <BriefcaseBusiness className="h-5 w-5 text-red-600" />
+              <h2 className="text-xl font-bold text-slate-900">Debtors / Credit</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+              {[
+                ['Credit sales today', debtors.creditSalesToday || 0],
+                ['Debt payments received today', debtors.debtPaymentsReceivedToday || 0],
+                ['Debt write-offs today', debtors.debtWriteOffsToday || 0],
+                ['Net change in debt', debtors.netDebtChange || 0],
+                ['Total outstanding debt', debtors.totalOutstandingDebt || 0],
+                ['Number of debtors', debtors.numberOfDebtors || 0],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs uppercase tracking-[0.08em] text-slate-500">{label}</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900">{label.includes('Number') ? value : currencyFormat(value)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <Wallet className="h-5 w-5 text-emerald-600" />
+              <h2 className="text-xl font-bold text-slate-900">Customer Deposits / Wallet</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+              {[
+                ['Opening deposit balance', wallet.summary.openingDepositBalance || 0],
+                ['Deposits received today', wallet.summary.depositsReceivedToday || 0],
+                ['Deposits applied to sales', wallet.summary.depositsAppliedToSales || 0],
+                ['Deposits refunded', wallet.summary.depositsRefunded || 0],
+                ['Closing unused deposit balance', wallet.summary.closingUnusedDepositBalance || 0],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs uppercase tracking-[0.08em] text-slate-500">{label}</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900">{currencyFormat(value)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <h2 className="text-xl font-bold text-red-900">Attention Required</h2>
+            </div>
+            {attentionRequired.length ? (
+              <div className="space-y-3">
+                {attentionRequired.map((item, index) => (
+                  <div key={`${item.type}-${index}`} className="rounded-xl border border-red-200 bg-white p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="inline-flex rounded-full bg-red-100 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-red-800">{item.severity}</span>
+                      <span className="text-xs text-slate-500">{item.action || 'Investigate'}</span>
+                    </div>
+                    <div className="mt-2 text-sm text-slate-700">{item.description}</div>
+                    {item.amount ? <div className="mt-2 text-sm font-semibold text-slate-900">Amount: {currencyFormat(item.amount)}</div> : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">No material exceptions detected for this business date.</div>
+            )}
+          </section>
         </div>
       </div>
     </div>

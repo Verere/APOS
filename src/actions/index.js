@@ -40,6 +40,7 @@ import { authOptions } from '@/auth'
 import { getStoreBySlug } from '@/lib/getStoreBySlug'
 import { requireStoreRole } from '@/lib/requireStoreRole'
 import { sendVerificationEmail } from '@/utils/email'
+import { toClientSafeDbError } from '@/lib/dbError'
 
 export const authenticate = async (prevState, formData) => {
   
@@ -444,7 +445,7 @@ items = []
 
 // add payment and create order from cart items atomically
 export const addPaymentWithOrder = async (prvState, formData) => {
-  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, walletPaid, customerId, customerName, isComplimentary, transactionType, approvedBy, reason, remarks, location, allowDecimalQuantity } = Object.fromEntries(formData);
+  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, walletPaid, customerId, customerName, isComplimentary, transactionType, approvedBy, reason, remarks, location, allowDecimalQuantity, submissionId } = Object.fromEntries(formData);
   try {
     await connectToDB();
     const items = cartItems ? JSON.parse(cartItems) : [];
@@ -674,7 +675,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
 
       if (result && result.success) {
         revalidatePath(path);
-        return { success: 'Order and payment saved', orderId: String(result.orderId), orderNum: String(result.orderNum || '') };
+        return { success: 'Order and payment saved', orderId: String(result.orderId), orderNum: String(result.orderNum || ''), submissionId: String(submissionId || Date.now()) };
       }
     }catch(err){
       console.log('transaction error', err);
@@ -690,19 +691,29 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         const ids = items.map(i=>i.product)
         const prods = await Product.find({_id: { $in: ids }}).lean();
         const stockUpdates = prods.map(p=>({ product: String(p._id), qty: p.qty || 0 }));
-        return { error: err.message, stockUpdates };
+        return { error: err.message, stockUpdates, submissionId: String(submissionId || Date.now()) };
       }
       if(err && err.code === 'BAD_PAYMENT'){
-        return { error: err.message };
+        return { error: err.message, submissionId: String(submissionId || Date.now()) };
       }
       if(err && err.code === 'BAD_WALLET'){
-        return { error: err.message };
+        return { error: err.message, submissionId: String(submissionId || Date.now()) };
       }
-      return { error: err.message || 'Failed to create order and payment' };
+
+      const dbConnectivityResult = toClientSafeDbError(err);
+      if (dbConnectivityResult) {
+        return { ...dbConnectivityResult, submissionId: String(submissionId || Date.now()) };
+      }
+
+      return { error: err.message || 'Failed to create order and payment', submissionId: String(submissionId || Date.now()) };
     }
   } catch (err) {
     console.log(err);
-    return { error: 'Failed to create order and payment' };
+    const dbConnectivityResult = toClientSafeDbError(err);
+    if (dbConnectivityResult) {
+      return { ...dbConnectivityResult, submissionId: String(submissionId || Date.now()) };
+    }
+    return { error: 'Failed to create order and payment', submissionId: String(submissionId || Date.now()) };
   }
 };
 
@@ -712,10 +723,15 @@ export const addPaymentWithOrder = async (prvState, formData) => {
 export const addUser= async (prvState,formData) => {
   const { name, email, password, image  } =
     Object.fromEntries(formData);
+  const normalizedEmail = String(email || '').trim().toLowerCase();
 
   try {
-    connectToDB();
-    const user = await User.findOne({ email: email });
+    await connectToDB();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (user) {
+      return { error: 'User already exists, please login.' };
+    }
 
     // if (!user){
 
@@ -728,7 +744,7 @@ export const addUser= async (prvState,formData) => {
 
       const newUser = new User({
         name,
-        email,
+        email: normalizedEmail,
         password: hashPasswrd,
         image,
         // keep existing emailToken field for compatibility (stores plain token)
@@ -756,6 +772,9 @@ export const addUser= async (prvState,formData) => {
      
   } catch (err) {
     console.error('addUser error:', err);
+    if (err?.code === 11000 || String(err?.message || '').includes('duplicate key')) {
+      return { error: 'User already exists, please login.' };
+    }
     return{error:"Failed to create user!"};
   }
 

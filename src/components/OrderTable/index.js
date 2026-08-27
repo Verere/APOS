@@ -14,6 +14,7 @@ import { currencyFormat } from '@/utils/currency'
 import { formatTime } from '@/utils/date'
 import { updateCancelOrder } from '@/actions/update'
 import { toast } from 'react-toastify'
+import db from '@/lib/db/db'
 
 function CancelConfirmToast({ onConfirm, onClose }) {
   const [reason, setReason] = useState('')
@@ -56,7 +57,7 @@ function CancelConfirmToast({ onConfirm, onClose }) {
   )
 }
 
-const OrderTable = ({ patients = [], slug }) => {
+const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErrorMessage = '' }) => {
   const { user, store } = useContext(GlobalContext)
   const pathname = usePathname()
   const { replace } = useRouter()
@@ -66,6 +67,8 @@ const OrderTable = ({ patients = [], slug }) => {
   const [cancelingOrderId, setCancelingOrderId] = useState(null)
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [completedOrder, setCompletedOrder] = useState(null)
+  const [queuedItems, setQueuedItems] = useState([])
+  const [loadingQueuedItems, setLoadingQueuedItems] = useState(false)
    const [receiptSettings, setReceiptSettings] = useState({
       receiptFontFamily: 'monospace',
       receiptFontSize: 12,
@@ -94,6 +97,27 @@ const OrderTable = ({ patients = [], slug }) => {
   }, [slug])
 
   const bDate = useMemo(() => moment().format('D/MM/YYYY'), [])
+
+  const loadQueuedItems = useCallback(async () => {
+    setLoadingQueuedItems(true)
+    try {
+      const queueItems = await db.syncQueue.orderBy('createdAt').reverse().toArray()
+      setQueuedItems(Array.isArray(queueItems) ? queueItems : [])
+    } catch {
+      setQueuedItems([])
+    } finally {
+      setLoadingQueuedItems(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!serverUnavailable) {
+      setQueuedItems([])
+      return
+    }
+
+    void loadQueuedItems()
+  }, [serverUnavailable, loadQueuedItems])
 
   const filteredOrders = useMemo(() => {
     const targetDate = selectedDate ? format(selectedDate, 'd/MM/yyyy') : bDate
@@ -153,6 +177,15 @@ const OrderTable = ({ patients = [], slug }) => {
       <div className="mb-6 bg-white rounded-lg shadow-sm p-4 border border-gray-200">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Orders</h2>
 
+        {serverUnavailable && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p className="font-semibold">Server unavailable. Showing local queued transactions.</p>
+            <p className="text-xs text-amber-700 mt-1">
+              {serverErrorMessage || 'Database is temporarily unavailable. Queued items will sync automatically when connection is restored.'}
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-end gap-4">
           <div className="flex-1 max-w-xs">
             <label className="block mb-2 text-sm font-semibold text-gray-700">Filter by Date:</label>
@@ -203,6 +236,99 @@ const OrderTable = ({ patients = [], slug }) => {
           </div>
         </div>
       </div>
+
+      {serverUnavailable && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+          <div className="px-4 py-3 border-b border-gray-200 bg-amber-50 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-amber-900">Queued Transactions (Offline)</h3>
+              <p className="text-xs text-amber-700">These are pending sync items stored locally on this device.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadQueuedItems()}
+              disabled={loadingQueuedItems}
+              className="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loadingQueuedItems ? 'Refreshing...' : 'Refresh Queue'}
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <Table.Root layout="auto" variant="surface" className="w-full">
+              <Table.Header>
+                <Table.Row className="bg-gray-50">
+                  <Table.ColumnHeaderCell className="font-semibold text-gray-700">Transaction ID</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell className="font-semibold text-gray-700">Type</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell className="font-semibold text-gray-700">Items Sold</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell className="font-semibold text-gray-700">Amount</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell className="font-semibold text-gray-700">Status</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell className="font-semibold text-gray-700">Attempts</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell className="font-semibold text-gray-700">Next Retry</Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell className="font-semibold text-gray-700">Created</Table.ColumnHeaderCell>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {!loadingQueuedItems && queuedItems.length > 0 ? (
+                  queuedItems.map((item) => {
+                    const amount = Number(item?.payload?.orderAmount ?? item?.payload?.amountPaid ?? item?.payload?.order?.amount ?? 0)
+                    const nextRetryAt = item?.nextRetryAt ? new Date(item.nextRetryAt) : null
+                    const createdAt = item?.createdAt ? new Date(item.createdAt) : null
+                    const queuedSaleItems = Array.isArray(item?.payload?.items)
+                      ? item.payload.items
+                      : Array.isArray(item?.payload?.order?.items)
+                        ? item.payload.order.items
+                        : []
+
+                    return (
+                      <Table.Row key={item?.id || item?.transactionId} className="hover:bg-gray-50 transition-colors align-top">
+                        <Table.RowHeaderCell className="font-mono text-xs text-blue-700">{item?.transactionId || 'N/A'}</Table.RowHeaderCell>
+                        <Table.Cell>{item?.type || 'SALE'}</Table.Cell>
+                        <Table.Cell className="min-w-[220px]">
+                          {queuedSaleItems.length > 0 ? (
+                            <div className="space-y-1">
+                              {queuedSaleItems.map((queuedItem, index) => {
+                                const qty = Number(queuedItem?.qty ?? queuedItem?.quantity ?? 0)
+                                const name = queuedItem?.productName || queuedItem?.name || queuedItem?.item || queuedItem?.product || `Item ${index + 1}`
+                                return (
+                                  <div key={`${item?.transactionId || 'queue'}-${index}`} className="flex items-center gap-2 rounded-md bg-gray-50 px-2 py-1 text-xs text-gray-700 border border-gray-200">
+                                    <span className="font-semibold text-blue-700">{qty}×</span>
+                                    <span className="truncate">{name}</span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">No item details</span>
+                          )}
+                        </Table.Cell>
+                        <Table.Cell>{currencyFormat(amount)}</Table.Cell>
+                        <Table.Cell>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-800">
+                            {item?.status || 'PENDING'}
+                          </span>
+                        </Table.Cell>
+                        <Table.Cell>{Number(item?.attempts || 0)}</Table.Cell>
+                        <Table.Cell className="text-xs text-gray-600">
+                          {nextRetryAt && !Number.isNaN(nextRetryAt.getTime()) ? nextRetryAt.toLocaleString() : 'Pending'}
+                        </Table.Cell>
+                        <Table.Cell className="text-xs text-gray-600">
+                          {createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.toLocaleString() : 'N/A'}
+                        </Table.Cell>
+                      </Table.Row>
+                    )
+                  })
+                ) : (
+                  <Table.Row>
+                    <Table.Cell colSpan={8} className="text-center py-8 text-sm text-gray-500">
+                      {loadingQueuedItems ? 'Loading queued items...' : 'No queued items found on this device.'}
+                    </Table.Cell>
+                  </Table.Row>
+                )}
+              </Table.Body>
+            </Table.Root>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">

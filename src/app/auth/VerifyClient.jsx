@@ -21,7 +21,7 @@ export default function VerifyClient(){
   useEffect(() => {
     let t;
     if (status === 'success') {
-      t = setTimeout(() => router.push('/store'), 2500);
+      t = setTimeout(() => router.push('/login?callbackUrl=/store'), 1800);
     }
     return () => {
       if (t) clearTimeout(t);
@@ -62,7 +62,7 @@ export default function VerifyClient(){
         {status === 'success' ? (
           <div className="text-center">
             <p className="text-green-600 font-medium mb-4">{message}</p>
-            <button onClick={()=>router.push('/store')} className="px-4 py-2 bg-black text-white rounded">Create Store</button>
+            <button onClick={()=>router.push('/login?callbackUrl=/store')} className="px-4 py-2 bg-black text-white rounded">Continue to store setup</button>
           </div>
         ) : (
           <div>

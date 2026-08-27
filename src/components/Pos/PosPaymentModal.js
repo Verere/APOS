@@ -1,11 +1,18 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect, useRef, useActionState } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, useActionState, startTransition } from 'react'
 import { X, DollarSign, CreditCard, Smartphone, Banknote, ArrowRightLeft, Receipt, CheckCircle, AlertCircle, Printer, History, ShoppingCart, User, Calendar, MessageCircle, Wallet } from 'lucide-react'
 import { addPaymentWithOrder } from "@/actions"
 import { toast } from "react-toastify"
 import { useReactToPrint } from 'react-to-print'
 import { currencyFormat } from '@/utils/currency'
+import { completeLocalCashSale } from '@/lib/pos/localSaleService'
+import { syncPendingTransactions } from '@/lib/pos/syncEngine'
+import { isLocalFirstCheckoutEligible, shouldTryImmediateServerSync } from '@/lib/pos/operationRouter'
+import { validateLocalCartStock } from '@/lib/pos/localStockValidator'
+import { getLocalProductsBySlug } from '@/lib/pos/localCatalogService'
+
+const OFFLINE_POS_ENABLED = process.env.NEXT_PUBLIC_OFFLINE_POS_ENABLED !== 'false'
 
 export default function PosPaymentModal({ 
   isOpen, 
@@ -37,6 +44,7 @@ export default function PosPaymentModal({
   })
   const [showHistory, setShowHistory] = useState(false)
   const [showPrintModal, setShowPrintModal] = useState(false)
+  const [isPaymentVisible, setIsPaymentVisible] = useState(true)
   const [completedOrder, setCompletedOrder] = useState(null)
   const [paymentsData, setPaymentsData] = useState([])
   const [orderItems, setOrderItems] = useState([])
@@ -44,6 +52,7 @@ export default function PosPaymentModal({
   const [complimentaryReason, setComplimentaryReason] = useState('')
   const [complimentaryRemarks, setComplimentaryRemarks] = useState('')
   const [walletAmount, setWalletAmount] = useState(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [receiptSettings, setReceiptSettings] = useState({
     receiptFontFamily: 'monospace',
     receiptFontSize: 12,
@@ -51,8 +60,14 @@ export default function PosPaymentModal({
   })
   const printRef = useRef(null)
   const successProcessedRef = useRef(false)
+  const submitLockRef = useRef(false)
+  const pendingPrintOpenRef = useRef(false)
+  const lastDbRetryToastAtRef = useRef(0)
   
   const [state, formAction, isPending] = useActionState(addPaymentWithOrder, {})
+  const formRef = useRef(null)
+  const currentSubmissionIdRef = useRef(null)
+  const lastHandledSubmissionIdRef = useRef(null)
 
   const paymentMethods = useMemo(() => [
     { value: 'CASH', label: 'Cash', icon: Banknote, color: 'green' },
@@ -72,6 +87,7 @@ export default function PosPaymentModal({
 
   const orderTotal = useMemo(() => parseFloat(cartValue || 0) || 0, [cartValue])
   const customerWalletBalance = useMemo(() => Number(customer?.walletBalance || 0), [customer])
+  const customerOutstandingBalance = useMemo(() => Number(customer?.outstandingBalance || 0), [customer])
   const canUseWallet = useMemo(
     () => Boolean(customer) && !isComplimentary && customerWalletBalance > 0,
     [customer, isComplimentary, customerWalletBalance]
@@ -112,9 +128,53 @@ export default function PosPaymentModal({
     return parsed > maxWalletUsable
   }, [walletSelected, isComplimentary, walletAmount, maxWalletUsable])
 
+  const localFirstEligible = useMemo(() => {
+    return isLocalFirstCheckoutEligible({
+      offlineEnabled: OFFLINE_POS_ENABLED,
+      isComplimentary,
+      walletSelected,
+      selectedMethods,
+      paymentAmounts,
+    })
+  }, [isComplimentary, walletSelected, selectedMethods, paymentAmounts])
+
+  const saleMode = useMemo(() => {
+    if (isComplimentary) {
+      return {
+        label: 'Online Sale',
+        hint: 'Complimentary sales require server authorization.',
+        classes: 'bg-white/15 text-blue-50 border border-white/30',
+      }
+    }
+
+    if (localFirstEligible) {
+      return {
+        label: 'Offline Sale',
+        hint: 'This sale is saved locally first and synced to server later.',
+        classes: 'bg-emerald-500/20 text-emerald-50 border border-emerald-200/40',
+      }
+    }
+
+    return {
+      label: 'Online Sale',
+      hint: walletSelected
+        ? 'Wallet checkout requires live server validation.'
+        : 'This sale will be processed directly on the server.',
+      classes: 'bg-white/15 text-blue-50 border border-white/30',
+    }
+  }, [isComplimentary, localFirstEligible, walletSelected])
+
   const cartItems = useMemo(() => {
-    return cart?.cartItems || cart || []
+    return Array.isArray(cart?.cartItems) ? cart.cartItems : Array.isArray(cart) ? cart : []
   }, [cart])
+
+  const openReceipt = useCallback((nextOrder, nextItems = [], nextPayments = []) => {
+    setCompletedOrder(nextOrder)
+    setOrderItems(Array.isArray(nextItems) ? nextItems : [])
+    setPaymentsData(Array.isArray(nextPayments) ? nextPayments : [])
+    pendingPrintOpenRef.current = false
+    setShowPrintModal(true)
+  }, [])
 
   const resolvedReceiptFontFamily = receiptSettings?.receiptFontFamily || 'monospace'
   const resolvedReceiptFontSize = Math.min(18, Math.max(9, Number(receiptSettings?.receiptFontSize) || 12))
@@ -129,9 +189,28 @@ export default function PosPaymentModal({
     `
   })
 
+  const resetReceiptState = useCallback(() => {
+    setShowPrintModal(false)
+    setIsPaymentVisible(true)
+    setCompletedOrder(null)
+    setPaymentsData([])
+    setOrderItems([])
+    setIsSubmitting(false)
+    pendingPrintOpenRef.current = false
+    successProcessedRef.current = false
+    submitLockRef.current = false
+    currentSubmissionIdRef.current = null
+    lastHandledSubmissionIdRef.current = null
+  }, [])
+
   useEffect(() => {
     if (!isOpen) return
 
+    resetReceiptState()
+    successProcessedRef.current = false
+    submitLockRef.current = false
+    setIsSubmitting(false)
+    setIsPaymentVisible(true)
     setSelectedMethods(isComplimentary ? ['COMPLIMENTARY'] : ['CASH'])
     setPaymentAmounts({
       CASH: isComplimentary ? 0 : (cartValue || 0),
@@ -145,7 +224,7 @@ export default function PosPaymentModal({
     setComplimentaryReason('')
     setComplimentaryRemarks('')
     setWalletAmount(0)
-  }, [isOpen, isComplimentary, cartValue])
+  }, [isOpen, isComplimentary, resetReceiptState])
 
   useEffect(() => {
     if (!walletSelected || isComplimentary) {
@@ -185,16 +264,201 @@ export default function PosPaymentModal({
     if (slug) loadReceiptSettings()
   }, [slug])
 
+  const completeLocalFallbackSale = useCallback(async ({ message }) => {
+    setIsSubmitting(true)
+    submitLockRef.current = true
+
+    try {
+      const localCatalogProducts = slug ? await getLocalProductsBySlug(slug) : []
+      const hasLocalCatalog = Array.isArray(localCatalogProducts) && localCatalogProducts.length > 0
+
+      if (hasLocalCatalog) {
+        validateLocalCartStock({
+          cartItems: cartItems || cart?.cartItems || [],
+          localProducts: localCatalogProducts,
+          allowDecimalQuantity,
+        })
+      } else {
+        toast.info('Local catalog is temporarily empty. Continuing with offline sale processing.')
+      }
+
+      const localPaymentMethods = selectedMethods
+        .filter((method) => method !== 'WALLET' && method !== 'COMPLIMENTARY')
+        .map((method) => ({ method, amount: Number(paymentAmounts[method] || 0) }))
+        .filter((entry) => entry.amount > 0)
+
+      const localAmountPaid = localPaymentMethods.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
+
+      if (!localPaymentMethods.length || localAmountPaid <= 0) {
+        throw new Error('No valid offline payment methods to save locally')
+      }
+
+      const result = await completeLocalCashSale({
+        cartItems,
+        storeId: store?._id || slug,
+        storeSlug: slug,
+        customer,
+        cashier: user?.name || user?.email || 'Cashier',
+        paymentMethods: localPaymentMethods,
+        paymentMethod: localPaymentMethods[0]?.method || 'CASH',
+        amountPaid: localAmountPaid,
+        change: Number(change || 0),
+        orderMeta: {
+          location: location || '',
+          busDate,
+          bDate: busDate,
+          path: pathname || `/${slug}/pos`,
+          orderAmount: orderTotal,
+          allowDecimalQuantity,
+        },
+      })
+
+      const fallbackPaymentRows = localPaymentMethods.map((entry) => ({
+        mop: paymentMethods.find((item) => item.value === entry.method)?.label || entry.method,
+        amount: Number(entry.amount || 0),
+      }))
+
+      const localCompletedOrder = {
+        ...order,
+        orderNum: result?.orderNum || rcpt || 'OFFLINE',
+        cashier: user?.name || order?.soldBy || 'Cashier',
+        soldBy: user?.name || order?.soldBy || 'Cashier',
+        bDate: busDate,
+        amount: orderTotal,
+        amountPaid: localAmountPaid,
+        bal: 0,
+        change: Number(change || 0),
+        walletUsed: 0,
+        walletBalance: customer?.walletBalance || 0,
+        outstandingBalance: customer?.outstandingBalance || 0,
+        isComplimentary: false,
+        customer: customer || null,
+        syncStatus: result?.syncStatus || 'PENDING',
+      }
+
+      openReceipt(localCompletedOrder, cartItems, fallbackPaymentRows)
+      setIsPaymentVisible(false)
+      setIsSubmitting(false)
+      submitLockRef.current = false
+      currentSubmissionIdRef.current = null
+      lastHandledSubmissionIdRef.current = null
+      successProcessedRef.current = true
+      toast.success(message || result?.message || 'Sale saved locally. It will sync when internet is available.')
+      if (onSuccess) onSuccess()
+      return { success: true }
+    } catch (error) {
+      setIsSubmitting(false)
+      submitLockRef.current = false
+      currentSubmissionIdRef.current = null
+      lastHandledSubmissionIdRef.current = null
+      toast.error(error?.message || 'Could not save sale locally')
+      return { success: false }
+    }
+  }, [selectedMethods, paymentAmounts, cartItems, store, slug, customer, user, change, location, busDate, pathname, orderTotal, allowDecimalQuantity, paymentMethods, order, rcpt, onSuccess])
+
+  const isDbRetryableSyncIssue = useCallback((syncResult) => {
+    const message = String(syncResult?.error || '').toLowerCase()
+    const classification = String(syncResult?.classification || '').toUpperCase()
+
+    if (!message && !classification) return false
+
+    const connectivityMatch =
+      message.includes('db_unavailable') ||
+      message.includes('database is temporarily unavailable') ||
+      message.includes('querysrv') ||
+      message.includes('eservfail') ||
+      message.includes('server selection timed out') ||
+      message.includes('enotfound') ||
+      message.includes('econnrefused')
+
+    return connectivityMatch || (classification === 'TRANSIENT' && message.includes('temporarily unavailable'))
+  }, [])
+
+  const notifyDbRetryIfNeeded = useCallback((syncResult) => {
+    if (!isDbRetryableSyncIssue(syncResult)) return
+
+    const now = Date.now()
+    if (now - lastDbRetryToastAtRef.current < 12000) return
+
+    lastDbRetryToastAtRef.current = now
+    toast.info('Database unavailable, queued sales will auto-retry when connection stabilizes.')
+  }, [isDbRetryableSyncIssue])
+
+  useEffect(() => {
+    if (!OFFLINE_POS_ENABLED || typeof window === 'undefined') return
+
+    const triggerSync = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return
+
+      try {
+        const result = await syncPendingTransactions()
+        notifyDbRetryIfNeeded(result)
+        if (result?.pending && result.pending > 0) {
+          toast.info(`Syncing ${result.pending} queued sale${result.pending > 1 ? 's' : ''}...`)
+        }
+      } catch (error) {
+        // Silent fail: reconnect logic handles retry later.
+      }
+    }
+
+    void triggerSync()
+
+    const handleOnline = () => {
+      void triggerSync()
+    }
+
+    window.addEventListener('online', handleOnline)
+    return () => window.removeEventListener('online', handleOnline)
+  }, [notifyDbRetryIfNeeded])
+
   // Handle form state updates
   useEffect(() => {
-    if (state.error) {
-      toast.error(state.error)
+    if (!state || typeof state !== 'object') return
+
+    const submissionId = state?.submissionId ?? null
+    const expectedSubmissionId = currentSubmissionIdRef.current
+
+    if (!submissionId || !expectedSubmissionId) {
+      return
     }
+
+    if (submissionId !== expectedSubmissionId) {
+      return
+    }
+
+    if (lastHandledSubmissionIdRef.current === submissionId) {
+      return
+    }
+
+    lastHandledSubmissionIdRef.current = submissionId
+
+    if (state.error) {
+      const supportsLocalFallback =
+        OFFLINE_POS_ENABLED &&
+        !isComplimentary &&
+        !walletSelected &&
+        selectedMethods.some((method) => ['CASH', 'POS', 'TRANSFER', 'OTHER'].includes(method) && Number(paymentAmounts[method] || 0) > 0)
+
+      if (state?.code === 'DB_UNAVAILABLE' && supportsLocalFallback) {
+        const localFallbackMessage =
+          'Server is unavailable. Sale was saved locally and queued for sync.'
+        void completeLocalFallbackSale({ message: localFallbackMessage })
+        return
+      }
+
+      submitLockRef.current = false
+      setIsSubmitting(false)
+      toast.error(state.error)
+      currentSubmissionIdRef.current = null
+      return
+    }
+
     if (state.success && !successProcessedRef.current) {
       successProcessedRef.current = true
+      submitLockRef.current = false
+      setIsSubmitting(false)
       toast.success(state.success)
-      
-      // Prepare payment data
+
       const paymentsList = isComplimentary
         ? [{ mop: 'Complimentary', amount: 0 }]
         : selectedMethods.map(method => ({
@@ -205,29 +469,39 @@ export default function PosPaymentModal({
       if (!isComplimentary && walletSelected && walletUsed > 0) {
         paymentsList.push({ mop: 'Wallet', amount: walletUsed })
       }
-      
-      setPaymentsData(paymentsList)
-      setCompletedOrder({
+
+      const successfulOrder = {
         ...order,
         orderNum: state?.orderNum || order?.orderNum || '',
         cashier: user?.name || order?.soldBy || '',
+        soldBy: user?.name || order?.soldBy || '',
         bDate: busDate,
         amount: orderTotal,
         amountPaid: totalPayment,
         bal: balance,
         change: Math.max(0, totalPayment - orderTotal),
         walletUsed,
+        walletBalance: walletBalanceAfterUse,
+        outstandingBalance: customerOutstandingBalance,
         isComplimentary,
         customer: customer || null
-      })
-      console.log('Completed Order:', completedOrder)
-      setOrderItems(cartItems)
-      setShowPrintModal(true)
-      
-      // Call success callback to clear cart
+      }
+
+      openReceipt(successfulOrder, cartItems, paymentsList)
+      setIsPaymentVisible(false)
+
       if (onSuccess) onSuccess()
+      currentSubmissionIdRef.current = null
     }
-  }, [state, isComplimentary, selectedMethods, paymentMethods, paymentAmounts, order, busDate, orderTotal, totalPayment, balance, customer, cartItems, onSuccess, walletSelected, walletUsed])
+  }, [state, isComplimentary, selectedMethods, paymentMethods, paymentAmounts, order, busDate, orderTotal, totalPayment, balance, customer, cartItems, onSuccess, walletSelected, walletUsed, walletBalanceAfterUse, customerOutstandingBalance, completeLocalFallbackSale])
+
+  useEffect(() => {
+    if (!pendingPrintOpenRef.current) return
+    if (!completedOrder || orderItems.length === 0 || paymentsData.length === 0) return
+
+    setShowPrintModal(true)
+    pendingPrintOpenRef.current = false
+  }, [completedOrder, orderItems, paymentsData])
 
   const togglePaymentMethod = useCallback((method) => {
     setSelectedMethods(prev => {
@@ -292,17 +566,25 @@ export default function PosPaymentModal({
   }, [selectedMethods, invoiceRemainingAfterWallet])
 
   const validateBeforeSubmit = useCallback((e) => {
+    if (submitLockRef.current || isSubmitting || isPending) {
+      e?.preventDefault?.()
+      toast.info('Payment is already being processed')
+      return false
+    }
+
     if (isComplimentary) {
       if (!approvedBy.trim() || !complimentaryReason.trim()) {
-        e.preventDefault()
+        e?.preventDefault?.()
         toast.error('approvedBy and reason are required for complimentary sales')
         return false
       }
+      submitLockRef.current = true
+      setIsSubmitting(true)
       return true
     }
 
     if (!selectedMethods.length && !(walletSelected && walletUsed > 0)) {
-      e.preventDefault()
+      e?.preventDefault?.()
       toast.error('Select at least one payment method')
       return false
     }
@@ -313,26 +595,26 @@ export default function PosPaymentModal({
     })
 
     if (hasInvalidMethodAmount) {
-      e.preventDefault()
+      e?.preventDefault?.()
       toast.error('Each payment amount must be a valid positive number')
       return false
     }
 
     if (isUnderpayment) {
-      e.preventDefault()
+      e?.preventDefault?.()
       toast.error('Payment amount is less than order total')
       return false
     }
 
     if (isOverpayment) {
-      e.preventDefault()
+      e?.preventDefault?.()
       toast.error('Total payment cannot exceed order total')
       return false
     }
 
     if (walletSelected) {
       if (!customer) {
-        e.preventDefault()
+        e?.preventDefault?.()
         toast.error('Select a customer before using wallet')
         return false
       }
@@ -340,32 +622,34 @@ export default function PosPaymentModal({
       const parsedWalletAmount = Number(walletAmount || 0)
 
       if (!Number.isFinite(parsedWalletAmount) || parsedWalletAmount < 0) {
-        e.preventDefault()
+        e?.preventDefault?.()
         toast.error('Wallet amount must be a valid positive number')
         return false
       }
 
       if (parsedWalletAmount === 0) {
-        e.preventDefault()
+        e?.preventDefault?.()
         toast.error('Enter wallet amount greater than 0')
         return false
       }
 
       if (parsedWalletAmount > customerWalletBalance) {
-        e.preventDefault()
+        e?.preventDefault?.()
         toast.error('Wallet amount cannot exceed wallet balance')
         return false
       }
 
       if (parsedWalletAmount > orderTotal) {
-        e.preventDefault()
+        e?.preventDefault?.()
         toast.error('Wallet amount cannot exceed invoice total')
         return false
       }
     }
 
+    submitLockRef.current = true
+    setIsSubmitting(true)
     return true
-  }, [isComplimentary, isUnderpayment, isOverpayment, walletSelected, walletAmount, customerWalletBalance, orderTotal, selectedMethods, paymentAmounts, customer])
+  }, [isComplimentary, isUnderpayment, isOverpayment, walletSelected, walletUsed, walletAmount, customerWalletBalance, orderTotal, selectedMethods, paymentAmounts, customer, isSubmitting, isPending, approvedBy, complimentaryReason])
 
   const handleWalletAmountChange = useCallback((value) => {
     const normalizedValue = String(value || '').trim()
@@ -384,6 +668,60 @@ export default function PosPaymentModal({
     setWalletAmount(Math.min(parsedValue, maxWalletUsable))
   }, [maxWalletUsable])
 
+  const handleSubmit = useCallback(async (event) => {
+    event.preventDefault()
+
+    if (!validateBeforeSubmit(event)) {
+      return
+    }
+
+    if (localFirstEligible) {
+      try {
+        const localCatalogProducts = slug ? await getLocalProductsBySlug(slug) : []
+        const hasLocalCatalog = Array.isArray(localCatalogProducts) && localCatalogProducts.length > 0
+
+        if (hasLocalCatalog) {
+          validateLocalCartStock({
+            cartItems: cartItems || cart?.cartItems || [],
+            localProducts: localCatalogProducts,
+            allowDecimalQuantity,
+          })
+        } else {
+          toast.info('Local catalog is temporarily empty. Continuing with offline sale processing.')
+        }
+      } catch (error) {
+        toast.error(error.message)
+        return
+      }
+
+      await completeLocalFallbackSale({
+        message: 'Sale saved locally. Receipt generated and queued for sync.',
+      })
+
+      if (shouldTryImmediateServerSync()) {
+        try {
+          const syncResult = await syncPendingTransactions()
+          if (syncResult?.synced > 0) {
+            toast.success(`Synced ${syncResult.synced} queued sale${syncResult.synced > 1 ? 's' : ''} to server.`)
+          }
+          notifyDbRetryIfNeeded(syncResult)
+        } catch {
+          // Keep local-first UX resilient: queue remains pending for automatic retry.
+        }
+      }
+      return
+    }
+
+    const nextSubmissionId = String(Date.now() + Math.random())
+    currentSubmissionIdRef.current = nextSubmissionId
+    const formData = new FormData(formRef.current)
+    formData.set('submissionId', nextSubmissionId)
+
+    startTransition(() => {
+      formAction(formData)
+    })
+  }, [formAction, validateBeforeSubmit, localFirstEligible, completeLocalFallbackSale, notifyDbRetryIfNeeded])
+
   const handleSendWhatsApp = useCallback(() => {
     const customerData = completedOrder?.customer
     if (!customerData?.phone) {
@@ -400,9 +738,12 @@ export default function PosPaymentModal({
     }
 
     // Build receipt message
-    const itemsList = orderItems.map((item, i) => 
-      `${i + 1}. ${item?.name || item?.item} x${item?.qty} - ${currencyFormat(item?.amount)}`
-    ).join('\n')
+    const itemsList = orderItems.map((item, i) => {
+      const unitPrice =  item?.price ?? 0
+      const lineTotal = item?.amount ?? item?.total ?? (Number(item?.qty || 0) * Number(unitPrice || 0))
+
+      return `${i + 1}. ${item?.name || item?.item} x${item?.qty} @ ${currencyFormat(unitPrice)} = ${currencyFormat(lineTotal)}`
+    }).join('\n')
 
     const paymentsList = paymentsData.map(p => 
       `${p.mop}: ${currencyFormat(p.amount)}`
@@ -419,7 +760,9 @@ export default function PosPaymentModal({
       `*TOTAL:* ${currencyFormat(completedOrder?.amount)}\n\n` +
       `*PAYMENT*\n${paymentsList}\n` +
       `*PAID:* ${currencyFormat(completedOrder?.amountPaid)}\n` +
-      (completedOrder?.change > 0 ? `*CHANGE:* ${currencyFormat(completedOrder?.change)}\n\n` : '\n') +
+      (completedOrder?.change > 0 ? `*CHANGE:* ${currencyFormat(completedOrder?.change)}\n` : '') +
+      `*CURRENT BILL:* ${currencyFormat(completedOrder?.outstandingBalance ?? customerData?.outstandingBalance ?? 0)}\n` +
+      `*CURRENT WALLET BALANCE:* ${currencyFormat(completedOrder?.walletBalance ?? customerData?.walletBalance ?? 0)}\n\n` +
       `Thank you for your patronage!`
 
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
@@ -431,6 +774,8 @@ export default function PosPaymentModal({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+        {isPaymentVisible && (
+          <>
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex items-center justify-between">
@@ -441,10 +786,19 @@ export default function PosPaymentModal({
               <div>
                 <h2 className="text-lg sm:text-xl font-bold text-white">Process Payment</h2>
                 <p className="text-xs sm:text-sm text-blue-100">{isComplimentary ? 'Complete complimentary sale' : 'Complete transaction'}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${saleMode.classes}`}>
+                    {saleMode.label}
+                  </span>
+                  <span className="text-[11px] text-blue-100">{saleMode.hint}</span>
+                </div>
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={() => {
+                resetReceiptState()
+                onClose?.()
+              }}
               className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-2 transition-all"
               disabled={isPending}
             >
@@ -577,7 +931,7 @@ export default function PosPaymentModal({
 
             {/* Right Column - Payment Methods */}
             <div className="space-y-4">
-              <form action={formAction} onSubmit={validateBeforeSubmit} className="space-y-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
                 {/* Payment Method Selection */}
                 {isComplimentary ? (
                   <div className="bg-violet-50 border-l-4 border-violet-500 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -826,14 +1180,15 @@ export default function PosPaymentModal({
                 <input type="hidden" name="approvedBy" value={approvedBy} />
                 <input type="hidden" name="reason" value={complimentaryReason} />
                 <input type="hidden" name="remarks" value={complimentaryRemarks} />
+                <input type="hidden" name="submissionId" value={currentSubmissionIdRef.current || ''} />
 
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isPending || isUnderpayment || isOverpayment || hasInvalidWalletAmount}
+                  disabled={isPending || isSubmitting || isUnderpayment || isOverpayment || hasInvalidWalletAmount}
                   className="w-full px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-bold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isPending ? (
+                  {(isPending || isSubmitting) ? (
                     <>
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       <span>Processing...</span>
@@ -846,9 +1201,12 @@ export default function PosPaymentModal({
                   )}
                 </button>
               </form>
+                
             </div>
           </div>
         </div>
+          </>
+        )}
 
         {/* Print Modal */}
         {showPrintModal && completedOrder && (
@@ -879,6 +1237,18 @@ export default function PosPaymentModal({
                     <span className="text-gray-500">Cashier:</span>
                     <span className="font-semibold text-gray-900">{completedOrder?.cashier || user?.name || 'N/A'}</span>
                   </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-gray-500">Outstanding Bill:</span>
+                    <span className="font-semibold text-gray-900">
+                      {currencyFormat(completedOrder?.outstandingBalance ?? completedOrder?.customer?.outstandingBalance ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-gray-500">Wallet Balance:</span>
+                    <span className="font-semibold text-gray-900">
+                      {currencyFormat(completedOrder?.walletBalance ?? completedOrder?.customer?.walletBalance ?? 0)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -906,6 +1276,7 @@ export default function PosPaymentModal({
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '400' }}>
                       <span>Cashier:</span><span>{completedOrder?.cashier || user?.name}</span>
                     </div>
+                   
                     <div style={{ borderTop: '2px dashed #000', margin: '8px 0' }}></div>
                   </div>
 
@@ -920,9 +1291,14 @@ export default function PosPaymentModal({
                     <tbody>
                       {orderItems.map((item, i) => (
                         <tr key={i} style={{ borderBottom: '1px dotted #ccc' }}>
-                          <td style={{ padding: '4px 0' }}>{item?.name || item?.item}</td>
+                          <td style={{ padding: '4px 0' }}>
+                            <div>{item?.name || item?.item}</div>
+                            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                              @ {currencyFormat(item?.price ?? item?.unitPrice )} 
+                            </div>
+                          </td>
                           <td style={{ textAlign: 'center', padding: '4px 0' }}>{item?.qty}</td>
-                          <td style={{ textAlign: 'right', padding: '4px 0' }}>{currencyFormat(item?.amount)}</td>
+                          <td style={{ textAlign: 'right', padding: '4px 0' }}>{currencyFormat(item?.amount ?? item?.total ?? 0)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -946,6 +1322,12 @@ export default function PosPaymentModal({
                         <span>CHANGE:</span><span>{currencyFormat(completedOrder?.change)}</span>
                       </div>
                     )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', paddingTop: '4px' }}>
+                      <span>CURRENT BILL:</span><span>{currencyFormat(completedOrder?.outstandingBalance ?? completedOrder?.customer?.outstandingBalance ?? 0)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                      <span>CURRENT WALLET BALANCE:</span><span>{currencyFormat(completedOrder?.walletBalance ?? completedOrder?.customer?.walletBalance ?? 0)}</span>
+                    </div>
                   </div>
 
                   <div style={{ borderTop: '2px dashed #000', margin: '10px 0' }}></div>
@@ -978,8 +1360,8 @@ export default function PosPaymentModal({
                 </div>
                 <button 
                   onClick={() => {
-                    setShowPrintModal(false)
-                    onClose()
+                    resetReceiptState()
+                    onClose?.()
                   }}
                   className="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-300 transition-all font-semibold"
                 >

@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ArrowDownCircle,
+  Wallet,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { currencyFormat } from '@/utils/currency'
@@ -87,6 +88,15 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
       icon: Users,
       color: 'bg-purple-500',
     },
+    {
+      title: 'Wallet Balance',
+      value: currencyFormat(stats?.totalWalletBalance || 0),
+      subtitle: 'Total across all customers',
+      change: null,
+      isPositive: true,
+      icon: Wallet,
+      color: 'bg-teal-500',
+    },
   ].filter(card => card.title !== 'Total Orders');
 
   return (
@@ -140,7 +150,7 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
                       <Icon className="text-white" size={20} />
                     </div>
                     <div className="flex items-center gap-1">
-                      {kpi.isPositive ? (
+                      {kpi.change !== null && (kpi.isPositive ? (
                         <div className="bg-green-100 p-1.5 rounded-full shadow-sm">
                           <ArrowUpRight className="text-green-600" size={16} />
                         </div>
@@ -148,7 +158,7 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
                         <div className="bg-red-100 p-1.5 rounded-full shadow-sm">
                           <ArrowDownRight className="text-red-600" size={16} />
                         </div>
-                      )}
+                      ))}
                     </div>
                   </div>
 
@@ -172,20 +182,22 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
                   </div>
 
                   {/* Change Indicator */}
-                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t-2 border-gray-100">
-                    <span
-                      className={`text-xs sm:text-sm font-bold px-2 py-1 rounded-full ${
-                        kpi.isPositive 
-                          ? 'text-green-700 bg-green-100' 
-                          : 'text-red-700 bg-red-100'
-                      }`}
-                    >
-                      {kpi.change}
-                    </span>
-                    <span className="text-xs text-gray-500 font-medium">
-                      vs last month
-                    </span>
-                  </div>
+                  {kpi.change !== null && (
+                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t-2 border-gray-100">
+                      <span
+                        className={`text-xs sm:text-sm font-bold px-2 py-1 rounded-full ${
+                          kpi.isPositive 
+                            ? 'text-green-700 bg-green-100' 
+                            : 'text-red-700 bg-red-100'
+                        }`}
+                      >
+                        {kpi.change}
+                      </span>
+                      <span className="text-xs text-gray-500 font-medium">
+                        vs last month
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

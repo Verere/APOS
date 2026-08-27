@@ -1,43 +1,23 @@
 export const formatDate = (dateString) => {
     const date = new Date(dateString);
 
-    // Get month
     const options = { month: 'short' };
     const month = date.toLocaleString('en-GB', options, { timeZone: 'UTC' });
-   
-    // Get year
-    const year = date.getFullYear()
-
-    // Get day
+    const year = date.getFullYear();
     const day = date.getUTCDate();
 
-    // Format time in UTC 12-hour
-    const timeOptions = {
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true,
-      timeZone: 'UTC',
-    };
-
-    const time = date.toLocaleString('en-US', timeOptions);
-
-    // Final formatted string
     return `${month} ${day} , ${year}`;
-  };
+};
+
+export const formatDate2 = (dateString) => {
+    const date = new Date(dateString);
+    const options = { month: 'short', day: 'numeric', year: 'numeric' };
+    return date.toLocaleDateString('en-GB', options);
+};
+
 export const formatTime = (dateString) => {
     const date = new Date(dateString);
 
-    // Get month
-    const options = { month: 'short' };
-    const month = date.toLocaleString('en-GB', options, { timeZone: 'UTC' });
-   
-    // Get year
-    const year = date.getFullYear()
-
-    // Get day
-    const day = date.getUTCDate();
-
-    // Format time in UTC 12-hour
     const timeOptions = {
       hour: 'numeric',
       minute: 'numeric',
@@ -45,8 +25,5 @@ export const formatTime = (dateString) => {
       timeZone: 'UTC',
     };
 
-    const time = date.toLocaleString('en-US', timeOptions);
-
-    // Final formatted string
-    return `${time}`;
-  };
+    return date.toLocaleString('en-US', timeOptions);
+};

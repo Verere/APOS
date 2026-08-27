@@ -6,6 +6,7 @@ import OverViewPage from '@/components/overViewPage.js'
 import { fetchAllOrders, fetchAllstoreMembers, fetchProducts } from '@/actions/fetch'
 import connectDB from '@/utils/connectDB'
 import Expense from '@/models/expense'
+import Customer from '@/models/customer'
 import StoreMembership from '@/models/storeMembership'
 import Store from '@/models/store'
 import User from '@/models/user'
@@ -133,6 +134,13 @@ const DashBoardPage = async ({ params, searchParams }) => {
   }).lean()
   
   const totalExpenses = monthExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)
+
+  // Aggregate total wallet balance across all store customers
+  const walletAgg = await Customer.aggregate([
+    { $match: { storeId: store._id, isDeleted: { $ne: true } } },
+    { $group: { _id: null, total: { $sum: '$walletBalance' } } }
+  ])
+  const totalWalletBalance = walletAgg[0]?.total || 0
   console.log('Total Monthly Expenses:', totalExpenses, 'from', monthExpenses.length, 'expenses')
 
   // Debug logging
@@ -202,6 +210,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
     totalOrders,
     totalProfit,
     totalExpenses,
+    totalWalletBalance,
     totalUsers: Array.isArray(users) ? users.length : 0,
     totalProducts: Array.isArray(products) ? products.length : 0,
   }

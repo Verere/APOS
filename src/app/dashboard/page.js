@@ -80,6 +80,7 @@ export default async function DashboardPage() {
   // If not cashier only, continue with expensive queries
   const userSubscription = await fetchUserSubscription(session.user.id);
   const hasUserSubscription = !!userSubscription && !!userSubscription.subscription;
+  const hasSubscriptionPackage = !!userSubscription && !!userSubscription.package;
   let userUsage = null;
   if (hasUserSubscription) {
     userUsage = await fetchUserUsage(session.user.id);
@@ -95,10 +96,10 @@ export default async function DashboardPage() {
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">Welcome</h1>
             <p className="mt-3 text-gray-600 dark:text-gray-300">{session.user.name || session.user.email}</p>
-            {hasUserSubscription && userSubscription.package && (
+            {hasSubscriptionPackage && userSubscription.package && (
               <div className="mt-2 space-y-1">
                 <span className="inline-block px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm font-semibold">
-                  Subscription: {userSubscription.package.displayName || userSubscription.package.name}
+                  Plan: {userSubscription.package.displayName || userSubscription.package.name}
                 </span>
                 <div className="flex flex-wrap gap-2 mt-1">
                   <span className="inline-block px-3 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-medium">
@@ -140,10 +141,10 @@ export default async function DashboardPage() {
                   Refer & Earn
                 </Link>
               )} */}
-              {hasUserSubscription && (
+              {hasSubscriptionPackage && (
                 <CreateStoreButtonClient
-                  storesCreated={userUsage?.stores}
-                  storesAllowed={userSubscription.package.features?.maxStores}
+                  storesCreated={userUsage?.stores ?? 0}
+                  storesAllowed={userSubscription.package.features?.maxStores ?? 0}
                 />
               )}
             </div>

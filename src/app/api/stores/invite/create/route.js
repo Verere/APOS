@@ -7,8 +7,8 @@ import { v4 as uuidv4 } from 'uuid'
 import withTransaction from '@/lib/withTransaction'
 import StoreMembership from '@/models/storeMembership'
 import { sendEmail, buildInviteHtml, buildInviteText } from '@/utils/email'
-import getStoreBySlug from '@/lib/getStoreBySlug'
-import requireStoreRole from '@/lib/requireStoreRole'
+import { getStoreBySlug } from '@/lib/getStoreBySlug'
+import { requireStoreRole } from '@/lib/requireStoreRole'
 
 export async function POST(req) {
   try {

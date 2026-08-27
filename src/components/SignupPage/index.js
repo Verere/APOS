@@ -166,17 +166,17 @@ export default function SignupPage() {
                     </p>
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                       <p className="text-sm text-gray-700">
-                        Please click the link in the email to verify your account and complete the registration.
+                        Please click the link in the email to verify your account. After that, sign in to continue straight to store setup.
                       </p>
                     </div>
                     <p className="text-sm text-gray-500 mb-6">
                       Didn't receive the email? Check your spam folder or contact support.
                     </p>
                     <Link
-                      href="/login"
+                      href="/login?callbackUrl=/store"
                       className="inline-flex items-center justify-center w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
                     >
-                      Go to Login
+                      Continue to store setup
                     </Link>
                   </div>
                 ) : (

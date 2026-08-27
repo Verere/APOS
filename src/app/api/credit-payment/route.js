@@ -5,7 +5,6 @@ import { authOptions } from "@/auth";
 import Credit from "@/models/credit";
 import CreditPayment from "@/models/creditPayment";
 import Customer from "@/models/customer";
-import Order from "@/models/order";
 import Store from "@/models/store";
 import mongoose from "mongoose";
 
@@ -88,6 +87,11 @@ export async function POST(req) {
         await customer.save({ session: transactionSession });
       }
 
+      const remainingBalanceAfterPayment = Math.max(0, credit.amount - credit.amountPaid);
+      const currentOutstandingBalance = Number(customer?.outstandingBalance || 0);
+      const currentWalletBalance = Number(customer?.walletBalance || 0);
+      const store = await Store.findById(credit.storeId).select('name slug').session(transactionSession).lean();
+
       // Commit transaction
       await transactionSession.commitTransaction();
 
@@ -98,9 +102,23 @@ export async function POST(req) {
           _id: credit._id,
           amount: credit.amount,
           amountPaid: credit.amountPaid,
-          remainingBalance: credit.amount - credit.amountPaid,
-          paid: credit.paid
-        }
+          remainingBalance: remainingBalanceAfterPayment,
+          paid: credit.isPaid
+        },
+        receipt: {
+          receiptNumber: finalReceiptNumber,
+          paymentAmount: Number(amount),
+          currentOutstandingBalance,
+          currentWalletBalance,
+          customerName: credit.customerId?.name || 'Unknown Customer',
+          customerPhone: credit.customerId?.phone || '',
+          storeName: store?.name || '',
+          storeSlug: store?.slug || '',
+          paymentMethod: paymentMethod || 'CASH',
+          paymentDate: payment[0]?.paymentDate || new Date(),
+          orderNumber: credit.orderId?.orderNum || '',
+          notes: notes || '',
+        },
       });
 
     } catch (error) {

@@ -20,6 +20,9 @@ export async function POST(req) {
       )
     }
 
+    const outstandingBalance = Number(invoiceData?.outstandingBalance ?? invoiceData?.customer?.outstandingBalance ?? invoiceData?.creditAmount ?? 0)
+    const walletBalance = Number(invoiceData?.walletBalance ?? invoiceData?.customer?.walletBalance ?? 0)
+
     // Generate email HTML
     const emailHTML = `
       <!DOCTYPE html>
@@ -89,6 +92,20 @@ export async function POST(req) {
           </div>
 
           <div class="section">
+            <h2>Account Balances</h2>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Outstanding Balance:</span>
+                <span class="info-value">${currencyFormat(outstandingBalance)}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Wallet Balance:</span>
+                <span class="info-value">${currencyFormat(walletBalance)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
             <h2>Customer Information</h2>
             <div class="info-grid">
               <div class="info-item">
@@ -150,6 +167,14 @@ export async function POST(req) {
                 <tr class="balance-row">
                   <td colspan="3" class="text-right">BALANCE DUE:</td>
                   <td class="text-right">${currencyFormat(invoiceData.totalAmount)}</td>
+                </tr>
+                <tr class="total-row">
+                  <td colspan="3" class="text-right">OUTSTANDING BALANCE:</td>
+                  <td class="text-right">${currencyFormat(outstandingBalance)}</td>
+                </tr>
+                <tr class="total-row">
+                  <td colspan="3" class="text-right">WALLET BALANCE:</td>
+                  <td class="text-right">${currencyFormat(walletBalance)}</td>
                 </tr>
               </tfoot>
             </table>

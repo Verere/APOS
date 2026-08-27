@@ -118,7 +118,7 @@ export default function Home() {
               
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <a href="/signup" className="group px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl text-center text-sm sm:text-base flex items-center justify-center gap-2">
-                  Start Now
+                  Create Your Store
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </a>
                 <a href="/subscription" className="px-6 sm:px-8 py-3 sm:py-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400 font-semibold rounded-xl transition-all shadow-md hover:shadow-lg border-2 border-blue-600 dark:border-blue-400 text-center text-sm sm:text-base">

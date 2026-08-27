@@ -61,7 +61,10 @@ const [state, formAction] = useActionState (addStore, initialState);
     
     useEffect(()=>{
       // initialize store email from current user if available
-      if (user && user.email) setStoreEmail(user.email)
+      if (user && user.email) {
+        setEmail(user.email)
+        setEmailError('')
+      }
     },[user])
         useEffect(()=>{
       // console.log(StatesFormControl)
@@ -111,7 +114,10 @@ const [state, formAction] = useActionState (addStore, initialState);
     },[state, replace])
     return(
         <form ref={formRef} action={formAction} className="flex flex-col w-full max-w-2xl mx-auto space-y-6 px-4 py-6 bg-white dark:bg-gray-900 rounded-xl shadow-lg">
-          <h3 className="text-center font-bold uppercase pt-4 text-2xl text-gray-800 dark:text-white">Enter New Store</h3>
+          <div className="text-center space-y-2 pt-2">
+            <h3 className="font-bold uppercase text-2xl text-gray-800 dark:text-white">Create Your Store</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Add the minimum details now and finish the rest after you enter the dashboard.</p>
+          </div>
 
           <div className="w-full grid grid-cols-1 gap-4 sm:grid-cols-2">
 

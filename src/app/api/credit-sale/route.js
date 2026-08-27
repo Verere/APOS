@@ -177,11 +177,16 @@ export async function POST(req) {
         creditAmount: actualCreditAmount,
         items: orderItems,
         customer: {
+          _id: customer._id,
           name: customer.name,
           email: customer.email,
           phone: customer.phone,
-          address: customer.address
-        }
+          address: customer.address,
+          outstandingBalance: Number(customer.outstandingBalance || 0) + Number(actualCreditAmount || 0),
+          walletBalance: Number(customer.walletBalance || 0),
+        },
+        outstandingBalance: Number(customer.outstandingBalance || 0) + Number(actualCreditAmount || 0),
+        walletBalance: Number(customer.walletBalance || 0),
       }
     })
 

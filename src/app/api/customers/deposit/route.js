@@ -6,6 +6,8 @@ import { authOptions } from '@/auth'
 import connectDB from '@/utils/connectDB'
 import Customer from '@/models/customer'
 import WalletTransaction from '@/models/walletTransaction'
+import Credit from '@/models/credit'
+import CreditPayment from '@/models/creditPayment'
 
 function toAmount(value) {
   const n = Number(value)
@@ -16,6 +18,8 @@ async function processDeposit({ customerId, amount, paymentMethod, reference, re
   let session = null
   const normalizedReference =
     typeof reference === 'string' ? reference.trim() : ''
+  const receiptNumber = `WDR-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
+  const receiptDate = new Date()
 
   if (useTransaction) {
     session = await mongoose.startSession()
@@ -31,30 +35,103 @@ async function processDeposit({ customerId, amount, paymentMethod, reference, re
       throw Object.assign(new Error('Customer not found'), { status: 404 })
     }
 
-    const balanceBefore = Number(customer.walletBalance || 0)
-    const balanceAfter = balanceBefore + amount
+    // --- Auto-deduct outstanding credits from deposit ---
+    const outstandingCredits = await Credit.find(
+      { customerId: customer._id, isPaid: false, isCancelled: { $ne: true } },
+      null,
+      session ? { session } : undefined
+    ).sort({ createdAt: 1 }) // oldest first
 
-    customer.walletBalance = balanceAfter
+    let remaining = amount
+    const creditPaymentsToCreate = []
+
+    for (const credit of outstandingCredits) {
+      if (remaining <= 0) break
+      const creditRemaining = credit.amount - (credit.amountPaid || 0)
+      if (creditRemaining <= 0) continue
+
+      const pay = Math.min(remaining, creditRemaining)
+      remaining -= pay
+
+      const newAmountPaid = (credit.amountPaid || 0) + pay
+      credit.amountPaid = newAmountPaid
+      if (newAmountPaid >= credit.amount) credit.isPaid = true
+      await credit.save(saveOptions)
+
+      creditPaymentsToCreate.push({
+        storeId: customer.storeId,
+        creditId: credit._id,
+        orderId: credit.orderId,
+        customerId: customer._id,
+        amount: pay,
+        paymentMethod: paymentMethod || 'CASH',
+        receiptNumber: `DEP-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+        notes: `Auto-deducted from wallet deposit${normalizedReference ? ` (ref: ${normalizedReference})` : ''}`,
+        recordedBy: createdBy,
+      })
+    }
+
+    if (creditPaymentsToCreate.length > 0) {
+      await CreditPayment.create(creditPaymentsToCreate, { ...(saveOptions || {}), ordered: true })
+
+      // Recalculate customer's outstanding balance
+      const allCredits = await Credit.find(
+        { customerId: customer._id, isCancelled: { $ne: true } },
+        null,
+        session ? { session } : undefined
+      )
+      customer.outstandingBalance = allCredits.reduce(
+        (sum, c) => sum + Math.max((c.amount || 0) - (c.amountPaid || 0), 0),
+        0
+      )
+    }
+    // --- End credit deduction ---
+
+    const creditDeducted = amount - remaining
+
+    // Step 1: record the full deposit coming in
+    const depositBalanceBefore = Number(customer.walletBalance || 0)
+    const depositBalanceAfter = depositBalanceBefore + amount   // full amount lands first
+
+    // Step 2: if credits were settled, immediately deduct from wallet
+    const finalBalance = depositBalanceAfter - creditDeducted   // = depositBalanceBefore + remaining
+
+    customer.walletBalance = finalBalance
     await customer.save(saveOptions)
 
-    await WalletTransaction.create(
-      [
-        {
-          customer: customer._id,
-          invoice: null,
-          type: 'Deposit',
-          amount,
-          balanceBefore,
-          balanceAfter,
-          paymentMethod: paymentMethod || null,
-          ...(normalizedReference ? { reference: normalizedReference } : {}),
-          remarks: remarks || '',
-          createdBy,
-          createdAt: new Date(),
-        },
-      ],
-      saveOptions || undefined
-    )
+    const txnsToCreate = [
+      {
+        customer: customer._id,
+        invoice: null,
+        type: 'Deposit',
+        amount,
+        balanceBefore: depositBalanceBefore,
+        balanceAfter: depositBalanceAfter,
+        paymentMethod: paymentMethod || null,
+        ...(normalizedReference ? { reference: normalizedReference } : {}),
+        remarks: [`Receipt: ${receiptNumber}`, remarks].filter(Boolean).join(' | '),
+        createdBy,
+        createdAt: receiptDate,
+      },
+    ]
+
+    if (creditDeducted > 0) {
+      txnsToCreate.push({
+        customer: customer._id,
+        invoice: null,
+        type: 'Sale',
+        amount: creditDeducted,
+        balanceBefore: depositBalanceAfter,
+        balanceAfter: finalBalance,
+        paymentMethod: paymentMethod || null,
+        ...(normalizedReference ? { reference: normalizedReference } : {}),
+        remarks: `Receipt: ${receiptNumber} | Auto-settled outstanding credit balance${normalizedReference ? ` (ref: ${normalizedReference})` : ''}`,
+        createdBy,
+        createdAt: new Date(receiptDate.getTime() + 1), // 1ms after deposit so it sorts after
+      })
+    }
+
+    await WalletTransaction.create(txnsToCreate, { ...(saveOptions || {}), ordered: true })
 
     if (session) {
       await session.commitTransaction()
@@ -64,7 +141,12 @@ async function processDeposit({ customerId, amount, paymentMethod, reference, re
     return {
       success: true,
       customerId: String(customer._id),
-      walletBalance: balanceAfter,
+      depositedAmount: amount,
+      walletBalance: finalBalance,
+      creditDeducted,
+      currentOutstandingBalance: Number(customer.outstandingBalance || 0),
+      receiptNumber,
+      receiptDate,
     }
   } catch (error) {
     if (session) {
@@ -121,7 +203,13 @@ export async function POST(req) {
         success: true,
         message: 'Wallet deposit recorded successfully',
         customerId: result.customerId,
+        depositedAmount: result.depositedAmount,
+        outstandingBillSettled: result.creditDeducted,
         walletBalance: result.walletBalance,
+        creditDeducted: result.creditDeducted,
+        currentOutstandingBill: result.currentOutstandingBalance,
+        receiptNumber: result.receiptNumber,
+        receiptDate: result.receiptDate,
       })
     } catch (transactionError) {
       const message = String(transactionError?.message || '')
@@ -151,7 +239,13 @@ export async function POST(req) {
         success: true,
         message: 'Wallet deposit recorded successfully',
         customerId: result.customerId,
+        depositedAmount: result.depositedAmount,
+        outstandingBillSettled: result.creditDeducted,
         walletBalance: result.walletBalance,
+        creditDeducted: result.creditDeducted,
+        currentOutstandingBill: result.currentOutstandingBalance,
+        receiptNumber: result.receiptNumber,
+        receiptDate: result.receiptDate,
       })
     }
   } catch (error) {
