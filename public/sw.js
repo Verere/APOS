@@ -34,7 +34,10 @@ function isExcludedRequest(request) {
     url.pathname.startsWith('/subscription') ||
     url.pathname.startsWith('/referral') ||
     url.pathname.startsWith('/store') ||
-    url.pathname.includes('/api/auth/session')
+    url.pathname.includes('/api/auth/session') ||
+    url.pathname === '/offline' ||
+    url.pathname === '/favicon.ico' ||
+    url.pathname === '/manifest.webmanifest'
   )
 }
 
@@ -68,11 +71,11 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(event.request.url)
   const isNavigation = event.request.mode === 'navigate'
-  const shouldCacheAsset = isStaticAsset(event.request)
+  const isPublicNavigation = isPublicNavigationPath(requestUrl.pathname)
 
+  // Leave app chunks and static files alone to avoid breaking Next.js runtime chunks.
+  // Only do a custom offline fallback for public page navigations when the browser is truly offline.
   if (isNavigation) {
-    const isPublicNavigation = isPublicNavigationPath(requestUrl.pathname)
-
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -80,68 +83,31 @@ self.addEventListener('fetch', (event) => {
             const responseClone = response.clone()
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone))
           }
-
           return response
         })
         .catch(async () => {
-          if (isPublicNavigation) {
+          if (isPublicNavigation && typeof navigator !== 'undefined' && navigator.onLine === false) {
             const cachedPage = await caches.match(event.request)
             if (cachedPage) return cachedPage
 
             const cachedHome = await caches.match('/')
             if (cachedHome) return cachedHome
+
+            return caches.match(OFFLINE_FALLBACK_URL)
           }
 
-          // If navigation fails, prefer offline fallback instead of surfacing a network exception.
-          const offlineFallback = await caches.match(OFFLINE_FALLBACK_URL)
-          if (offlineFallback) return offlineFallback
-
-          return new Response('Offline', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          })
+          return fetch(event.request, { cache: 'no-store' }).catch(() => Response.error())
         })
     )
     return
   }
 
-  if (!shouldCacheAsset) {
-    event.respondWith(
-      fetch(event.request).catch(async () => {
-        const cached = await caches.match(event.request)
-        if (cached) return cached
-
-        return new Response('', {
-          status: 503,
-          statusText: 'Service Unavailable',
-        })
-      })
-    )
+  // Do not intercept /_next chunks, manifest, favicon, or other static resources.
+  if (isStaticAsset(event.request)) {
+    event.respondWith(fetch(event.request).catch(() => Response.error()))
     return
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached
-
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response
-        }
-
-        const responseClone = response.clone()
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone))
-        return response
-      }).catch(async () => {
-        const cached = await caches.match(event.request)
-        if (cached) return cached
-
-        return new Response('', {
-          status: 503,
-          statusText: 'Service Unavailable',
-        })
-      })
-    })
-  )
+  // For all other requests, fall back to normal network behavior.
+  event.respondWith(fetch(event.request).catch(() => Response.error()))
 })
