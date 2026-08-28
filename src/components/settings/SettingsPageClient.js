@@ -76,6 +76,8 @@ export default function SettingsPageClient({ slug, user }) {
     receiptFontSize: 12,
     receiptFooterNote: '',
     receiptSpecialNote: '',
+    showWalletBalanceOnReceipt: false,
+    showOutstandingBalanceOnReceipt: false,
     
     // POS Settings
     allowCreditSales: true,
@@ -107,6 +109,8 @@ export default function SettingsPageClient({ slug, user }) {
               allowComplimentarySale: data.settings.allowComplimentarySale || false,
               allowDecimalQuantity: data.settings.allowDecimalQuantity ?? false,
               receiptSpecialNote: data.settings.receiptSpecialNote || '',
+              showWalletBalanceOnReceipt: data.settings.showWalletBalanceOnReceipt ?? false,
+              showOutstandingBalanceOnReceipt: data.settings.showOutstandingBalanceOnReceipt ?? false,
             }))
             setPriceTypeUsage(data.priceTypeUsage || {})
           }
@@ -1161,6 +1165,52 @@ export default function SettingsPageClient({ slug, user }) {
                 type="checkbox"
                 checked={formData.allowDecimalQuantity}
                 onChange={(e) => handleInputChange('allowDecimalQuantity', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-600"></div>
+            </div>
+          </label>
+        </div>
+
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="bg-cyan-50 p-3 rounded-lg">
+                <DollarSign className="w-6 h-6 text-cyan-600" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Show Wallet Balance on Receipts</div>
+                <div className="text-sm text-gray-500">Display wallet balance on printed and emailed receipts.</div>
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={formData.showWalletBalanceOnReceipt}
+                onChange={(e) => handleInputChange('showWalletBalanceOnReceipt', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-600"></div>
+            </div>
+          </label>
+        </div>
+
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="bg-cyan-50 p-3 rounded-lg">
+                <DollarSign className="w-6 h-6 text-cyan-600" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Show Outstanding Balance on Receipts</div>
+                <div className="text-sm text-gray-500">Display outstanding balance on printed and emailed receipts.</div>
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={formData.showOutstandingBalanceOnReceipt}
+                onChange={(e) => handleInputChange('showOutstandingBalanceOnReceipt', e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-600"></div>

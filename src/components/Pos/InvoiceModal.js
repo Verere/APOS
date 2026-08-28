@@ -11,6 +11,8 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, 
   const receiptFontFamily = printingSettings?.receiptFontFamily || 'monospace'
   const receiptFontSize = Math.min(18, Math.max(9, Number(printingSettings?.receiptFontSize) || 12))
   const receiptFooterNote = String(printingSettings?.receiptFooterNote || printingSettings?.receiptSpecialNote || '').trim()
+  const showWalletBalanceOnReceipt = printingSettings?.showWalletBalanceOnReceipt ?? false
+  const showOutstandingBalanceOnReceipt = printingSettings?.showOutstandingBalanceOnReceipt ?? false
 
   const invoiceBalances = useMemo(() => {
     const outstandingBalance = Number(invoiceData?.outstandingBalance ?? invoiceData?.customer?.outstandingBalance ?? invoiceData?.creditAmount ?? 0)
@@ -119,8 +121,8 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, 
           <div class="section">
             <div class="row"><strong>Total Amount:</strong><span>${currencyFormat(invoiceData.totalAmount || 0)}</span></div>
             <div class="row"><strong>Amount Paid:</strong><span>${currencyFormat(invoiceData.paymentAmount || 0)}</span></div>
-            <div class="row"><strong>Outstanding Balance:</strong><span>${currencyFormat(invoiceBalances.outstandingBalance)}</span></div>
-            <div class="row"><strong>Wallet Balance:</strong><span>${currencyFormat(invoiceBalances.walletBalance)}</span></div>
+            ${showOutstandingBalanceOnReceipt ? `<div class="row"><strong>Outstanding Balance:</strong><span>${currencyFormat(invoiceBalances.outstandingBalance)}</span></div>` : ''}
+            ${showWalletBalanceOnReceipt ? `<div class="row"><strong>Wallet Balance:</strong><span>${currencyFormat(invoiceBalances.walletBalance)}</span></div>` : ''}
           </div>
 
           <div class="divider"></div>
@@ -235,9 +237,8 @@ ${invoiceData.items?.map((item, i) =>
 *Total Amount:* ${currencyFormat(invoiceData.totalAmount)}
 *Amount Paid:* ${currencyFormat(invoiceData.paymentAmount || 0)}
 *Balance Due:* ${currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}
-*Outstanding Balance:* ${currencyFormat(outstandingBalance)}
-*Wallet Balance:* ${currencyFormat(walletBalance)}
-
+  ${showOutstandingBalanceOnReceipt ? `*Outstanding Balance:* ${currencyFormat(outstandingBalance)}` : ''}
+  ${showWalletBalanceOnReceipt ? `*Wallet Balance:* ${currencyFormat(walletBalance)}` : ''}
 Thanks for your patronage!
 powered by:  www.marketbook.app
 `.trim()
@@ -295,16 +296,22 @@ powered by:  www.marketbook.app
               </div>
             </div>
 
-            <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.08em] text-slate-500">Outstanding Balance</div>
-                <div className="mt-1 text-lg font-bold text-slate-900">{currencyFormat(invoiceBalances.outstandingBalance)}</div>
+            {(showOutstandingBalanceOnReceipt || showWalletBalanceOnReceipt) && (
+              <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                {showOutstandingBalanceOnReceipt && (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="text-xs uppercase tracking-[0.08em] text-slate-500">Outstanding Balance</div>
+                    <div className="mt-1 text-lg font-bold text-slate-900">{currencyFormat(invoiceBalances.outstandingBalance)}</div>
+                  </div>
+                )}
+                {showWalletBalanceOnReceipt && (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="text-xs uppercase tracking-[0.08em] text-slate-500">Wallet Balance</div>
+                    <div className="mt-1 text-lg font-bold text-slate-900">{currencyFormat(invoiceBalances.walletBalance)}</div>
+                  </div>
+                )}
               </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.08em] text-slate-500">Wallet Balance</div>
-                <div className="mt-1 text-lg font-bold text-slate-900">{currencyFormat(invoiceBalances.walletBalance)}</div>
-              </div>
-            </div>
+            )}
 
             {/* Customer Info */}
             <div className="mb-6">
@@ -419,14 +426,18 @@ powered by:  www.marketbook.app
                     <span className="font-bold text-gray-800 text-base">Balance Due:</span>
                     <span className="font-bold text-red-600 text-xl">{currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}</span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="font-semibold text-gray-700 text-sm">Outstanding Balance:</span>
-                    <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceBalances.outstandingBalance)}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="font-semibold text-gray-700 text-sm">Wallet Balance:</span>
-                    <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceBalances.walletBalance)}</span>
-                  </div>
+                  {showOutstandingBalanceOnReceipt && (
+                    <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <span className="font-semibold text-gray-700 text-sm">Outstanding Balance:</span>
+                      <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceBalances.outstandingBalance)}</span>
+                    </div>
+                  )}
+                  {showWalletBalanceOnReceipt && (
+                    <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <span className="font-semibold text-gray-700 text-sm">Wallet Balance:</span>
+                      <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceBalances.walletBalance)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

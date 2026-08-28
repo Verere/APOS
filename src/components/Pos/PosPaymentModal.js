@@ -180,6 +180,8 @@ export default function PosPaymentModal({
   const resolvedReceiptFontSize = Math.min(18, Math.max(9, Number(receiptSettings?.receiptFontSize) || 12))
   const resolvedReceiptFooterNote = String(receiptSettings?.receiptFooterNote || '').trim()
   const receiptSpecialNote = String(printingSettings?.receiptSpecialNote || '').trim()
+  const showWalletBalanceOnReceipt = receiptSettings?.showWalletBalanceOnReceipt ?? printingSettings?.showWalletBalanceOnReceipt ?? false
+  const showOutstandingBalanceOnReceipt = receiptSettings?.showOutstandingBalanceOnReceipt ?? printingSettings?.showOutstandingBalanceOnReceipt ?? false
 
   const reactToPrintFn = useReactToPrint({ 
     contentRef: printRef,
@@ -255,6 +257,8 @@ export default function PosPaymentModal({
           receiptFontFamily: s.receiptFontFamily || 'monospace',
           receiptFontSize: Number(s.receiptFontSize) || 12,
           receiptFooterNote: s.receiptFooterNote || '',
+          showWalletBalanceOnReceipt: s.showWalletBalanceOnReceipt ?? false,
+          showOutstandingBalanceOnReceipt: s.showOutstandingBalanceOnReceipt ?? false,
         })
       } catch {
         // Keep defaults when settings fetch fails.
@@ -1237,18 +1241,21 @@ export default function PosPaymentModal({
                     <span className="text-gray-500">Cashier:</span>
                     <span className="font-semibold text-gray-900">{completedOrder?.cashier || user?.name || 'N/A'}</span>
                   </div>
+                   {showOutstandingBalanceOnReceipt && (
                   <div className="flex justify-between mt-1">
                     <span className="text-gray-500">Outstanding Bill:</span>
                     <span className="font-semibold text-gray-900">
                       {currencyFormat(completedOrder?.outstandingBalance ?? completedOrder?.customer?.outstandingBalance ?? 0)}
                     </span>
-                  </div>
+                  </div>)}
+                {showWalletBalanceOnReceipt && (
                   <div className="flex justify-between mt-1">
                     <span className="text-gray-500">Wallet Balance:</span>
                     <span className="font-semibold text-gray-900">
                       {currencyFormat(completedOrder?.walletBalance ?? completedOrder?.customer?.walletBalance ?? 0)}
                     </span>
                   </div>
+                )}
                 </div>
               </div>
 
@@ -1322,12 +1329,16 @@ export default function PosPaymentModal({
                         <span>CHANGE:</span><span>{currencyFormat(completedOrder?.change)}</span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', paddingTop: '4px' }}>
-                      <span>CURRENT BILL:</span><span>{currencyFormat(completedOrder?.outstandingBalance ?? completedOrder?.customer?.outstandingBalance ?? 0)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                      <span>CURRENT WALLET BALANCE:</span><span>{currencyFormat(completedOrder?.walletBalance ?? completedOrder?.customer?.walletBalance ?? 0)}</span>
-                    </div>
+                    {showOutstandingBalanceOnReceipt && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', paddingTop: '4px' }}>
+                        <span>CURRENT BILL:</span><span>{currencyFormat(completedOrder?.outstandingBalance ?? completedOrder?.customer?.outstandingBalance ?? 0)}</span>
+                      </div>
+                    )}
+                    {showWalletBalanceOnReceipt && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                        <span>CURRENT WALLET BALANCE:</span><span>{currencyFormat(completedOrder?.walletBalance ?? completedOrder?.customer?.walletBalance ?? 0)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ borderTop: '2px dashed #000', margin: '10px 0' }}></div>

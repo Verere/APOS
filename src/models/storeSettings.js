@@ -153,6 +153,14 @@ const StoreSettingsSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  showWalletBalanceOnReceipt: {
+    type: Boolean,
+    default: false
+  },
+  showOutstandingBalanceOnReceipt: {
+    type: Boolean,
+    default: false
+  },
   
   createdAt: {
     type: Date,

@@ -102,6 +102,8 @@ const Pos = async({params, searchParams})=>{
                  receiptFormat: settings?.receiptFormat || 'standard',
                  printerName: settings?.printerName || '',
                  receiptSpecialNote: settings?.receiptSpecialNote || '',
+                 showWalletBalanceOnReceipt: settings?.showWalletBalanceOnReceipt ?? false,
+                 showOutstandingBalanceOnReceipt: settings?.showOutstandingBalanceOnReceipt ?? false,
                }}
                  allowCreditSales={serverUnavailable ? false : (settings?.allowCreditSales ?? true)}
                  allowPriceAdjustment={settings?.allowPriceAdjustment ?? false}

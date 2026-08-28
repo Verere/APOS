@@ -72,7 +72,9 @@ export async function GET(request, { params }) {
         receiptFontFamily: 'monospace',
         receiptFontSize: 12,
         receiptFooterNote: '',
-        receiptSpecialNote: ''
+        receiptSpecialNote: '',
+        showWalletBalanceOnReceipt: false,
+        showOutstandingBalanceOnReceipt: false
       });
       settings = settings.toObject();
     }
