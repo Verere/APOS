@@ -13,6 +13,8 @@ import withTransaction from '@/lib/withTransaction'
 import validateCheckout from '@/lib/checkout'
 import { buildOrderItemSnapshots } from '@/lib/orderItemSnapshot'
 import { reserveStockForSale, attachTransactionsToOrder } from '@/lib/inventoryService'
+import StoreSettings from '@/models/storeSettings'
+import WalletTransaction from '@/models/walletTransaction'
 
 export async function POST(req) {
   try {
@@ -21,7 +23,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { slug, customerId, cartItems, bDate, paymentAmount = 0, creditAmount, paymentMethod = 'CASH', allowDecimalQuantity = false } = await req.json()
+    const { slug, customerId, cartItems, bDate, paymentAmount = 0, creditAmount, paymentMethod = 'CASH', otherPaymentMethod, bankName, reference, allowDecimalQuantity = false } = await req.json()
 
     if (!slug || !customerId || !cartItems || !cartItems.length) {
       return NextResponse.json(
@@ -53,6 +55,11 @@ export async function POST(req) {
         { status: 404 }
       )
     }
+
+    const settings = await StoreSettings.findOne({ slug }).lean()
+    if (paymentMethod === 'OTHER' && !(settings?.otherPaymentMethods || []).includes(String(otherPaymentMethod || '').trim())) return NextResponse.json({ error: 'Invalid or missing Other payment method' }, { status: 400 })
+    if (paymentMethod === 'TRANSFER' && (!(settings?.bankNames || []).includes(String(bankName || '').trim()) || !String(reference || '').trim())) return NextResponse.json({ error: 'Invalid or missing transfer bank/reference' }, { status: 400 })
+    if (paymentMethod === 'WALLET' && Number(paymentAmount) > Number(customer.walletBalance || 0)) return NextResponse.json({ error: 'Payment amount exceeds customer wallet balance' }, { status: 400 })
 
     // Validate cart items
     try {
@@ -129,12 +136,35 @@ export async function POST(req) {
           paymentMethods: [
             {
               method: paymentMethod || 'CASH',
-              amount: paymentAmount
+              amount: paymentAmount,
+              details: String(otherPaymentMethod || '').trim() || undefined,
+              bankName: String(bankName || '').trim() || undefined,
+              reference: String(reference || '').trim() || undefined
             }
           ],
           recordedBy: soldBy,
         })
         await paymentRecord.save({ session: transactionSession })
+      }
+
+      if (paymentAmount > 0 && paymentMethod === 'WALLET') {
+        const walletCustomer = await Customer.findById(customerId).session(transactionSession)
+        const walletBalanceBefore = Number(walletCustomer?.walletBalance || 0)
+        walletCustomer.walletBalance = walletBalanceBefore - Number(paymentAmount)
+        await walletCustomer.save({ session: transactionSession })
+        await new WalletTransaction({
+          customer: walletCustomer._id,
+          invoice: orderNum,
+          type: 'Sale',
+          amount: Number(paymentAmount),
+          balanceBefore: walletBalanceBefore,
+          balanceAfter: walletCustomer.walletBalance,
+          paymentMethod: 'WALLET',
+          reference: receiptNumber || `credit-sale-${orderNum}`,
+          remarks: `Wallet used for POS credit sale ${orderNum}`,
+          createdBy: soldBy,
+          createdAt: new Date(),
+        }).save({ session: transactionSession })
       }
 
       // Create credit record only if there's remaining balance
@@ -172,6 +202,10 @@ export async function POST(req) {
         orderNum,
         creditId: newCredit?._id,
         receiptNumber,
+        paymentMethod,
+        otherPaymentMethod: String(otherPaymentMethod || '').trim() || null,
+        bankName: String(bankName || '').trim() || null,
+        reference: String(reference || '').trim() || null,
         totalAmount,
         paymentAmount,
         creditAmount: actualCreditAmount,

@@ -106,6 +106,12 @@ const PrintPage = ({ cart, payments }) => {
 
         {/* Totals */}
         <div style={{ fontSize: '12px', marginBottom: '10px' }}>
+          {Number(order?.deliveryCost || 0) > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+              <span>DELIVERY:</span>
+              <span>{currencyFormat(order.deliveryCost)}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', padding: '4px 0' }}>
             <span>TOTAL:</span>
             <span>{currencyFormat(cartValue || order?.amount)}</span>

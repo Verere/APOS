@@ -4,6 +4,7 @@ import { authOptions } from '@/auth'
 import connectDB from '@/utils/connectDB'
 import StoreMembership from '@/models/storeMembership'
 import Store from '@/models/store'
+import StoreSettings from '@/models/storeSettings'
 import AddCustomerForm from '@/components/customers/AddCustomerForm'
 
 export default async function AddCustomerPage({ params }) {
@@ -37,9 +38,16 @@ export default async function AddCustomerPage({ params }) {
       redirect(`/${slug}/dashboard`)
     }
 
+    const settings = await StoreSettings.findOne({ slug }).select('deliveryEnabled').lean()
+
     return (
       <div className="container mx-auto px-4 py-6 max-w-4xl">
-        <AddCustomerForm slug={slug} storeId={store._id.toString()} />
+        <AddCustomerForm
+          slug={slug}
+          storeId={store._id.toString()}
+          deliveryEnabled={settings?.deliveryEnabled ?? false}
+          canEditOutstandingBalance={membership.role === 'OWNER'}
+        />
       </div>
     )
   } catch (error) {

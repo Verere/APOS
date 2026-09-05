@@ -63,12 +63,14 @@ export async function completeLocalCashSale({
   const deviceId = await getDeviceId()
   const transactionId = makeLocalId('tx')
   const orderNum = `OFF-${Date.now().toString(36).toUpperCase()}`
-  const orderAmount = items.reduce((sum, item) => sum + Number(item.total || item.amount || 0), 0)
+  const deliveryCost = Math.max(0, Number(orderMeta?.deliveryCost || 0))
+  const orderAmount = items.reduce((sum, item) => sum + Number(item.total || item.amount || 0), 0) + deliveryCost
   const normalizedPayments = normalizePaymentMethods({
     paymentMethods,
     paymentMethod,
     amountPaid,
     orderAmount,
+    deliveryCost,
   })
   const subtotal = normalizedPayments.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
   const methodSet = Array.from(new Set(normalizedPayments.map((entry) => entry.method)))
@@ -77,6 +79,7 @@ export async function completeLocalCashSale({
     .reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
   const mop = methodSet.join(',') || String(paymentMethod || 'CASH').toUpperCase()
   const businessDate = String(orderMeta?.bDate || orderMeta?.busDate || new Date().toISOString())
+  const businessDateReason = String(orderMeta?.businessDateReason || '').trim()
 
   const localOrder = {
     transactionId,
@@ -89,6 +92,7 @@ export async function completeLocalCashSale({
     cashier: cashier || 'Cashier',
     user: cashier || 'Cashier',
     bDate: businessDate,
+    businessDateReason,
     amount: orderAmount,
     amountPaid: subtotal,
     total: orderAmount,
@@ -186,6 +190,7 @@ export async function completeLocalCashSale({
         slug: storeSlug || '',
         user: cashier || 'Cashier',
         bDate: businessDate,
+        businessDateReason,
         path: String(orderMeta?.path || '/'),
         amountPaid: subtotal,
         mop,

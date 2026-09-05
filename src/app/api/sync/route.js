@@ -27,12 +27,14 @@ function normalizePayload(transaction) {
   const cashPaid = Number(payload.cashPaid ?? order.cashPaid ?? methodTotal('CASH') ?? 0)
   const posPaid = Number(payload.posPaid ?? order.posPaid ?? methodTotal('POS') ?? 0)
   const transferPaid = Number(payload.transferPaid ?? order.transferPaid ?? methodTotal('TRANSFER') ?? 0)
+  const otherPaid = Number(payload.otherPaid ?? order.otherPaid ?? methodTotal('OTHER') ?? 0)
   const walletPaid = Number(payload.walletPaid ?? order.walletPaid ?? methodTotal('WALLET') ?? 0)
 
   return {
     slug: payload.slug || order.slug || '',
     user: payload.user || order.cashier || 'Cashier',
     bDate: payload.bDate || order.bDate || new Date().toISOString(),
+    businessDateReason: payload.businessDateReason || order.businessDateReason || order?.meta?.businessDateReason || '',
     path: payload.path || '/',
     cartItems: JSON.stringify(cartItems),
     amountPaid,
@@ -41,6 +43,10 @@ function normalizePayload(transaction) {
     cashPaid,
     posPaid,
     transferPaid,
+    transferBank: payload.transferBank || order.transferBank || paymentEntries.find((entry) => String(entry?.method || '').toUpperCase() === 'TRANSFER')?.bankName || '',
+    transferReference: payload.transferReference || order.transferReference || paymentEntries.find((entry) => String(entry?.method || '').toUpperCase() === 'TRANSFER')?.reference || '',
+    otherPaid,
+    otherPaymentMethod: payload.otherPaymentMethod || order.otherPaymentMethod || paymentEntries.find((entry) => String(entry?.method || '').toUpperCase() === 'OTHER')?.details || '',
     walletPaid,
     customerId: payload.customerId || order.customerId || '',
     customerName: payload.customerName || order.customerName || '',
@@ -51,6 +57,8 @@ function normalizePayload(transaction) {
     remarks: payload.remarks || order.remarks || '',
     location: payload.location || order.location || '',
     allowDecimalQuantity: Boolean(payload.allowDecimalQuantity || order.allowDecimalQuantity),
+    deliveryEnabled: Boolean(payload.deliveryEnabled || order.deliveryEnabled || order?.meta?.deliveryEnabled),
+    deliveryCost: Number(payload.deliveryCost ?? order.deliveryCost ?? order?.meta?.deliveryCost ?? 0),
     submissionId: String(transaction?.transactionId || payload.transactionId || ''),
     transactionId: String(transaction?.transactionId || payload.transactionId || ''),
     deviceId: payload.deviceId || transaction?.deviceId || '',

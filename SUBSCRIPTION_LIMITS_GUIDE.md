@@ -30,7 +30,7 @@ Each subscription package (FREE, BASIC, PROFESSIONAL, ENTERPRISE) has different 
 
 | Package | Stores | Products | Users | Orders |
 |---------|--------|----------|-------|---------|
-| **FREE** | 1 | 50 | 1 | 100 |
+| **FREE** | 1 | 10 | 1 | 100 |
 | **BASIC** | 1 | 100 | 1 | 1,000 |
 | **PROFESSIONAL** | 3 | 5,000 | 20 | 10,000 |
 | **ENTERPRISE** | 10 | 10,000 | 100 | 1,000,000 |

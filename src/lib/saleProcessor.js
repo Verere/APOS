@@ -13,11 +13,15 @@ import withTransaction from '@/lib/withTransaction'
 import { reserveStockForSale, attachTransactionsToOrder } from '@/lib/inventoryService'
 import { buildOrderItemSnapshots } from '@/lib/orderItemSnapshot'
 import { getStoreBySlug } from '@/lib/getStoreBySlug'
+import StoreSettings from '@/models/storeSettings'
+import BusinessDateAudit from '@/models/businessDateAudit'
+import { resolveBusinessDate } from '@/lib/businessDatePolicy'
 
 export async function processSale({
   slug,
   user,
   bDate,
+  businessDateReason,
   path,
   cartItems,
   amountPaid,
@@ -26,6 +30,10 @@ export async function processSale({
   cashPaid,
   posPaid,
   transferPaid,
+  transferBank,
+  transferReference,
+  otherPaid,
+  otherPaymentMethod,
   walletPaid,
   customerId,
   customerName,
@@ -36,6 +44,8 @@ export async function processSale({
   remarks,
   location,
   allowDecimalQuantity,
+  deliveryEnabled,
+  deliveryCost,
   submissionId,
   transactionId,
   deviceId,
@@ -68,6 +78,15 @@ export async function processSale({
     }
 
     const store = await getStoreBySlug(slug)
+    const storeSettings = await StoreSettings.findOne({ slug }).lean()
+    const businessDatePolicy = resolveBusinessDate({
+      requestedDate: bDate,
+      enableBusinessDate: Boolean(storeSettings?.enableBusinessDate),
+      businessDateReason,
+    })
+    if (businessDatePolicy?.error) return { error: businessDatePolicy.error }
+    const effectiveBusinessDate = businessDatePolicy.businessDate
+    const effectiveBusinessDateReason = businessDatePolicy.businessDateReason
 
     try {
       const result = await withTransaction(async (databaseSession) => {
@@ -86,7 +105,7 @@ export async function processSale({
           slug,
           orderNum,
           soldBy,
-          bDate: bDate || new Date().toISOString(),
+          bDate: effectiveBusinessDate,
           transactionId: transactionId || submissionId || deviceId || `offline-${Date.now()}`,
           ...(customerId && { customerId }),
           ...(customerName && { customerName }),
@@ -101,6 +120,20 @@ export async function processSale({
         } = buildOrderItemSnapshots(items, updatedProducts, { complimentary: complimentarySale, allowDecimalQuantity: allowDecimalQuantity === 'true' })
 
         const totalOrderAmount = complimentarySale ? 0 : computedOrderAmount
+        let deliveryAmount = 0
+        if (!complimentarySale && (deliveryEnabled === 'true' || deliveryEnabled === true) && storeSettings?.deliveryEnabled) {
+          if (customerId) {
+            const deliveryCustomer = await Customer.findOne({ _id: customerId, storeId: store._id, isDeleted: false }).session(databaseSession).lean()
+            if (!deliveryCustomer) throw Object.assign(new Error('Customer not found for delivery'), { code: 'BAD_DELIVERY' })
+            deliveryAmount = Math.max(0, Number(deliveryCustomer.deliveryCost || 0))
+          } else {
+            deliveryAmount = Number(deliveryCost || 0)
+            if (!Number.isFinite(deliveryAmount) || deliveryAmount < 0) {
+              throw Object.assign(new Error('Delivery cost must be a non-negative number'), { code: 'BAD_DELIVERY' })
+            }
+          }
+        }
+        const finalOrderAmount = totalOrderAmount + deliveryAmount
         const totalOrderProfit = complimentarySale ? 0 : computedOrderProfit
         const paid = Number(amountPaid || 0)
         const walletAmount = complimentarySale ? 0 : Number(walletPaid || 0)
@@ -108,7 +141,7 @@ export async function processSale({
         if (walletAmount < 0) {
           throw Object.assign(new Error('Wallet amount cannot be negative'), { code: 'BAD_WALLET' })
         }
-        if (walletAmount > totalOrderAmount) {
+        if (walletAmount > finalOrderAmount) {
           throw Object.assign(new Error('Wallet amount cannot exceed order total'), { code: 'BAD_WALLET' })
         }
         if (walletAmount > paid) {
@@ -133,16 +166,18 @@ export async function processSale({
           }
         }
 
-        if (paid > totalOrderAmount) {
+        if (paid > finalOrderAmount) {
           throw Object.assign(new Error('Payment amount exceeds order total based on checkout snapshot prices'), { code: 'BAD_PAYMENT' })
         }
 
         newOrder.items = itemsWithCostProfit
-        newOrder.amount = totalOrderAmount
+        newOrder.amount = finalOrderAmount
+        newOrder.totalAmount = finalOrderAmount
+        newOrder.deliveryCost = deliveryAmount
         newOrder.profit = totalOrderProfit
         newOrder.status = 'Completed'
         newOrder.isCompleted = true
-        newOrder.bDate = bDate
+        newOrder.bDate = effectiveBusinessDate
         newOrder.transactionType = complimentarySale ? 'COMPLIMENTARY' : 'STANDARD'
         newOrder.approvedBy = complimentarySale ? String(approvedBy).trim() : undefined
         newOrder.reason = complimentarySale ? String(reason).trim() : undefined
@@ -154,6 +189,19 @@ export async function processSale({
 
         const paymentMethodsArray = []
         const methods = (mop || '').split(',').filter(Boolean)
+        const normalizedOtherPaymentMethod = String(otherPaymentMethod || '').trim()
+        if (!complimentarySale && methods.includes('OTHER')) {
+          if (!normalizedOtherPaymentMethod || !(storeSettings?.otherPaymentMethods || []).includes(normalizedOtherPaymentMethod)) {
+            throw Object.assign(new Error('Invalid or missing Other payment method'), { code: 'BAD_PAYMENT' })
+          }
+        }
+        const normalizedTransferBank = String(transferBank || '').trim()
+        const normalizedTransferReference = String(transferReference || '').trim()
+        if (!complimentarySale && methods.includes('TRANSFER')) {
+          if (!normalizedTransferBank || !(storeSettings?.bankNames || []).includes(normalizedTransferBank) || !normalizedTransferReference) {
+            throw Object.assign(new Error('Invalid or missing transfer bank/reference'), { code: 'BAD_PAYMENT' })
+          }
+        }
         if (walletAmount > 0 && !methods.includes('WALLET')) {
           methods.push('WALLET')
         }
@@ -168,7 +216,10 @@ export async function processSale({
             paymentMethodsArray.push({ method: 'POS', amount: Number(posPaid) })
           }
           if (methods.includes('TRANSFER') && Number(transferPaid || 0) > 0) {
-            paymentMethodsArray.push({ method: 'TRANSFER', amount: Number(transferPaid) })
+            paymentMethodsArray.push({ method: 'TRANSFER', amount: Number(transferPaid), bankName: normalizedTransferBank, reference: normalizedTransferReference })
+          }
+          if (methods.includes('OTHER') && Number(otherPaid || 0) > 0) {
+            paymentMethodsArray.push({ method: 'OTHER', amount: Number(otherPaid), details: normalizedOtherPaymentMethod })
           }
           if (walletAmount > 0) {
             paymentMethodsArray.push({ method: 'WALLET', amount: walletAmount })
@@ -197,10 +248,10 @@ export async function processSale({
           orderNum,
           receiptNumber: orderNum,
           paymentMethods: paymentMethodsArray,
-          orderAmount: totalOrderAmount,
+          orderAmount: finalOrderAmount,
           amountPaid: complimentarySale ? 0 : Number(amountPaid || 0),
           balance: complimentarySale ? 0 : 0,
-          change: complimentarySale ? 0 : Math.max(0, Number(amountPaid || 0) - totalOrderAmount),
+          change: complimentarySale ? 0 : Math.max(0, Number(amountPaid || 0) - finalOrderAmount),
           status: 'COMPLETED',
           paymentType: complimentarySale ? 'COMPLIMENTARY' : 'FULL',
           transactionType: complimentarySale ? 'COMPLIMENTARY' : 'STANDARD',
@@ -209,7 +260,7 @@ export async function processSale({
           remarks: complimentarySale ? String(remarks || '').trim() : undefined,
           recordedBy: soldBy,
           user: soldBy,
-          bDate,
+          bDate: effectiveBusinessDate,
           cash: Number(cashPaid || 0),
           pos: Number(posPaid || 0),
           transfer: Number(transferPaid || 0),
@@ -220,6 +271,22 @@ export async function processSale({
           transactionId: transactionId || submissionId || deviceId || `offline-${Date.now()}`,
         })
         await newPay.save({ session: databaseSession })
+
+        if (businessDatePolicy.isBackdated) {
+          await new BusinessDateAudit({
+            storeId: store._id,
+            slug,
+            actorUserId: String(effectiveSession.user.id || ''),
+            actorName: soldBy,
+            businessDate: effectiveBusinessDate,
+            systemDate: businessDatePolicy.systemDate,
+            reason: effectiveBusinessDateReason,
+            source: 'OFFLINE_SYNC',
+            orderId: newOrder._id,
+            orderNum,
+            transactionId: String(transactionId || submissionId || deviceId || ''),
+          }).save({ session: databaseSession })
+        }
 
         if (walletAmount > 0 && walletCustomer) {
           const walletBalanceAfter = walletBalanceBefore - walletAmount
@@ -259,7 +326,7 @@ export async function processSale({
         }
 
         newOrder.amountPaid = complimentarySale ? 0 : paid
-        newOrder.bal = complimentarySale ? 0 : Math.max(0, totalOrderAmount - paid)
+        newOrder.bal = complimentarySale ? 0 : Math.max(0, finalOrderAmount - paid)
         newOrder.customerName = customerName || newOrder.customerName
         newOrder.customerId = customerId || newOrder.customerId
         newOrder.orderName = customerName || customerId || newOrder.orderName || orderNum
@@ -277,6 +344,7 @@ export async function processSale({
           success: 'Order and payment saved',
           orderId: String(result.orderId),
           orderNum: String(result.orderNum || ''),
+          bDate: effectiveBusinessDate,
           submissionId: String(submissionId || transactionId || Date.now()),
           transactionId: String(result.transactionId || transactionId || submissionId || Date.now()),
         }

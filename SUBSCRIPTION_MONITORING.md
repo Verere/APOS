@@ -133,16 +133,16 @@ Implemented a comprehensive subscription monitoring system that displays subscri
     status: "ACTIVE"
   },
   limits: {
-    maxStores: 5,
+      maxStores: 3,
     maxProducts: 5000,
-    maxUsers: 10,
-    maxOrders: "Unlimited"
+      maxUsers: 20,
+      maxOrders: 10000
   },
   usage: {
-    storesCount: 3,
-    productsCount: 1250,
-    usersCount: 7,
-    ordersCount: 4500
+      stores: 3,
+      products: 1250,
+      users: 7,
+      orders: 4500
   },
   percentages: {
     stores: 60,

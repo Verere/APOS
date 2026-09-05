@@ -41,6 +41,11 @@ const PosPage = ({
   allowPriceAdjustment = false,
   allowPriceTypeSelection = false,
   allowDecimalQuantity = false,
+  enableBusinessDate = false,
+  deliveryEnabled = false,
+  otherPaymentMethods = [],
+  bankNames = [],
+  referrerBonusPercentage = 0,
   allowComplimentarySale = false
 }) => {
   const { location, setBusDate, setHotel, setStore, payment, cartValue, user } = useContext(GlobalContext);
@@ -64,6 +69,9 @@ const PosPage = ({
   const [localMenus, setLocalMenus] = useState([]);
   const [localCustomers, setLocalCustomers] = useState([]);
   const [localCatalogLastSyncedAt, setLocalCatalogLastSyncedAt] = useState('');
+  const [enableBusinessDateState, setEnableBusinessDateState] = useState(Boolean(enableBusinessDate));
+  const [businessDateInput, setBusinessDateInput] = useState(() => moment().format('YYYY-MM-DD'));
+  const [businessDateReason, setBusinessDateReason] = useState('');
   const [printingSettingsState, setPrintingSettingsState] = useState({
     receiptFontFamily: printingSettings?.receiptFontFamily || 'monospace',
     receiptFontSize: Number(printingSettings?.receiptFontSize) || 12,
@@ -75,7 +83,15 @@ const PosPage = ({
   const receiptFooterNote = printingSettingsState.receiptFooterNote || '';
   const receiptSpecialNote = receiptFooterNote;
 
-  const bDate = useMemo(() => moment().format('D/MM/YYYY'), []);
+  const bDate = useMemo(() => {
+    const parsed = moment(businessDateInput, 'YYYY-MM-DD', true)
+    return parsed.isValid() ? parsed.format('D/MM/YYYY') : moment().format('D/MM/YYYY')
+  }, [businessDateInput]);
+  const isBackdatedBusinessDate = useMemo(() => {
+    const parsed = moment(businessDateInput, 'YYYY-MM-DD', true)
+    if (!parsed.isValid()) return false
+    return moment().startOf('day').diff(parsed.startOf('day'), 'days') === 1
+  }, [businessDateInput]);
   const searchParams = useSearchParams();
   const { replace } = useRouter();
   const [state] = useActionState(addOrder, {});
@@ -316,6 +332,7 @@ const PosPage = ({
         if (!response.ok) return
         const data = await response.json()
         const s = data?.settings || {}
+        setEnableBusinessDateState(Boolean(s.enableBusinessDate))
         setPrintingSettingsState({
           receiptFontFamily: s.receiptFontFamily || 'monospace',
           receiptFontSize: Number(s.receiptFontSize) || 12,
@@ -328,6 +345,17 @@ const PosPage = ({
 
     if (slug) loadPrintingSettings()
   }, [slug])
+
+  useEffect(() => {
+    setEnableBusinessDateState(Boolean(enableBusinessDate))
+  }, [enableBusinessDate])
+
+  useEffect(() => {
+    if (!enableBusinessDateState) {
+      setBusinessDateInput(moment().format('YYYY-MM-DD'))
+      setBusinessDateReason('')
+    }
+  }, [enableBusinessDateState])
 
   // Barcode scan handler
   const handleBarcodeScan = async (barcode) => {
@@ -450,7 +478,49 @@ const PosPage = ({
     setShowPaymentModal(true);
   }, [cart, setCPayment]);
 
-  const handleConfirmCreditPayment = useCallback(async ({ paymentAmount, creditAmount, paymentMethod }) => {
+  const printCartInvoice = useCallback(() => {
+    const items = cart?.cartItems || cart || [];
+    if (!items.length) {
+      toast.error('Cart is empty');
+      return;
+    }
+
+    let deliveryCost = 0;
+    if (window.confirm('Do you want to add delivery to this invoice?')) {
+      if (!deliveryEnabled) {
+        toast.info('Delivery is disabled in store settings');
+      } else if (selectedCustomerData) {
+        deliveryCost = Math.max(0, Number(selectedCustomerData.deliveryCost || 0));
+      } else {
+        const walkInFee = window.prompt('Enter the delivery fee for this walk-in customer:', '0');
+        const parsedWalkInFee = Number(walkInFee);
+        if (walkInFee !== null && Number.isFinite(parsedWalkInFee) && parsedWalkInFee >= 0) {
+          deliveryCost = parsedWalkInFee;
+        } else if (walkInFee !== null) {
+          toast.error('Delivery fee must be a non-negative number');
+          return;
+        }
+      }
+    }
+    const subtotal = items.reduce((sum, item) => (
+      sum + Number(item.amount ?? item.total ?? ((item.price ?? item.unitPrice ?? 0) * (item.qty ?? item.quantity ?? 0)))
+    ), 0);
+
+    setInvoiceData({
+      orderNum: 'DRAFT',
+      items,
+      totalAmount: subtotal + deliveryCost,
+      deliveryCost,
+      paymentAmount: 0,
+      creditAmount: subtotal + deliveryCost,
+      bDate,
+      customer: selectedCustomerData || null,
+      isPreview: true,
+    });
+    setShowInvoiceModal(true);
+  }, [cart, deliveryEnabled, selectedCustomerData, bDate]);
+
+  const handleConfirmCreditPayment = useCallback(async ({ paymentAmount, creditAmount, paymentMethod, otherPaymentMethod, transferBank, transferReference }) => {
     const items = cart?.cartItems || cart || [];
     setShowCreditPaymentModal(false);
     setLoading(true);
@@ -469,6 +539,9 @@ const PosPage = ({
           paymentAmount: paymentAmount,
           creditAmount: creditAmount,
           paymentMethod: paymentMethod,
+          otherPaymentMethod,
+          bankName: transferBank,
+          reference: transferReference,
           allowDecimalQuantity,
         }),
       });
@@ -828,7 +901,7 @@ const PosPage = ({
               
               {/* Cart Total */}
               <div className="border-t bg-white shrink-0">
-                <CartTotal pays={pays} />
+                <CartTotal pays={pays} referrerBonusPercentage={referrerBonusPercentage} />
               </div>
               
               {/* Cart Actions */}
@@ -881,6 +954,15 @@ const PosPage = ({
                     aria-label="Make payment"
                   >
                     Make Payment
+                  </button>
+
+                  <button
+                    onClick={printCartInvoice}
+                    className="bg-blue-700 text-white px-3 py-2 rounded-lg uppercase hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
+                    aria-label="Print invoice without saving"
+                  >
+                    <Receipt className="w-4 h-4" />
+                    Print Invoice
                   </button>
                   
                   {/* Receipt button - Hidden
@@ -974,6 +1056,36 @@ const PosPage = ({
                     </select>
                   </div>
                 )}
+                {enableBusinessDateState && (
+                  <div className="w-full md:w-3/4 xl:w-2/3 mx-auto mt-2">
+                    <label htmlFor="pos-business-date" className="block text-xs font-semibold text-gray-700 mb-1">
+                      Business Date
+                    </label>
+                    <input
+                      id="pos-business-date"
+                      type="date"
+                      value={businessDateInput}
+                      onChange={(e) => setBusinessDateInput(e.target.value)}
+                      max={moment().format('YYYY-MM-DD')}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    {isBackdatedBusinessDate && (
+                      <div className="mt-2">
+                        <label htmlFor="pos-business-date-reason" className="block text-xs font-semibold text-gray-700 mb-1">
+                          Backdate Reason
+                        </label>
+                        <input
+                          id="pos-business-date-reason"
+                          type="text"
+                          value={businessDateReason}
+                          onChange={(e) => setBusinessDateReason(e.target.value)}
+                          placeholder="Reason for using yesterday's business date"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Menu Items Grid */}
@@ -1018,6 +1130,8 @@ const PosPage = ({
           cart={cart}
           order={order}
           busDate={bDate}
+          businessDateReason={businessDateReason}
+          isBackdatedBusinessDate={isBackdatedBusinessDate}
           location={location}
           user={user || { name: 'Cashier' }}
           store={getHotel?.[0]}
@@ -1027,6 +1141,9 @@ const PosPage = ({
           allowDecimalQuantity={allowDecimalQuantity}
           printingSettings={printingSettingsState}
           customer={selectedCustomerData}
+          allowDelivery={deliveryEnabled}
+          otherPaymentMethods={otherPaymentMethods}
+          bankNames={bankNames}
           onSuccess={() => {
             localStorage.removeItem('cart')
             setCart({ cartItems: [] })
@@ -1043,6 +1160,9 @@ const PosPage = ({
           onClose={() => setShowCreditPaymentModal(false)}
           totalAmount={cartValue}
           customerName={selectedCustomerData?.name || 'Customer'}
+          customer={selectedCustomerData}
+          otherPaymentMethods={otherPaymentMethods}
+          bankNames={bankNames}
           onConfirm={handleConfirmCreditPayment}
         />
       </>

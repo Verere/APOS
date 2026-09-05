@@ -142,10 +142,10 @@ Frontend shows an upgrade modal or error message with upgrade button.
 
 | Resource | What's Counted | Example Limits |
 |----------|----------------|----------------|
-| **stores** | `Store.countDocuments({ owner: userId })` | FREE: 1, BASIC: 2, PROFESSIONAL: 5 |
-| **products** | `Product.countDocuments({ createdBy: userId })` | FREE: 10, BASIC: 500, PROFESSIONAL: 5,000 |
-| **users** | `User.countDocuments({ createdBy: userId })` | FREE: 1, BASIC: 5, PROFESSIONAL: 20 |
-| **orders** | `Order.countDocuments({ userId: userId })` | FREE: 100, BASIC: 1,000, PROFESSIONAL: 10,000 |
+| **stores** | `StoreMembership.countDocuments({ userId, role: 'OWNER', isDeleted: { $ne: true } })` | FREE: 1, BASIC: 1, PROFESSIONAL: 3 |
+| **products** | `Product.countDocuments({ slug: { $in: ownedSlugs }, isDeleted: { $ne: true } })` | FREE: 10, BASIC: 100, PROFESSIONAL: 5,000 |
+| **users** | `StoreMembership.countDocuments({ storeId: { $in: ownerStoreIds }, isDeleted: { $ne: true }, role: { $ne: 'OWNER' } })` | FREE: 1, BASIC: 1, PROFESSIONAL: 20 |
+| **orders** | `Order.countDocuments({ slug: { $in: ownedSlugs }, isCancelled: { $ne: true } })` | FREE: 100, BASIC: 1,000, PROFESSIONAL: 10,000 |
 
 ### Counting Is User-Wide
 

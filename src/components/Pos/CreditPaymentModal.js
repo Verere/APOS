@@ -3,11 +3,14 @@ import { useState, useEffect } from 'react'
 import { X, CreditCard, Wallet, Banknote, Building2, ArrowRightLeft, FileText } from 'lucide-react'
 import { currencyFormat } from '@/utils/currency'
 
-const CreditPaymentModal = ({ isOpen, onClose, totalAmount, customerName, onConfirm }) => {
+const CreditPaymentModal = ({ isOpen, onClose, totalAmount, customerName, customer, otherPaymentMethods = [], bankNames = [], onConfirm }) => {
   const [wantToPayNow, setWantToPayNow] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState('CASH')
   const [remainingCredit, setRemainingCredit] = useState(totalAmount)
+  const [otherPaymentMethod, setOtherPaymentMethod] = useState('')
+  const [transferBank, setTransferBank] = useState('')
+  const [transferReference, setTransferReference] = useState('')
 
   const paymentMethods = [
     { value: 'CASH', label: 'Cash', icon: Banknote, color: 'from-green-600 to-emerald-600' },
@@ -26,10 +29,16 @@ const CreditPaymentModal = ({ isOpen, onClose, totalAmount, customerName, onConf
   }, [wantToPayNow, paymentAmount, totalAmount])
 
   const handleConfirm = () => {
+    if (wantToPayNow && paymentMethod === 'WALLET' && Number(paymentAmount) > Number(customer?.walletBalance || 0)) return
+    if (wantToPayNow && paymentMethod === 'OTHER' && !otherPaymentMethod) return
+    if (wantToPayNow && paymentMethod === 'TRANSFER' && (!transferBank || !transferReference.trim())) return
     onConfirm({
       paymentAmount: wantToPayNow ? Number(paymentAmount) : 0,
       creditAmount: remainingCredit,
-      paymentMethod: wantToPayNow ? paymentMethod : null
+      paymentMethod: wantToPayNow ? paymentMethod : null,
+      otherPaymentMethod,
+      transferBank,
+      transferReference
     })
   }
 
@@ -141,6 +150,30 @@ const CreditPaymentModal = ({ isOpen, onClose, totalAmount, customerName, onConf
                   />
                 </div>
 
+                {paymentMethod === 'WALLET' && (
+                  <p className="text-xs text-emerald-700">Available wallet balance: {currencyFormat(customer?.walletBalance || 0)}</p>
+                )}
+
+                {paymentMethod === 'OTHER' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Other Payment Method</label>
+                    <select value={otherPaymentMethod} onChange={(e) => setOtherPaymentMethod(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl">
+                      <option value="">Select a saved method</option>
+                      {otherPaymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                {paymentMethod === 'TRANSFER' && (
+                  <div className="space-y-3 rounded-xl border border-purple-200 bg-purple-50 p-3">
+                    <select value={transferBank} onChange={(e) => setTransferBank(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl">
+                      <option value="">Select a saved bank</option>
+                      {bankNames.map((bank) => <option key={bank} value={bank}>{bank}</option>)}
+                    </select>
+                    <input type="text" value={transferReference} onChange={(e) => setTransferReference(e.target.value)} placeholder="Enter transfer reference" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
+                  </div>
+                )}
+
                 {/* Quick Amount Buttons */}
                 <div className="grid grid-cols-3 gap-2">
                   <button
@@ -203,7 +236,13 @@ const CreditPaymentModal = ({ isOpen, onClose, totalAmount, customerName, onConf
           </button>
           <button
             onClick={handleConfirm}
-            disabled={wantToPayNow && (!paymentAmount || paymentAmount <= 0)}
+            disabled={wantToPayNow && (
+              !paymentAmount ||
+              paymentAmount <= 0 ||
+              (paymentMethod === 'WALLET' && Number(paymentAmount) > Number(customer?.walletBalance || 0)) ||
+              (paymentMethod === 'OTHER' && !otherPaymentMethod) ||
+              (paymentMethod === 'TRANSFER' && (!transferBank || !transferReference.trim()))
+            )}
             className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {wantToPayNow ? 'Process Payment & Credit' : 'Record as Credit'}

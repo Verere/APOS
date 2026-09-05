@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { X, DollarSign, CreditCard, Smartphone, FileText, Banknote, MoreHorizontal, Receipt, User, Phone, MapPin, CheckCircle, AlertCircle } from 'lucide-react'
+import { X, DollarSign, CreditCard, Smartphone, FileText, Banknote, MoreHorizontal, Receipt, User, Phone, MapPin, CheckCircle, AlertCircle, Wallet } from 'lucide-react'
 import { currencyFormat } from '@/utils/currency'
 
-export default function PaymentModal({ credit, onClose, onSuccess, slug }) {
+export default function PaymentModal({ credit, onClose, onSuccess, slug, otherPaymentMethods = [], bankNames = [] }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -14,11 +14,13 @@ export default function PaymentModal({ credit, onClose, onSuccess, slug }) {
     paymentMethod: 'CASH',
     notes: '',
     receiptNumber: ''
+    ,otherPaymentMethod: '', bankName: '', reference: ''
   })
 
   const remainingBalance = useMemo(() => {
     return credit.amount - (credit.amountPaid || 0)
   }, [credit.amount, credit.amountPaid])
+  const walletBalance = Number(credit.customerId?.walletBalance || 0)
 
   const customerLocation = useMemo(() => {
     if (!credit.customerId?.address) return 'N/A'
@@ -32,6 +34,7 @@ export default function PaymentModal({ credit, onClose, onSuccess, slug }) {
     { value: 'TRANSFER', label: 'Transfer', icon: Smartphone, color: 'purple' },
     { value: 'CHEQUE', label: 'Cheque', icon: FileText, color: 'indigo' },
     { value: 'OTHER', label: 'Other', icon: MoreHorizontal, color: 'gray' }
+    ,{ value: 'WALLET', label: 'Wallet', icon: Wallet, color: 'emerald' }
   ], [])
 
   const handleInputChange = useCallback((e) => {
@@ -61,6 +64,20 @@ export default function PaymentModal({ credit, onClose, onSuccess, slug }) {
       return
     }
 
+    if (formData.paymentMethod === 'WALLET' && amount > walletBalance) {
+      setError(`Amount cannot exceed wallet balance of ₦${walletBalance.toLocaleString()}`)
+      return
+    }
+
+    if (formData.paymentMethod === 'OTHER' && !formData.otherPaymentMethod) {
+      setError('Select a saved Other payment method')
+      return
+    }
+    if (formData.paymentMethod === 'TRANSFER' && (!formData.bankName || !formData.reference.trim())) {
+      setError('Select a bank and enter the transfer reference')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -72,7 +89,10 @@ export default function PaymentModal({ credit, onClose, onSuccess, slug }) {
           amount,
           paymentMethod: formData.paymentMethod,
           notes: formData.notes,
-          receiptNumber: formData.receiptNumber || undefined
+          receiptNumber: formData.receiptNumber || undefined,
+          otherPaymentMethod: formData.otherPaymentMethod,
+          bankName: formData.bankName,
+          reference: formData.reference
         })
       })
 
@@ -90,7 +110,7 @@ export default function PaymentModal({ credit, onClose, onSuccess, slug }) {
     } finally {
       setLoading(false)
     }
-  }, [formData, credit._id, remainingBalance, onSuccess])
+  }, [formData, credit._id, remainingBalance, walletBalance, onSuccess])
 
   const handlePrintReceipt = useCallback(() => {
     if (!receiptData) return
@@ -160,6 +180,9 @@ export default function PaymentModal({ credit, onClose, onSuccess, slug }) {
         ${row('Receipt No:', receiptData.receiptNumber || 'N/A')}
         ${row('Date:', new Date(receiptData.paymentDate).toLocaleString())}
         ${row('Method:', receiptData.paymentMethod || 'CASH')}
+        ${receiptData.otherPaymentMethod ? row('Other Method:', receiptData.otherPaymentMethod) : ''}
+        ${receiptData.bankName ? row('Bank:', receiptData.bankName) : ''}
+        ${receiptData.reference ? row('Reference:', receiptData.reference) : ''}
         ${receiptData.orderNumber ? row('Order No:', receiptData.orderNumber) : ''}
         ${receiptData.customerPhone ? row('Phone:', receiptData.customerPhone) : ''}
 
@@ -368,7 +391,37 @@ export default function PaymentModal({ credit, onClose, onSuccess, slug }) {
                   </button>
                 ))}
               </div>
+              {formData.paymentMethod === 'WALLET' && (
+                <p className="mt-2 text-xs text-emerald-700">Available wallet balance: {currencyFormat(walletBalance)}</p>
+              )}
             </div>
+
+            {/* Receipt Number */}
+            {formData.paymentMethod === 'OTHER' && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Other Payment Method</label>
+                <select name="otherPaymentMethod" value={formData.otherPaymentMethod} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" disabled={loading || success}>
+                  <option value="">Select a saved method</option>
+                  {otherPaymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
+                </select>
+              </div>
+            )}
+
+            {formData.paymentMethod === 'TRANSFER' && (
+              <div className="space-y-3 rounded-xl border border-purple-200 bg-purple-50 p-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Transfer Bank</label>
+                  <select name="bankName" value={formData.bankName} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" disabled={loading || success}>
+                    <option value="">Select a saved bank</option>
+                    {bankNames.map((bank) => <option key={bank} value={bank}>{bank}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Transfer Reference</label>
+                  <input type="text" name="reference" value={formData.reference} onChange={handleInputChange} placeholder="Enter transfer reference" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" disabled={loading || success} />
+                </div>
+              </div>
+            )}
 
             {/* Receipt Number */}
             <div>

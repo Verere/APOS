@@ -26,7 +26,7 @@ User (1) ──► Subscription (1) ──► Covers Multiple Stores (up to pack
   userId: ObjectId,        // REQUIRED - The user who owns the subscription
   storeId: ObjectId,       // OPTIONAL - Reference to primary/first store (just metadata)
   packageId: ObjectId,     // REQUIRED - The subscription package
-  packageName: String,     // "FREE", "STARTER", "BASIC", "PROFESSIONAL", "ENTERPRISE"
+  packageName: String,     // "FREE", "BASIC", "PROFESSIONAL", "ENTERPRISE"
   status: String,          // "ACTIVE", "TRIAL", "EXPIRED", "CANCELLED", "SUSPENDED"
   billingCycle: String,    // "MONTHLY" or "YEARLY"
   // ... other fields
@@ -42,10 +42,9 @@ User (1) ──► Subscription (1) ──► Covers Multiple Stores (up to pack
 | Package        | Max Stores | Max Products | Max Users | Max Orders | Storage  |
 |----------------|------------|--------------|-----------|------------|----------|
 | FREE           | 1          | 10           | 1         | 100        | 500MB    |
-| STARTER        | 1          | 50           | 2         | 500        | 2GB      |
-| BASIC          | 2          | 500          | 5         | 1,000      | 5GB      |
-| PROFESSIONAL   | 5          | 5,000        | 20        | 10,000     | 50GB     |
-| ENTERPRISE     | Unlimited  | Unlimited    | Unlimited | Unlimited  | Unlimited|
+| BASIC          | 1          | 100          | 1         | 1,000      | 5GB      |
+| PROFESSIONAL   | 3          | 5,000        | 20        | 10,000     | 50GB     |
+| ENTERPRISE     | 10         | 10,000       | 100       | 1,000,000  | Unlimited|
 
 ### How Limits Are Enforced
 
@@ -70,13 +69,13 @@ The system counts **all resources** owned by the user across **all their stores*
 
 ## Example Scenarios
 
-### Scenario 1: Basic Package (2 Stores)
+### Scenario 1: Basic Package (1 Store)
 
 ```
 User subscribes to BASIC package
-├─► Can create up to 2 stores
-├─► Total 500 products across all stores
-├─► Total 5 users across all stores
+├─► Can create up to 1 store
+├─► Total 100 products across all stores
+├─► Total 1 user across all stores
 └─► Total 1,000 orders across all stores
 ```
 
@@ -85,24 +84,19 @@ User subscribes to BASIC package
 - 3 users
 - 600 orders
 
-**Store 2:**
-- 200 products
-- 2 users
-- 400 orders
-
 **Total Usage:**
-- ✅ 2 stores (limit: 2) - OK
-- ✅ 500 products (limit: 500) - OK
-- ✅ 5 users (limit: 5) - OK
+- ✅ 1 store (limit: 1) - OK
+- ✅ 100 products (limit: 100) - OK
+- ✅ 1 user (limit: 1) - OK
 - ✅ 1,000 orders (limit: 1,000) - OK
 
 ---
 
-### Scenario 2: Professional Package (5 Stores)
+### Scenario 2: Professional Package (3 Stores)
 
 ```
 User subscribes to PROFESSIONAL package
-├─► Can create up to 5 stores
+├─► Can create up to 3 stores
 ├─► Total 5,000 products across all stores
 ├─► Total 20 users across all stores
 └─► Total 10,000 orders across all stores
@@ -112,8 +106,7 @@ The user can distribute resources however they want:
 - Store 1: 2,000 products
 - Store 2: 1,500 products
 - Store 3: 800 products
-- Store 4: 500 products
-- Store 5: 200 products
+- (Remaining capacity: 700 products)
 - **Total: 5,000 products** ✅
 
 ---
@@ -144,7 +137,7 @@ const limitCheck = await checkResourceLimit(userId, 'stores')
 
 if (!limitCheck.allowed) {
   return {
-    error: "You've reached your limit of 2 stores. Upgrade to PROFESSIONAL to create up to 5 stores."
+    error: "You've reached your limit of 1 store. Upgrade to PROFESSIONAL to create up to 3 stores."
   }
 }
 
@@ -268,7 +261,7 @@ const productsCount = await Product.countDocuments({
 
 **After Upgrade:**
 - Package: PROFESSIONAL
-- Stores: 2/5 (can create 3 more)
+- Stores: 2/3 (can create 1 more)
 - Products: 450/5,000 (lots of room)
 
 ```javascript
@@ -278,6 +271,7 @@ POST /api/stores/create
   name: "Third Store"
 }
 // ✅ Allowed now (PROFESSIONAL allows 5 stores)
+// ✅ Allowed now (PROFESSIONAL allows 3 stores)
 ```
 
 ---
@@ -288,7 +282,7 @@ POST /api/stores/create
 2. **One subscription covers all stores** the user owns
 3. **Limits are cumulative** across all stores
 4. **storeId field is optional metadata** for convenience
-5. **Resource counting is user-based**: `Store.countDocuments({ owner: userId })`
+5. **Resource counting is owner-scoped** across owned stores and memberships
 6. **Upgrading unlocks more capacity** across all stores
 
 ---

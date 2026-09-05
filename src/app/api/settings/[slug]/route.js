@@ -67,6 +67,11 @@ export async function GET(request, { params }) {
         allowPriceAdjustment: false,
         allowPriceTypeSelection: false,
         allowDecimalQuantity: false,
+        enableBusinessDate: false,
+        deliveryEnabled: false,
+        otherPaymentMethods: [],
+        bankNames: [],
+        referrerBonusPercentage: 0,
         priceTypes: [],
         defaultPriceTypeId: null,
         receiptFontFamily: 'monospace',
@@ -140,6 +145,11 @@ export async function POST(request, { params }) {
     });
     const assignedSet = new Set(assignedPriceTypeIds.map(String));
 
+    const referrerBonusPercentage = Number(body.referrerBonusPercentage ?? 0);
+    if (!Number.isFinite(referrerBonusPercentage) || referrerBonusPercentage < 0 || referrerBonusPercentage > 100) {
+      return NextResponse.json({ error: 'Referrer bonus percentage must be between 0 and 100.' }, { status: 400 });
+    }
+
     // Update or create settings
     let settings = await StoreSettings.findOne({ slug });
     
@@ -155,6 +165,7 @@ export async function POST(request, { params }) {
       // Update existing settings
       Object.assign(settings, {
         ...body,
+        referrerBonusPercentage,
         priceTypes: normalizedPriceTypes,
         defaultPriceTypeId
       });
@@ -165,6 +176,7 @@ export async function POST(request, { params }) {
         storeId: store._id,
         slug: slug,
         ...body,
+        referrerBonusPercentage,
         priceTypes: normalizedPriceTypes,
         defaultPriceTypeId
       });

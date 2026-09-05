@@ -9,6 +9,7 @@ import StoreMembership from '@/models/storeMembership'
 import { sendEmail, buildInviteHtml, buildInviteText } from '@/utils/email'
 import { getStoreBySlug } from '@/lib/getStoreBySlug'
 import { requireStoreRole } from '@/lib/requireStoreRole'
+import { checkResourceLimit } from '@/lib/subscriptionLimits'
 
 export async function POST(req) {
   try {
@@ -25,6 +26,12 @@ export async function POST(req) {
     // find store and check permission
     const store = await getStoreBySlug(storeSlug)
     await requireStoreRole(session.user.id, store._id, ['OWNER'])
+
+    const ownerIdForUsers = store?.user ? String(store.user) : session.user.id
+    const userLimitCheck = await checkResourceLimit(ownerIdForUsers, 'users')
+    if (!userLimitCheck?.allowed) {
+      return new Response(JSON.stringify({ error: userLimitCheck?.message || 'Team member limit reached. Upgrade to invite more users.' }), { status: 403 })
+    }
 
     const expiresAt = new Date(Date.now() + Number(expiresDays) * 24 * 60 * 60 * 1000)
     const token = uuidv4()

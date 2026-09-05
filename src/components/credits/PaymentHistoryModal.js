@@ -140,6 +140,8 @@ export default function PaymentHistoryModal({ credit, onClose }) {
                         <div>
                           <p className="font-semibold text-lg">₦{payment.amount.toLocaleString()}</p>
                           <p className="text-sm text-gray-600">{paymentMethodLabels[payment.paymentMethod] || payment.paymentMethod}</p>
+                          {payment.otherPaymentMethod && <p className="text-xs text-gray-500">{payment.otherPaymentMethod}</p>}
+                          {payment.bankName && <p className="text-xs text-gray-500">{payment.bankName}{payment.reference ? ` • ${payment.reference}` : ''}</p>}
                         </div>
                       </div>
                       <div className="text-right">

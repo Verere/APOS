@@ -6,6 +6,7 @@ import Credit from '@/models/credit'
 import Customer from '@/models/customer'
 import Order from '@/models/order'
 import Store from '@/models/store'
+import StoreSettings from '@/models/storeSettings'
 import CreditsListClient from '@/components/credits/CreditsListClient'
 
 export default async function CreditsPage({ params }) {
@@ -24,6 +25,8 @@ export default async function CreditsPage({ params }) {
   if (!store) {
     redirect('/dashboard')
   }
+
+  const settings = await StoreSettings.findOne({ slug }).select('otherPaymentMethods bankNames').lean()
 
   // Fetch only unpaid credits (isPaid: false) with customer and order details
   const credits = await Credit.find({ 
@@ -81,6 +84,8 @@ export default async function CreditsPage({ params }) {
       credits={serializedCredits} 
       stats={stats}
       slug={slug}
+      otherPaymentMethods={Array.isArray(settings?.otherPaymentMethods) ? settings.otherPaymentMethods : []}
+      bankNames={Array.isArray(settings?.bankNames) ? settings.bankNames : []}
     />
   )
 }

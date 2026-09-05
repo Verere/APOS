@@ -7,6 +7,8 @@ import CreditPayment from "@/models/creditPayment";
 import Customer from "@/models/customer";
 import Store from "@/models/store";
 import mongoose from "mongoose";
+import StoreSettings from "@/models/storeSettings";
+import WalletTransaction from "@/models/walletTransaction";
 
 export async function POST(req) {
   try {
@@ -17,7 +19,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { creditId, amount, paymentMethod, notes, receiptNumber } = await req.json();
+    const { creditId, amount, paymentMethod, notes, receiptNumber, otherPaymentMethod, bankName, reference } = await req.json();
 
     if (!creditId || !amount || amount <= 0) {
       return NextResponse.json(
@@ -52,6 +54,20 @@ export async function POST(req) {
         );
       }
 
+      const settings = await StoreSettings.findOne({ storeId: credit.storeId }).lean();
+      if (paymentMethod === 'OTHER' && !(settings?.otherPaymentMethods || []).includes(String(otherPaymentMethod || '').trim())) {
+        await transactionSession.abortTransaction();
+        return NextResponse.json({ error: 'Invalid or missing Other payment method' }, { status: 400 });
+      }
+      if (paymentMethod === 'TRANSFER' && (!(settings?.bankNames || []).includes(String(bankName || '').trim()) || !String(reference || '').trim())) {
+        await transactionSession.abortTransaction();
+        return NextResponse.json({ error: 'Invalid or missing transfer bank/reference' }, { status: 400 });
+      }
+      if (paymentMethod === 'WALLET' && Number(amount) > Number(credit.customerId?.walletBalance || 0)) {
+        await transactionSession.abortTransaction();
+        return NextResponse.json({ error: 'Payment amount exceeds customer wallet balance' }, { status: 400 });
+      }
+
       // Generate receipt number if not provided
       const finalReceiptNumber = receiptNumber || `RCP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
@@ -63,6 +79,9 @@ export async function POST(req) {
         customerId: credit.customerId,
         amount,
         paymentMethod: paymentMethod || 'CASH',
+        otherPaymentMethod: String(otherPaymentMethod || '').trim() || undefined,
+        bankName: String(bankName || '').trim() || undefined,
+        reference: String(reference || '').trim() || undefined,
         receiptNumber: finalReceiptNumber,
         notes,
         recordedBy: session.user.name || session.user.email
@@ -80,6 +99,23 @@ export async function POST(req) {
       // Update customer's outstandingBalance
       const customer = await Customer.findById(credit.customerId).session(transactionSession);
       if (customer) {
+        if (paymentMethod === 'WALLET') {
+          const walletBalanceBefore = Number(customer.walletBalance || 0);
+          customer.walletBalance = walletBalanceBefore - Number(amount);
+          await new WalletTransaction({
+            customer: customer._id,
+            invoice: credit.orderId?.orderNum || String(credit._id),
+            type: 'Sale',
+            amount: Number(amount),
+            balanceBefore: walletBalanceBefore,
+            balanceAfter: customer.walletBalance,
+            paymentMethod: 'WALLET',
+            reference: receiptNumber || `credit-payment-${credit._id}`,
+            remarks: `Wallet used for credit payment`,
+            createdBy: session.user.name || session.user.email,
+            createdAt: new Date()
+          }).save({ session: transactionSession });
+        }
         // Calculate all outstanding credits for this customer
         const allCredits = await Credit.find({ customerId: customer._id, isCancelled: { $ne: true } }).session(transactionSession);
         const totalOutstanding = allCredits.reduce((sum, c) => sum + Math.max((c.amount || 0) - (c.amountPaid || 0), 0), 0);
@@ -115,6 +151,9 @@ export async function POST(req) {
           storeName: store?.name || '',
           storeSlug: store?.slug || '',
           paymentMethod: paymentMethod || 'CASH',
+          otherPaymentMethod: String(otherPaymentMethod || '').trim() || undefined,
+          bankName: String(bankName || '').trim() || undefined,
+          reference: String(reference || '').trim() || undefined,
           paymentDate: payment[0]?.paymentDate || new Date(),
           orderNumber: credit.orderId?.orderNum || '',
           notes: notes || '',

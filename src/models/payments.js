@@ -7,6 +7,9 @@ const PaymentMethodSchema = new mongoose.Schema({
     enum: ['CASH', 'POS', 'TRANSFER', 'CHEQUE', 'OTHER', 'WALLET', 'COMPLIMENTARY'],
     required: true
   },
+  details: { type: String, trim: true },
+  bankName: { type: String, trim: true },
+  reference: { type: String, trim: true },
   amount: {
     type: Number,
     required: true,

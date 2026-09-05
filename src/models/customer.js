@@ -99,6 +99,11 @@ const customerSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    deliveryCost: {
+        type: Number,
+        min: 0,
+        default: 0
+    },
     companyName: {
         type: String,
         trim: true

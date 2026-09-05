@@ -41,6 +41,10 @@ import { getStoreBySlug } from '@/lib/getStoreBySlug'
 import { requireStoreRole } from '@/lib/requireStoreRole'
 import { sendVerificationEmail } from '@/utils/email'
 import { toClientSafeDbError } from '@/lib/dbError'
+import StoreSettings from '@/models/storeSettings'
+import BusinessDateAudit from '@/models/businessDateAudit'
+import { resolveBusinessDate } from '@/lib/businessDatePolicy'
+import { checkResourceLimit } from '@/lib/subscriptionLimits'
 
 export const authenticate = async (prevState, formData) => {
   
@@ -130,6 +134,15 @@ await updateProduct(id,name, normalizedLegacyPrice, qty, category, barcode, tota
 return{success:true}
       }else{
 
+    const storeForProduct = await Store.findOne({ slug, isDeleted: { $ne: true } }).select('user').lean();
+    const ownerIdForProduct = storeForProduct?.user ? String(storeForProduct.user) : null;
+    if (ownerIdForProduct) {
+      const productLimitCheck = await checkResourceLimit(ownerIdForProduct, 'products');
+      if (!productLimitCheck?.allowed) {
+        return { error: productLimitCheck?.message || 'Product limit reached. Upgrade to create more products.' };
+      }
+    }
+
     // Calculate profit if not provided
     const calculatedProfit = profit || (parseFloat(normalizedLegacyPrice) - parseFloat(cost));
 
@@ -202,7 +215,7 @@ export const addStore = async (prvState, formData) => {
   const formObj = Object.fromEntries(formData);
   if (Object.prototype.hasOwnProperty.call(formObj, 'slug')) delete formObj.slug;
   const { name, address, email, state, lga, opens, closes, number, whatsapp, /* user, */ logo, image, sub, starts, ends } = formObj;
-  console.log('email from formData:', email);
+  
  
   try {
     await connectToDB();
@@ -236,6 +249,11 @@ export const addStore = async (prvState, formData) => {
       }
     }
     if (!ownerDoc || !ownerDoc.emailVerified) return { error: 'Forbidden: email not verified' };
+
+    const storeLimitCheck = await checkResourceLimit(ownerId, 'stores');
+    if (!storeLimitCheck?.allowed) {
+      return { error: storeLimitCheck?.message || 'Store limit reached. Upgrade to create more stores.' };
+    }
 
     // generate base slug from name: lowercase, URL-safe
     const slugify = (s) =>
@@ -278,7 +296,7 @@ export const addStore = async (prvState, formData) => {
         opens,
         email ,
         closes,
-        phone,
+        number,
         whatsapp,
         user: ownerId,
         logo,
@@ -327,6 +345,13 @@ export const addOrder= async (prvState, formData) => {
   } catch (e) {
     return { error: 'Forbidden' };
   }
+
+  const ownerIdForOrders = store?.user ? String(store.user) : session.user.id;
+  const orderLimitCheck = await checkResourceLimit(ownerIdForOrders, 'orders');
+  if (!orderLimitCheck?.allowed) {
+    return { error: orderLimitCheck?.message || 'Order limit reached. Upgrade to process more orders.' };
+  }
+
   const soldBy = session.user.email || soldByClient;
 
   try {   
@@ -445,18 +470,33 @@ items = []
 
 // add payment and create order from cart items atomically
 export const addPaymentWithOrder = async (prvState, formData) => {
-  const { slug, user, bDate, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, walletPaid, customerId, customerName, isComplimentary, transactionType, approvedBy, reason, remarks, location, allowDecimalQuantity, submissionId } = Object.fromEntries(formData);
+  const { slug, user, bDate, businessDateReason, path, cartItems, amountPaid, mop, orderAmount, cashPaid, posPaid, transferPaid, transferBank, transferReference, otherPaid, otherPaymentMethod, walletPaid, customerId, customerName, isComplimentary, transactionType, approvedBy, reason, remarks, location, allowDecimalQuantity, deliveryEnabled, deliveryCost, submissionId } = Object.fromEntries(formData);
   try {
     await connectToDB();
     const items = cartItems ? JSON.parse(cartItems) : [];
     const complimentarySale = transactionType === 'COMPLIMENTARY' || isComplimentary === 'true';
     // require authenticated user via NextAuth server session
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) return { error: 'Unauthorized' };
+    const authSession = await getServerSession(authOptions);
+    if (!authSession || !authSession.user) return { error: 'Unauthorized' };
 
     const store = await getStoreBySlug(slug);
+    const ownerIdForOrders = store?.user ? String(store.user) : authSession.user.id;
+    const orderLimitCheck = await checkResourceLimit(ownerIdForOrders, 'orders');
+    if (!orderLimitCheck?.allowed) {
+      return { error: orderLimitCheck?.message || 'Order limit reached. Upgrade to process more orders.' };
+    }
 
-    const soldBy = session.user.name || user;
+    const storeSettings = await StoreSettings.findOne({ slug }).lean();
+    const businessDatePolicy = resolveBusinessDate({
+      requestedDate: bDate,
+      enableBusinessDate: Boolean(storeSettings?.enableBusinessDate),
+      businessDateReason,
+    });
+    if (businessDatePolicy?.error) return { error: businessDatePolicy.error };
+    const effectiveBusinessDate = businessDatePolicy.businessDate;
+    const effectiveBusinessDateReason = businessDatePolicy.businessDateReason;
+
+    const soldBy = authSession.user.name || user;
 
     if (!items.length) return { error: 'Cart is empty' };
 
@@ -470,14 +510,14 @@ export const addPaymentWithOrder = async (prvState, formData) => {
 
     // run entire checkout flow inside a transaction
     try{
-      const result = await withTransaction(async (session) => {
+      const result = await withTransaction(async (dbSession) => {
         // reserve stock and create inventory transactions
         const ids = items.map(i => i.product);
         const { updatedProducts, transactionIds } = await reserveStockForSale({
           slug,
           items,
           soldBy,
-          session,
+          session: dbSession,
           orderId: null,
         })
 
@@ -488,12 +528,12 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           slug,
           orderNum,
           soldBy,
-          bDate,
+          bDate: effectiveBusinessDate,
           ...(customerId && { customerId }),
           ...(customerName && { customerName }),
           orderName: customerName || customerId || orderNum,
         });
-        await newOrder.save({ session });
+        await newOrder.save({ session: dbSession });
 
         const {
           orderItems: itemsWithCostProfit,
@@ -502,6 +542,20 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         } = buildOrderItemSnapshots(items, updatedProducts, { complimentary: complimentarySale, allowDecimalQuantity: allowDecimalQuantity === 'true' });
 
         const totalOrderAmount = complimentarySale ? 0 : computedOrderAmount;
+        let deliveryAmount = 0;
+        if (!complimentarySale && deliveryEnabled === 'true' && storeSettings?.deliveryEnabled) {
+          if (customerId) {
+            const deliveryCustomer = await Customer.findOne({ _id: customerId, storeId: store._id, isDeleted: false }).session(dbSession).lean();
+            if (!deliveryCustomer) throw Object.assign(new Error('Customer not found for delivery'), { code: 'BAD_DELIVERY' });
+            deliveryAmount = Math.max(0, Number(deliveryCustomer.deliveryCost || 0));
+          } else {
+            deliveryAmount = Number(deliveryCost || 0);
+            if (!Number.isFinite(deliveryAmount) || deliveryAmount < 0) {
+              throw Object.assign(new Error('Delivery cost must be a non-negative number'), { code: 'BAD_DELIVERY' });
+            }
+          }
+        }
+        const finalOrderAmount = totalOrderAmount + deliveryAmount;
         const totalOrderProfit = complimentarySale ? 0 : computedOrderProfit;
         const paid = Number(amountPaid || 0);
         const walletAmount = complimentarySale ? 0 : Number(walletPaid || 0);
@@ -509,7 +563,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         if (walletAmount < 0) {
           throw Object.assign(new Error('Wallet amount cannot be negative'), { code: 'BAD_WALLET' });
         }
-        if (walletAmount > totalOrderAmount) {
+        if (walletAmount > finalOrderAmount) {
           throw Object.assign(new Error('Wallet amount cannot exceed order total'), { code: 'BAD_WALLET' });
         }
         if (walletAmount > paid) {
@@ -523,7 +577,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
             throw Object.assign(new Error('A registered customer is required to use wallet payment'), { code: 'BAD_WALLET' });
           }
 
-          walletCustomer = await Customer.findById(customerId).session(session);
+          walletCustomer = await Customer.findById(customerId).session(dbSession);
           if (!walletCustomer || walletCustomer.isDeleted) {
             throw Object.assign(new Error('Customer not found for wallet payment'), { code: 'BAD_WALLET' });
           }
@@ -535,27 +589,42 @@ export const addPaymentWithOrder = async (prvState, formData) => {
         }
 
         // payment amount sanity
-        if (paid > totalOrderAmount) throw Object.assign(new Error('Payment amount exceeds order total based on checkout snapshot prices'), { code: 'BAD_PAYMENT' });
+        if (paid > finalOrderAmount) throw Object.assign(new Error('Payment amount exceeds order total based on checkout snapshot prices'), { code: 'BAD_PAYMENT' });
 
         // finalize order with items, amount, and profit
         newOrder.items = itemsWithCostProfit;
-        newOrder.amount = totalOrderAmount;
+        newOrder.amount = finalOrderAmount;
+        newOrder.totalAmount = finalOrderAmount;
+        newOrder.deliveryCost = deliveryAmount;
         newOrder.profit = totalOrderProfit;
         newOrder.status = 'Completed';
         newOrder.isCompleted = true;
-        newOrder.bDate = bDate;
+        newOrder.bDate = effectiveBusinessDate;
         newOrder.transactionType = complimentarySale ? 'COMPLIMENTARY' : 'STANDARD';
         newOrder.approvedBy = complimentarySale ? String(approvedBy).trim() : undefined;
         newOrder.reason = complimentarySale ? String(reason).trim() : undefined;
         newOrder.remarks = complimentarySale ? String(remarks || '').trim() : undefined;
-        await newOrder.save({ session });
+        await newOrder.save({ session: dbSession });
 
         // update inventory transactions to reference orderId
-        await attachTransactionsToOrder(transactionIds, newOrder._id, session)
+        await attachTransactionsToOrder(transactionIds, newOrder._id, dbSession)
 
         // save payment with new schema
         const paymentMethodsArray = [];
         const methods = (mop || '').split(',').filter(Boolean);
+        const normalizedOtherPaymentMethod = String(otherPaymentMethod || '').trim();
+        if (!complimentarySale && methods.includes('OTHER')) {
+          if (!normalizedOtherPaymentMethod || !(storeSettings?.otherPaymentMethods || []).includes(normalizedOtherPaymentMethod)) {
+            throw Object.assign(new Error('Invalid or missing Other payment method'), { code: 'BAD_PAYMENT' });
+          }
+        }
+        const normalizedTransferBank = String(transferBank || '').trim();
+        const normalizedTransferReference = String(transferReference || '').trim();
+        if (!complimentarySale && methods.includes('TRANSFER')) {
+          if (!normalizedTransferBank || !(storeSettings?.bankNames || []).includes(normalizedTransferBank) || !normalizedTransferReference) {
+            throw Object.assign(new Error('Invalid or missing transfer bank/reference'), { code: 'BAD_PAYMENT' });
+          }
+        }
         if (walletAmount > 0 && !methods.includes('WALLET')) {
           methods.push('WALLET');
         }
@@ -571,7 +640,10 @@ export const addPaymentWithOrder = async (prvState, formData) => {
             paymentMethodsArray.push({ method: 'POS', amount: Number(posPaid) });
           }
           if (methods.includes('TRANSFER') && Number(transferPaid || 0) > 0) {
-            paymentMethodsArray.push({ method: 'TRANSFER', amount: Number(transferPaid) });
+            paymentMethodsArray.push({ method: 'TRANSFER', amount: Number(transferPaid), bankName: normalizedTransferBank, reference: normalizedTransferReference });
+          }
+          if (methods.includes('OTHER') && Number(otherPaid || 0) > 0) {
+            paymentMethodsArray.push({ method: 'OTHER', amount: Number(otherPaid), details: normalizedOtherPaymentMethod });
           }
           if (walletAmount > 0) {
             paymentMethodsArray.push({ method: 'WALLET', amount: walletAmount });
@@ -600,10 +672,10 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           orderNum: orderNum,
           receiptNumber: orderNum, // Use orderNum as receipt number
           paymentMethods: paymentMethodsArray,
-          orderAmount: totalOrderAmount,
+          orderAmount: finalOrderAmount,
           amountPaid: complimentarySale ? 0 : Number(amountPaid || 0),
           balance: complimentarySale ? 0 : 0,
-          change: complimentarySale ? 0 : Math.max(0, Number(amountPaid || 0) - totalOrderAmount),
+          change: complimentarySale ? 0 : Math.max(0, Number(amountPaid || 0) - finalOrderAmount),
           status: 'COMPLETED',
           paymentType: complimentarySale ? 'COMPLIMENTARY' : 'FULL',
           transactionType: complimentarySale ? 'COMPLIMENTARY' : 'STANDARD',
@@ -612,7 +684,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           remarks: complimentarySale ? String(remarks || '').trim() : undefined,
           recordedBy: soldBy,
           user: soldBy, 
-          bDate: bDate,
+          bDate: effectiveBusinessDate,
           // Legacy fields for backward compatibility
           cash: Number(cashPaid || 0),
           pos: Number(posPaid || 0),
@@ -623,12 +695,28 @@ export const addPaymentWithOrder = async (prvState, formData) => {
           ...(customerName && { customerName: customerName }),
           customerType: customerId ? 'REGISTERED' : 'WALK_IN'
         });
-        await newPay.save({ session });
+        await newPay.save({ session: dbSession });
+
+        if (businessDatePolicy.isBackdated) {
+          await new BusinessDateAudit({
+            storeId: store._id,
+            slug,
+            actorUserId: String(authSession.user.id || ''),
+            actorName: soldBy,
+            businessDate: effectiveBusinessDate,
+            systemDate: businessDatePolicy.systemDate,
+            reason: effectiveBusinessDateReason,
+            source: 'POS_CHECKOUT',
+            orderId: newOrder._id,
+            orderNum,
+            transactionId: String(submissionId || ''),
+          }).save({ session: dbSession });
+        }
 
         if (walletAmount > 0 && walletCustomer) {
           const walletBalanceAfter = walletBalanceBefore - walletAmount;
           walletCustomer.walletBalance = walletBalanceAfter;
-          await walletCustomer.save({ session });
+          await walletCustomer.save({ session: dbSession });
 
           await new WalletTransaction({
             customer: walletCustomer._id,
@@ -642,7 +730,7 @@ export const addPaymentWithOrder = async (prvState, formData) => {
             remarks: `Wallet used for checkout order ${orderNum}`,
             createdBy: soldBy,
             createdAt: new Date(),
-          }).save({ session });
+          }).save({ session: dbSession });
         }
 
         if (complimentarySale) {
@@ -659,23 +747,23 @@ export const addPaymentWithOrder = async (prvState, formData) => {
             remarks: String(remarks || '').trim(),
             authorizedBy: String(approvedBy).trim(),
             soldBy,
-          }).save({ session });
+          }).save({ session: dbSession });
         }
 
         // Update order with amount paid
         newOrder.amountPaid = complimentarySale ? 0 : paid;
-        newOrder.bal = complimentarySale ? 0 : Math.max(0, totalOrderAmount - paid);
+        newOrder.bal = complimentarySale ? 0 : Math.max(0, finalOrderAmount - paid);
         newOrder.customerName = customerName || newOrder.customerName;
         newOrder.customerId = customerId || newOrder.customerId;
         newOrder.orderName = customerName || customerId || newOrder.orderName || orderNum;
-        await newOrder.save({ session });
+        await newOrder.save({ session: dbSession });
 
         return { success: true, orderId: newOrder._id, orderNum };
       });
 
       if (result && result.success) {
         revalidatePath(path);
-        return { success: 'Order and payment saved', orderId: String(result.orderId), orderNum: String(result.orderNum || ''), submissionId: String(submissionId || Date.now()) };
+        return { success: 'Order and payment saved', orderId: String(result.orderId), orderNum: String(result.orderNum || ''), bDate: effectiveBusinessDate, submissionId: String(submissionId || Date.now()) };
       }
     }catch(err){
       console.log('transaction error', err);

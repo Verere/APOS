@@ -173,7 +173,7 @@ export default function UsageDisplay({ userId }) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {usage.usage?.storesCount || 0}
+              {usage.usage?.stores || 0}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               Stores
@@ -181,7 +181,7 @@ export default function UsageDisplay({ userId }) {
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {usage.usage?.productsCount || 0}
+              {usage.usage?.products || 0}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               Products
@@ -189,7 +189,7 @@ export default function UsageDisplay({ userId }) {
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {usage.usage?.usersCount || 0}
+              {usage.usage?.users || 0}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               Users
@@ -197,7 +197,7 @@ export default function UsageDisplay({ userId }) {
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {usage.usage?.ordersCount || 0}
+              {usage.usage?.orders || 0}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               Orders
@@ -211,28 +211,28 @@ export default function UsageDisplay({ userId }) {
         <UsageCard
           icon={Store}
           label="Stores"
-          current={usage.usage?.storesCount || 0}
+          current={usage.usage?.stores || 0}
           limit={usage.limits?.maxStores || 0}
           color="bg-gradient-to-br from-purple-500 to-purple-600"
         />
         <UsageCard
           icon={Package}
           label="Products"
-          current={usage.usage?.productsCount || 0}
+          current={usage.usage?.products || 0}
           limit={usage.limits?.maxProducts || 0}
           color="bg-gradient-to-br from-blue-500 to-blue-600"
         />
         <UsageCard
           icon={Users}
           label="Team Members"
-          current={usage.usage?.usersCount || 0}
+          current={usage.usage?.users || 0}
           limit={usage.limits?.maxUsers || 0}
           color="bg-gradient-to-br from-green-500 to-green-600"
         />
         <UsageCard
           icon={ShoppingCart}
           label="Orders"
-          current={usage.usage?.ordersCount || 0}
+          current={usage.usage?.orders || 0}
           limit={usage.limits?.maxOrders || 0}
           color="bg-gradient-to-br from-orange-500 to-orange-600"
         />

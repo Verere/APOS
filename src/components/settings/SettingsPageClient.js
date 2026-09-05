@@ -21,6 +21,8 @@ import {
   Settings,
   ShoppingCart,
   DollarSign,
+  Calendar,
+  Truck,
   Plus,
   Tag,
   Archive,
@@ -36,6 +38,8 @@ export default function SettingsPageClient({ slug, user }) {
   const [loadingSubscription, setLoadingSubscription] = useState(false)
   const [priceTypeUsage, setPriceTypeUsage] = useState({})
   const [newPriceTypeName, setNewPriceTypeName] = useState('')
+  const [newOtherPaymentMethod, setNewOtherPaymentMethod] = useState('')
+  const [newBankName, setNewBankName] = useState('')
   const [formData, setFormData] = useState({
     // Profile
     name: user?.name || '',
@@ -84,6 +88,11 @@ export default function SettingsPageClient({ slug, user }) {
     allowPriceAdjustment: false,
     allowPriceTypeSelection: false,
     allowDecimalQuantity: false,
+    enableBusinessDate: false,
+    deliveryEnabled: false,
+    otherPaymentMethods: [],
+    bankNames: [],
+    referrerBonusPercentage: 0,
     allowComplimentarySale: false,
   })
 
@@ -108,9 +117,13 @@ export default function SettingsPageClient({ slug, user }) {
               email: user?.email || prev.email,
               allowComplimentarySale: data.settings.allowComplimentarySale || false,
               allowDecimalQuantity: data.settings.allowDecimalQuantity ?? false,
+              enableBusinessDate: data.settings.enableBusinessDate ?? false,
               receiptSpecialNote: data.settings.receiptSpecialNote || '',
               showWalletBalanceOnReceipt: data.settings.showWalletBalanceOnReceipt ?? false,
               showOutstandingBalanceOnReceipt: data.settings.showOutstandingBalanceOnReceipt ?? false,
+              otherPaymentMethods: Array.isArray(data.settings.otherPaymentMethods) ? data.settings.otherPaymentMethods : [],
+              bankNames: Array.isArray(data.settings.bankNames) ? data.settings.bankNames : [],
+              referrerBonusPercentage: Math.min(100, Math.max(0, Number(data.settings.referrerBonusPercentage) || 0)),
             }))
             setPriceTypeUsage(data.priceTypeUsage || {})
           }
@@ -161,6 +174,24 @@ export default function SettingsPageClient({ slug, user }) {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleAddOtherPaymentMethod = () => {
+    const trimmedName = newOtherPaymentMethod.trim()
+    if (!trimmedName) return
+    const current = Array.isArray(formData.otherPaymentMethods) ? formData.otherPaymentMethods : []
+    if (current.some((method) => method.toLowerCase() === trimmedName.toLowerCase())) return
+    handleInputChange('otherPaymentMethods', [...current, trimmedName])
+    setNewOtherPaymentMethod('')
+  }
+
+  const handleAddBankName = () => {
+    const trimmedName = newBankName.trim()
+    if (!trimmedName) return
+    const current = Array.isArray(formData.bankNames) ? formData.bankNames : []
+    if (current.some((bank) => bank.toLowerCase() === trimmedName.toLowerCase())) return
+    handleInputChange('bankNames', [...current, trimmedName])
+    setNewBankName('')
   }
 
   const getUniquePriceTypeId = () => {
@@ -1062,6 +1093,24 @@ export default function SettingsPageClient({ slug, user }) {
       </div>
 
       <div className="space-y-4">
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
+          <label className="block">
+            <div className="font-semibold text-gray-900 mb-1">Referrer Bonus Percentage</div>
+            <div className="text-sm text-gray-500 mb-3">Calculate the referrer incentive from the cart subtotal.</div>
+            <div className="relative max-w-xs">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={formData.referrerBonusPercentage}
+                onChange={(e) => handleInputChange('referrerBonusPercentage', Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              />
+              <span className="absolute right-3 top-2 text-gray-500">%</span>
+            </div>
+          </label>
+        </div>
         <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-orange-300 transition-colors">
           <label className="block">
             <div className="font-semibold text-gray-900 mb-1">Receipt Footer Special Note</div>
@@ -1076,7 +1125,96 @@ export default function SettingsPageClient({ slug, user }) {
             />
           </label>
         </div>
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="bg-cyan-50 p-3 rounded-lg">
+              <DollarSign className="w-6 h-6 text-cyan-600" />
+            </div>
+            <div>
+              <div className="font-semibold text-gray-900">Other Payment Methods</div>
+              <div className="text-sm text-gray-500">Add named methods that cashiers can select when recording an Other payment.</div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newOtherPaymentMethod}
+              onChange={(e) => setNewOtherPaymentMethod(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddOtherPaymentMethod() } }}
+              placeholder="e.g. Cheque"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            />
+            <button type="button" onClick={handleAddOtherPaymentMethod} className="inline-flex items-center gap-1 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-700">
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(formData.otherPaymentMethods || []).map((method) => (
+              <span key={method} className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-3 py-1 text-sm text-cyan-800">
+                {method}
+                <button type="button" onClick={() => handleInputChange('otherPaymentMethods', formData.otherPaymentMethods.filter((item) => item !== method))} className="text-cyan-600 hover:text-cyan-900" aria-label={`Remove ${method}`}><X className="w-3 h-3" /></button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-blue-300 transition-colors">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <CreditCard className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <div className="font-semibold text-gray-900">Banks for Transfers</div>
+              <div className="text-sm text-gray-500">Save bank names for cashiers to select when recording a transfer.</div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newBankName}
+              onChange={(e) => setNewBankName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddBankName() } }}
+              placeholder="e.g. First Bank"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button type="button" onClick={handleAddBankName} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(formData.bankNames || []).map((bank) => (
+              <span key={bank} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-800">
+                {bank}
+                <button type="button" onClick={() => handleInputChange('bankNames', formData.bankNames.filter((item) => item !== bank))} className="text-blue-600 hover:text-blue-900" aria-label={`Remove ${bank}`}><X className="w-3 h-3" /></button>
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* Allow Credit Sales */}
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="bg-cyan-50 p-3 rounded-lg">
+                <Truck className="w-6 h-6 text-cyan-600" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Enable Delivery at Checkout</div>
+                <div className="text-sm text-gray-500">Allow cashiers to add the selected registered customer&apos;s delivery cost.</div>
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={formData.deliveryEnabled}
+                onChange={(e) => handleInputChange('deliveryEnabled', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-600"></div>
+            </div>
+          </label>
+        </div>
+
         <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
           <label className="flex items-center justify-between cursor-pointer">
             <div className="flex items-center gap-4">
@@ -1165,6 +1303,29 @@ export default function SettingsPageClient({ slug, user }) {
                 type="checkbox"
                 checked={formData.allowDecimalQuantity}
                 onChange={(e) => handleInputChange('allowDecimalQuantity', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-600"></div>
+            </div>
+          </label>
+        </div>
+
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="bg-cyan-50 p-3 rounded-lg">
+                <Calendar className="w-6 h-6 text-cyan-600" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Enable Business Date</div>
+                <div className="text-sm text-gray-500">Allow POS users to choose the business date for transactions.</div>
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={formData.enableBusinessDate}
+                onChange={(e) => handleInputChange('enableBusinessDate', e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-cyan-600"></div>

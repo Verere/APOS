@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/auth';
 import connectDB from '@/utils/connectDB';
 import SubscriptionPackage from '@/models/subscriptionPackage';
 import { SUBSCRIPTION_PACKAGES } from '@/utils/subscriptionPackages';
@@ -6,6 +8,14 @@ import { SUBSCRIPTION_PACKAGES } from '@/utils/subscriptionPackages';
 // Initialize/seed subscription packages
 export async function POST() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     await connectDB();
 
     // Clear existing packages (optional - remove in production)

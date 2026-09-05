@@ -8,6 +8,7 @@ import StoreInvite from '@/models/storeInvite'
 import User from '@/models/user'
 import crypto from 'crypto'
 import { sendEmail } from '@/utils/email'
+import { checkResourceLimit } from '@/lib/subscriptionLimits'
 
 export async function POST(request) {
     try {
@@ -43,6 +44,12 @@ export async function POST(request) {
 
         if (!currentMembership || currentMembership.role !== 'OWNER') {
             return NextResponse.json({ error: 'Only store owners can invite users' }, { status: 403 })
+        }
+
+        const ownerIdForUsers = store?.user ? String(store.user) : session.user.id
+        const userLimitCheck = await checkResourceLimit(ownerIdForUsers, 'users')
+        if (!userLimitCheck?.allowed) {
+            return NextResponse.json({ error: userLimitCheck?.message || 'Team member limit reached. Upgrade to invite more users.' }, { status: 403 })
         }
 
         // Check if user already exists and is already a member

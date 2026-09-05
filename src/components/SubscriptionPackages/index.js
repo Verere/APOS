@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation'
 import { PaystackButton } from 'react-paystack'
 import {
   Check,
-  X,
-  Zap,
   TrendingUp,
   Star,
   ArrowRight,
@@ -14,23 +12,19 @@ import {
   Users,
   ShoppingBag,
   Database,
-  Shield,
   Crown,
   Sparkles,
   Globe,
   Loader2,
 } from 'lucide-react'
-import { currencyFormat } from '@/utils/currency'
 import { 
   getSuggestedCurrency, 
   convertCurrency, 
-  formatCurrency,
-  CURRENCY_SYMBOLS 
+  formatCurrency
 } from '@/utils/currencyConverter'
 import { 
   initializeSubscriptionPayment, 
-  generatePaystackReference,
-  getPaystackErrorMessage 
+  generatePaystackReference
 } from '@/lib/paystackConfig'
 import { toast } from 'react-toastify'
 import MainNav from '../mainNav'
@@ -51,7 +45,7 @@ export default function SubscriptionPackages() {
       name: 'FREE',
       displayName: 'Free Starter',
       description: 'Perfect for trying out MarketBook',
-      price: { semiannual: 0, yearly: 0 },
+      price: { monthly: 0, yearly: 0 },
       icon: Package,
       color: 'from-gray-500 to-gray-600',
       borderColor: 'border-gray-200',
@@ -71,44 +65,18 @@ export default function SubscriptionPackages() {
       }
     },
     {
-      name: 'STARTER',
-      displayName: 'Starter',
-      description: 'Perfect for new businesses',
-      price: { semiannual: 35000, yearly: 70000 },
-      icon: Zap,
-      color: 'from-teal-500 to-cyan-600',
-      borderColor: 'border-teal-200',
-      features: {
-        maxStores: 1,
-        maxProducts: 50,
-        maxUsers: 2,
-        maxOrders: 500,
-        storage: '2GB',
-        included: [
-          'Everything in Free',
-          'Basic inventory management',
-          'Customer management',
-          'Sales tracking',
-          'Basic reporting',
-          'Email support',
-          'Receipt printing'
-        ]
-      },
-      trialDays: 7
-    },
-    {
       name: 'BASIC',
       displayName: 'Basic',
       description: 'Great for small businesses',
-      price: { semiannual: 60000, yearly: 120000 },
+      price: { monthly: 5000, yearly: 50000 },
       icon: ShoppingBag,
       color: 'from-blue-500 to-indigo-600',
       borderColor: 'border-blue-200',
       isPopular: true,
       features: {
         maxStores: 1,
-        maxProducts: 500,
-        maxUsers: 5,
+        maxProducts: 100,
+        maxUsers: 1,
         maxOrders: 1000,
         storage: '5GB',
         included: [
@@ -129,7 +97,7 @@ export default function SubscriptionPackages() {
       name: 'PROFESSIONAL',
       displayName: 'Professional',
       description: 'For growing businesses',
-      price: { semiannual: 110000, yearly: 220000 },
+      price: { monthly: 10000, yearly: 110000 },
       icon: TrendingUp,
       color: 'from-purple-500 to-pink-600',
       borderColor: 'border-purple-300',
@@ -160,15 +128,15 @@ export default function SubscriptionPackages() {
       name: 'ENTERPRISE',
       displayName: 'Enterprise',
       description: 'For large businesses',
-      price: { semiannual: 250000, yearly: 500000 },
+      price: { monthly: 20000, yearly: 220000 },
       icon: Crown,
       color: 'from-amber-500 to-orange-600',
       borderColor: 'border-amber-300',
       features: {
-        maxStores: 'Unlimited',
-        maxProducts: 'Unlimited',
-        maxUsers: 'Unlimited',
-        maxOrders: 'Unlimited',
+        maxStores: 10,
+        maxProducts: 10000,
+        maxUsers: 100,
+        maxOrders: 1000000,
         storage: 'Unlimited',
         included: [
           'Everything in Professional',
@@ -394,14 +362,14 @@ export default function SubscriptionPackages() {
           {/* Billing Toggle */}
           <div className="flex items-center justify-center gap-4 bg-white rounded-full p-2 shadow-lg max-w-md mx-auto">
             <button
-              onClick={() => setBillingCycle('semiannual')}
+              onClick={() => setBillingCycle('monthly')}
               className={`px-6 py-3 rounded-full font-semibold transition-all ${
-                billingCycle === 'semiannual'
+                billingCycle === 'monthly'
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              6 Months
+              Monthly
             </button>
             <button
               onClick={() => setBillingCycle('yearly')}

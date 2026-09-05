@@ -184,7 +184,7 @@ FREE                BASIC              PROFESSIONAL        ENTERPRISE
 │    1    │        │    1    │        │    3    │        │   10    │
 ├─────────┤        ├─────────┤        ├─────────┤        ├─────────┤
 │Products │        │Products │        │Products │        │Products │
-│   50    │  ───►  │   100   │  ───►  │  5,000  │  ───►  │ 10,000  │
+│   10    │  ───►  │   100   │  ───►  │  5,000  │  ───►  │ 10,000  │
 ├─────────┤        ├─────────┤        ├─────────┤        ├─────────┤
 │  Users  │        │  Users  │        │  Users  │        │  Users  │
 │    1    │        │    1    │        │   20    │        │  100    │
@@ -251,10 +251,10 @@ User.findById(userId).populate('currentSubscription')
 
 // 2. Count current usage (parallel)
 Promise.all([
-  Store.countDocuments({ owner: userId }),
-  Product.countDocuments({ createdBy: userId }),
-  User.countDocuments({ createdBy: userId }),
-  Order.countDocuments({ userId })
+  StoreMembership.countDocuments({ userId, role: 'OWNER', isDeleted: { $ne: true } }),
+  Product.countDocuments({ slug: { $in: ownedSlugs }, isDeleted: { $ne: true } }),
+  StoreMembership.countDocuments({ storeId: { $in: ownerStoreIds }, isDeleted: { $ne: true }, role: { $ne: 'OWNER' } }),
+  Order.countDocuments({ slug: { $in: ownedSlugs }, isCancelled: { $ne: true } })
 ])
 
 // 3. Compare and decide

@@ -6,13 +6,15 @@ import { currencyFormat } from '@/utils/currency'
 import React, { useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import { fetchPaymentByOrder } from '@/actions/fetch'
 
-export const CartTotal = ({pays})=>{
+export const CartTotal = ({pays, referrerBonusPercentage = 0})=>{
 const {cart, deleteItem} = useContext(CartContext)
  const {setCartTotal, cartValue, setCartValue, payment, setPayment,
   bal, setBal} = useContext(GlobalContext)
  const {order, setOrder, cpayment, setCPayment} = useContext(CartContext)
 
 const [total, setTotal] = useState(0)
+const bonusPercentage = Math.min(100, Math.max(0, Number(referrerBonusPercentage) || 0))
+const incentive = total * bonusPercentage / 100
 
 
 // normalize cart to always be an array of items
@@ -73,6 +75,12 @@ return(
           <span className="text-xs sm:text-sm font-semibold text-gray-600 uppercase tracking-wide">Order Total:</span>
           <span className="text-base sm:text-lg font-bold text-gray-900">{currencyFormat(total)}</span>
         </div>
+        {bonusPercentage > 0 && (
+          <div className='flex justify-between items-center py-1.5 border-b border-gray-200'>
+            <span className="text-xs sm:text-sm font-semibold text-emerald-600 uppercase tracking-wide">Referrer Incentive ({bonusPercentage}%):</span>
+            <span className="text-base sm:text-lg font-bold text-emerald-700">{currencyFormat(incentive)}</span>
+          </div>
+        )}
         
         {/* Paid Amount - Hidden
         <div className='flex justify-between items-center py-1.5'>

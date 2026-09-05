@@ -60,6 +60,7 @@ const OrderSchema = new mongoose.Schema({
    orderNum:{type: String},
     items:{type: [OrderItemSchema], default: []},
    amount: {type: Number}, 
+    deliveryCost: {type: Number, default: 0, min: 0},
    totalAmount: {type: Number}, // For consistency with other endpoints
    profit: {type: Number, default: 0},
    amountPaid: {type: Number, default:0}, 

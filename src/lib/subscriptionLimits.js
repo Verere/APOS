@@ -37,10 +37,13 @@ export async function getUserSubscription(userId) {
         pkg => pkg.name === user.currentSubscription.packageName
       );
 
+      const fallbackPackage = SUBSCRIPTION_PACKAGES.find(pkg => pkg.name === 'FREE');
+      const resolvedPackage = packageDetails || fallbackPackage;
+
       return {
         subscription: user.currentSubscription,
-        package: packageDetails,
-        limits: packageDetails?.features || {}
+        package: resolvedPackage,
+        limits: resolvedPackage?.features || {}
       };
     }
 
@@ -68,14 +71,38 @@ export async function getUserUsage(userId) {
   try {
     await connectDB();
 
-    // Count store memberships where user is OWNER
     const StoreMembership = await import('@/models/storeMembership').then(m => m.default || m);
-    const storesCreated = await StoreMembership.countDocuments({ userId, role: 'OWNER', isDeleted: { $ne: true } });
+
+    // Subscription limits are owner-scoped across all stores the user owns.
+    const ownerMemberships = await StoreMembership.find({
+      userId,
+      role: 'OWNER',
+      isDeleted: { $ne: true }
+    }).select('storeId').lean();
+
+    const ownerStoreIds = ownerMemberships.map((m) => m.storeId);
+    const storesCreated = ownerStoreIds.length;
+
+    if (ownerStoreIds.length === 0) {
+      return {
+        stores: 0,
+        products: 0,
+        users: 0,
+        orders: 0
+      };
+    }
+
+    const ownedStores = await Store.find({
+      _id: { $in: ownerStoreIds },
+      isDeleted: { $ne: true }
+    }).select('slug').lean();
+
+    const ownedSlugs = ownedStores.map((s) => s.slug).filter(Boolean);
 
     const [productsCount, usersCount, ordersCount] = await Promise.all([
-      Product.countDocuments({ createdBy: userId }),
-      User.countDocuments({ createdBy: userId }), // Team members/staff
-      Order.countDocuments({ userId: userId })
+      Product.countDocuments({ slug: { $in: ownedSlugs }, isDeleted: { $ne: true } }),
+      StoreMembership.countDocuments({ storeId: { $in: ownerStoreIds }, isDeleted: { $ne: true }, role: { $ne: 'OWNER' } }),
+      Order.countDocuments({ slug: { $in: ownedSlugs }, isCancelled: { $ne: true } })
     ]);
 
     return {

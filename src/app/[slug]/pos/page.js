@@ -30,6 +30,11 @@ const Pos = async({params, searchParams})=>{
           allowPriceAdjustment: false,
           allowPriceTypeSelection: false,
           allowDecimalQuantity: false,
+          enableBusinessDate: false,
+          deliveryEnabled: false,
+          otherPaymentMethods: [],
+          bankNames: [],
+          referrerBonusPercentage: 0,
           priceTypes: [],
           defaultPriceTypeId: null,
           receiptFormat: 'standard',
@@ -59,6 +64,11 @@ const Pos = async({params, searchParams})=>{
               allowPriceAdjustment: false,
               allowPriceTypeSelection: false,
               allowDecimalQuantity: false,
+              enableBusinessDate: false,
+              deliveryEnabled: false,
+              otherPaymentMethods: [],
+              bankNames: [],
+              referrerBonusPercentage: 0,
               priceTypes: [],
               defaultPriceTypeId: null,
               receiptSpecialNote: ''
@@ -109,6 +119,11 @@ const Pos = async({params, searchParams})=>{
                  allowPriceAdjustment={settings?.allowPriceAdjustment ?? false}
                  allowPriceTypeSelection={settings?.allowPriceTypeSelection ?? false}
                  allowDecimalQuantity={settings?.allowDecimalQuantity ?? false}
+                 enableBusinessDate={settings?.enableBusinessDate ?? false}
+                 deliveryEnabled={serverUnavailable ? false : (settings?.deliveryEnabled ?? false)}
+                 otherPaymentMethods={Array.isArray(settings?.otherPaymentMethods) ? settings.otherPaymentMethods : []}
+                 bankNames={Array.isArray(settings?.bankNames) ? settings.bankNames : []}
+                 referrerBonusPercentage={settings?.referrerBonusPercentage ?? 0}
                  allowComplimentarySale={serverUnavailable ? false : (settings?.allowComplimentarySale ?? false)}
              />
             </>

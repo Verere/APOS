@@ -57,6 +57,14 @@ export async function POST(request) {
       )
     }
 
+    const normalizedBillingCycle = String(billingCycle || 'MONTHLY').toUpperCase()
+    if (!['MONTHLY', 'YEARLY'].includes(normalizedBillingCycle)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid billing cycle. Use MONTHLY or YEARLY.' },
+        { status: 400 }
+      )
+    }
+
     // Verify transaction with Paystack
     const verification = await verifyPaystackTransaction(reference)
 
@@ -111,6 +119,30 @@ export async function POST(request) {
       }
     }
 
+    const expectedAmount = normalizedBillingCycle === 'YEARLY'
+      ? subscriptionPackage?.price?.yearly
+      : subscriptionPackage?.price?.monthly
+
+    if (typeof expectedAmount !== 'number') {
+      return NextResponse.json(
+        { success: false, message: 'Invalid package pricing configuration' },
+        { status: 500 }
+      )
+    }
+
+    const paidAmount = formatPaystackAmount(transactionData.amount)
+    if (Math.abs(paidAmount - expectedAmount) > 0.01) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Payment amount does not match selected package price',
+          expectedAmount,
+          paidAmount
+        },
+        { status: 400 }
+      )
+    }
+
     // Check if subscription already exists for this reference
     const existingSubscription = await UserSubscription.findOne({ transactionReference: reference })
     if (existingSubscription) {
@@ -124,7 +156,7 @@ export async function POST(request) {
     const startDate = new Date()
     const endDate = new Date()
     
-    if (billingCycle === 'YEARLY') {
+    if (normalizedBillingCycle === 'YEARLY') {
       endDate.setFullYear(endDate.getFullYear() + 1)
     } else {
       endDate.setMonth(endDate.getMonth() + 1)
@@ -144,11 +176,11 @@ export async function POST(request) {
       packageId: subscriptionPackage._id,
       packageName: subscriptionPackage.name,
       status: trialEndDate ? 'TRIAL' : 'ACTIVE',
-      billingCycle: billingCycle || 'MONTHLY',
+      billingCycle: normalizedBillingCycle,
       startDate,
       endDate,
       trialEndDate,
-      amount: formatPaystackAmount(transactionData.amount),
+      amount: paidAmount,
       currency: transactionData.currency || 'NGN',
       paymentMethod: 'PAYSTACK',
       transactionReference: reference,
@@ -170,7 +202,7 @@ export async function POST(request) {
         subscription: newSubscription,
         transactionDetails: {
           reference: transactionData.reference,
-          amount: formatPaystackAmount(transactionData.amount),
+          amount: paidAmount,
           currency: transactionData.currency,
           paidAt: transactionData.paid_at,
           channel: transactionData.channel

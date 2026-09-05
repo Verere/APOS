@@ -27,9 +27,12 @@ const CreditPaymentSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['CASH', 'POS', 'TRANSFER', 'CHEQUE', 'OTHER'],
+    enum: ['CASH', 'POS', 'TRANSFER', 'CHEQUE', 'OTHER', 'WALLET'],
     default: 'CASH'
   },
+  otherPaymentMethod: { type: String, trim: true },
+  bankName: { type: String, trim: true },
+  reference: { type: String, trim: true },
   receiptNumber: {
     type: String,
     required: true

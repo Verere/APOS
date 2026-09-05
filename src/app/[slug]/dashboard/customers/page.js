@@ -76,6 +76,7 @@ export default async function CustomersPage({ params }) {
           totalSpent: customer.totalSpent || 0,
           creditLimit: customer.creditLimit || 0,
           outstandingBalance: customer.outstandingBalance || 0,
+          deliveryCost: customer.deliveryCost || 0,
           monthlyPurchases,
           createdAt: customer.createdAt ? new Date(customer.createdAt).toISOString() : null
         }

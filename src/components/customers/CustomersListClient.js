@@ -13,6 +13,8 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [isEditingCreditLimit, setIsEditingCreditLimit] = useState(false)
   const [newCreditLimit, setNewCreditLimit] = useState(0)
+  const [isEditingDeliveryCost, setIsEditingDeliveryCost] = useState(false)
+  const [newDeliveryCost, setNewDeliveryCost] = useState(0)
   const [isUpdating, setIsUpdating] = useState(false)
 
   // Filter customers based on search term - memoized for performance
@@ -29,7 +31,9 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
   const handleMoreInfo = useCallback((customer) => {
     setSelectedCustomer(customer)
     setNewCreditLimit(customer.creditLimit || 0)
+    setNewDeliveryCost(customer.deliveryCost || 0)
     setIsEditingCreditLimit(false)
+    setIsEditingDeliveryCost(false)
     setShowInfoModal(true)
   }, []);
 
@@ -71,6 +75,37 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
       setIsUpdating(false)
     }
   }, [selectedCustomer, newCreditLimit, storeId, router])
+
+  const handleUpdateDeliveryCost = useCallback(async () => {
+    if (!selectedCustomer) return
+    if (!Number.isFinite(Number(newDeliveryCost)) || Number(newDeliveryCost) < 0) {
+      toast.error('Delivery cost cannot be negative')
+      return
+    }
+
+    setIsUpdating(true)
+    try {
+      const response = await fetch('/api/customers/update-delivery-cost', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: selectedCustomer._id, deliveryCost: newDeliveryCost, storeId })
+      })
+      const data = await response.json()
+      if (data.success) {
+        toast.success('Delivery cost updated successfully')
+        setSelectedCustomer({ ...selectedCustomer, deliveryCost: data.deliveryCost })
+        setIsEditingDeliveryCost(false)
+        router.refresh()
+      } else {
+        toast.error(data.message || 'Failed to update delivery cost')
+      }
+    } catch (error) {
+      console.error('Error updating delivery cost:', error)
+      toast.error('Failed to update delivery cost')
+    } finally {
+      setIsUpdating(false)
+    }
+  }, [selectedCustomer, newDeliveryCost, storeId, router])
 
   const formatDate = useCallback((dateString) => {
     if (!dateString) return 'N/A'
@@ -142,6 +177,9 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                    Outstanding Balance
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                   Delivery
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Action
                   </th>
@@ -180,6 +218,16 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
                         {currencyFormat(customer.outstandingBalance || 0)}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => handleMoreInfo(customer)}
+                        className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-800"
+                        title="Update delivery cost"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        {currencyFormat(customer.deliveryCost || 0)}
+                      </button>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <button
                         onClick={() => handleMoreInfo(customer)}
@@ -188,6 +236,15 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
                         <Info className="w-4 h-4" />
                         More Info
                       </button>
+                      {(currentUserRole === 'OWNER' || currentUserRole === 'MANAGER') && (
+                        <button
+                          onClick={() => router.push(`/${slug}/dashboard/customers/${customer._id}/edit`)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium ml-2"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          Update
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -226,6 +283,18 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
                         <span>{customer.address.city}{customer.address.state ? `, ${customer.address.state}` : ''}</span>
                       </div>
                     )}
+
+                    <div className="flex items-center justify-between text-gray-700">
+                      <span className="text-xs text-gray-600">Delivery cost:</span>
+                      <button
+                        onClick={() => handleMoreInfo(customer)}
+                        className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800"
+                        title="Update delivery cost"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        {currencyFormat(customer.deliveryCost || 0)}
+                      </button>
+                    </div>
                     
                     <div className="flex items-center justify-between pt-2 border-t">
                       <div className="flex items-center gap-1">
@@ -385,6 +454,61 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
                     <p className="text-2xl font-bold text-indigo-700">{selectedCustomer.monthlyPurchases || 0}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Delivery Information */}
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="text-lg font-bold text-blue-900">Delivery Cost</h3>
+                    {!isEditingDeliveryCost && (
+                      <p className="text-xl font-bold text-blue-700">{currencyFormat(selectedCustomer.deliveryCost || 0)}</p>
+                    )}
+                  </div>
+                  {(currentUserRole === 'OWNER' || currentUserRole === 'MANAGER') && !isEditingDeliveryCost && (
+                    <button
+                      onClick={() => setIsEditingDeliveryCost(true)}
+                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                      title="Edit delivery cost"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                {isEditingDeliveryCost && (
+                  <div className="space-y-2">
+                    <input
+                      type="number"
+                      value={newDeliveryCost}
+                      onChange={(e) => setNewDeliveryCost(e.target.value)}
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter delivery cost"
+                      min="0"
+                      step="0.01"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleUpdateDeliveryCost}
+                        disabled={isUpdating}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Save className="w-4 h-4" />
+                        {isUpdating ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingDeliveryCost(false)
+                          setNewDeliveryCost(selectedCustomer.deliveryCost || 0)
+                        }}
+                        disabled={isUpdating}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <X className="w-4 h-4" />
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Credit Information */}

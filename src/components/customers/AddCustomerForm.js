@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
 import { User, Mail, Phone, MapPin, Calendar, Users as UsersIcon, ArrowLeft, Save } from 'lucide-react'
 
-export default function AddCustomerForm({ slug, storeId }) {
+export default function AddCustomerForm({ slug, storeId, deliveryEnabled = false, canEditOutstandingBalance = false, editingCustomer = null }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -18,8 +18,22 @@ export default function AddCustomerForm({ slug, storeId }) {
     city: '',
     state: '',
     zipCode: '',
-    country: 'Nigeria'
+    country: 'Nigeria',
+    deliveryCost: '0',
+    outstandingBalance: '0',
+    creditLimit: '0'
   })
+
+  useEffect(() => {
+    if (!editingCustomer) return
+    setFormData({
+      name: editingCustomer.name || '', email: editingCustomer.email || '', phone: editingCustomer.phone || '',
+      dateOfBirth: editingCustomer.dateOfBirth ? new Date(editingCustomer.dateOfBirth).toISOString().slice(0, 10) : '',
+      gender: editingCustomer.gender || '', street: editingCustomer.address?.street || '', city: editingCustomer.address?.city || '',
+      state: editingCustomer.address?.state || '', zipCode: editingCustomer.address?.zipCode || '', country: editingCustomer.address?.country || 'Nigeria',
+      deliveryCost: String(editingCustomer.deliveryCost || 0), outstandingBalance: String(editingCustomer.outstandingBalance || 0), creditLimit: String(editingCustomer.creditLimit || 0)
+    })
+  }, [editingCustomer])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -34,7 +48,7 @@ export default function AddCustomerForm({ slug, storeId }) {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/customers/create', {
+      const response = await fetch(editingCustomer ? '/api/customers/update' : '/api/customers/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,7 +56,9 @@ export default function AddCustomerForm({ slug, storeId }) {
         body: JSON.stringify({
           storeId,
           slug,
-          ...formData
+          ...formData,
+          ...(canEditOutstandingBalance ? {} : { outstandingBalance: undefined }),
+          ...(editingCustomer && { customerId: editingCustomer._id })
         }),
       })
 
@@ -54,7 +70,7 @@ export default function AddCustomerForm({ slug, storeId }) {
         return
       }
 
-      toast.success('Customer created successfully!')
+      toast.success(editingCustomer ? 'Customer updated successfully!' : 'Customer created successfully!')
       router.push(`/${slug}/dashboard/customers`)
     } catch (error) {
       console.error('Error creating customer:', error)
@@ -78,9 +94,9 @@ export default function AddCustomerForm({ slug, storeId }) {
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
               <UsersIcon className="w-6 h-6 sm:w-7 sm:h-7" />
-              Add New Customer
+              {editingCustomer ? 'Update Customer' : 'Add New Customer'}
             </h1>
-            <p className="text-blue-100 text-xs sm:text-sm mt-1">Fill in the customer details below</p>
+            <p className="text-blue-100 text-xs sm:text-sm mt-1">{editingCustomer ? 'Update the customer details below' : 'Fill in the customer details below'}</p>
           </div>
         </div>
       </div>
@@ -183,6 +199,42 @@ export default function AddCustomerForm({ slug, storeId }) {
                 <option value="female">Female</option>
               </select>
             </div>
+
+            {deliveryEnabled && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Delivery Cost
+              </label>
+              <input
+                type="number"
+                name="deliveryCost"
+                value={formData.deliveryCost}
+                onChange={handleChange}
+                min="0"
+                step="0.01"
+                className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                placeholder="0"
+              />
+            </div>
+            )}
+
+            {canEditOutstandingBalance && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Outstanding Balance
+              </label>
+              <input
+                type="number"
+                name="outstandingBalance"
+                value={formData.outstandingBalance}
+                onChange={handleChange}
+                min="0"
+                step="0.01"
+                className="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                placeholder="0"
+              />
+            </div>
+            )}
           </div>
         </div>
 
@@ -297,7 +349,7 @@ export default function AddCustomerForm({ slug, storeId }) {
             ) : (
               <>
                 <Save className="w-5 h-5" />
-                Save Customer
+                {editingCustomer ? 'Update Customer' : 'Save Customer'}
               </>
             )}
           </button>

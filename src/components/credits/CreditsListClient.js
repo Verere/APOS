@@ -25,7 +25,7 @@ import dynamic from 'next/dynamic'
 const PaymentModal = dynamic(() => import('./PaymentModal'), { ssr: false })
 const PaymentHistoryModal = dynamic(() => import('./PaymentHistoryModal'), { ssr: false })
 
-export default function CreditsListClient({ credits, stats, slug }) {
+export default function CreditsListClient({ credits, stats, slug, otherPaymentMethods = [], bankNames = [] }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all') // all, paid, unpaid
   const [selectedCredit, setSelectedCredit] = useState(null)
@@ -489,6 +489,8 @@ export default function CreditsListClient({ credits, stats, slug }) {
             setSelectedCredit(null)
           }}
           onSuccess={handlePaymentSuccess}
+          otherPaymentMethods={otherPaymentMethods}
+          bankNames={bankNames}
         />
       )}
 

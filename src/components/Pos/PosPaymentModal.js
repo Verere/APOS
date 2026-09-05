@@ -21,6 +21,8 @@ export default function PosPaymentModal({
   cart, 
   order, 
   busDate, 
+  businessDateReason = '',
+  isBackdatedBusinessDate = false,
   location, 
   user, 
   store,
@@ -31,6 +33,9 @@ export default function PosPaymentModal({
   allowDecimalQuantity = false,
   printingSettings = {},
   customer,
+  allowDelivery = false,
+  otherPaymentMethods = [],
+  bankNames = [],
   onSuccess 
 }) {
   const [selectedMethods, setSelectedMethods] = useState(isComplimentary ? ['COMPLIMENTARY'] : ['CASH'])
@@ -52,6 +57,11 @@ export default function PosPaymentModal({
   const [complimentaryReason, setComplimentaryReason] = useState('')
   const [complimentaryRemarks, setComplimentaryRemarks] = useState('')
   const [walletAmount, setWalletAmount] = useState(0)
+  const [deliverySelected, setDeliverySelected] = useState(false)
+  const [walkInDeliveryCost, setWalkInDeliveryCost] = useState('')
+  const [otherPaymentMethod, setOtherPaymentMethod] = useState('')
+  const [transferBank, setTransferBank] = useState('')
+  const [transferReference, setTransferReference] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [receiptSettings, setReceiptSettings] = useState({
     receiptFontFamily: 'monospace',
@@ -85,7 +95,13 @@ export default function PosPaymentModal({
     }, 0)
   }, [isComplimentary, selectedMethods, paymentAmounts])
 
-  const orderTotal = useMemo(() => parseFloat(cartValue || 0) || 0, [cartValue])
+  const deliveryAmount = useMemo(
+    () => deliverySelected && allowDelivery && !isComplimentary
+      ? Math.max(0, Number(customer?.deliveryCost ?? walkInDeliveryCost ?? 0))
+      : 0,
+    [deliverySelected, allowDelivery, customer, walkInDeliveryCost, isComplimentary]
+  )
+  const orderTotal = useMemo(() => (parseFloat(cartValue || 0) || 0) + deliveryAmount, [cartValue, deliveryAmount])
   const customerWalletBalance = useMemo(() => Number(customer?.walletBalance || 0), [customer])
   const customerOutstandingBalance = useMemo(() => Number(customer?.outstandingBalance || 0), [customer])
   const canUseWallet = useMemo(
@@ -226,7 +242,21 @@ export default function PosPaymentModal({
     setComplimentaryReason('')
     setComplimentaryRemarks('')
     setWalletAmount(0)
+    setDeliverySelected(false)
+    setWalkInDeliveryCost('')
+    setOtherPaymentMethod('')
+    setTransferBank('')
+    setTransferReference('')
   }, [isOpen, isComplimentary, resetReceiptState])
+
+  useEffect(() => {
+    if (!allowDelivery || !customer || isComplimentary) setDeliverySelected(false)
+  }, [allowDelivery, customer, isComplimentary])
+
+  useEffect(() => {
+    if (isComplimentary || selectedMethods.length !== 1 || selectedMethods[0] !== 'CASH') return
+    setPaymentAmounts((previous) => ({ ...previous, CASH: orderTotal }))
+  }, [isComplimentary, selectedMethods, orderTotal])
 
   useEffect(() => {
     if (!walletSelected || isComplimentary) {
@@ -288,7 +318,12 @@ export default function PosPaymentModal({
 
       const localPaymentMethods = selectedMethods
         .filter((method) => method !== 'WALLET' && method !== 'COMPLIMENTARY')
-        .map((method) => ({ method, amount: Number(paymentAmounts[method] || 0) }))
+        .map((method) => ({
+          method,
+          amount: Number(paymentAmounts[method] || 0),
+          ...(method === 'OTHER' && { details: otherPaymentMethod }),
+          ...(method === 'TRANSFER' && { bankName: transferBank, reference: transferReference })
+        }))
         .filter((entry) => entry.amount > 0)
 
       const localAmountPaid = localPaymentMethods.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
@@ -311,14 +346,17 @@ export default function PosPaymentModal({
           location: location || '',
           busDate,
           bDate: busDate,
+          businessDateReason,
           path: pathname || `/${slug}/pos`,
           orderAmount: orderTotal,
+          deliveryCost: deliveryAmount,
+          deliveryEnabled: deliverySelected,
           allowDecimalQuantity,
         },
       })
 
       const fallbackPaymentRows = localPaymentMethods.map((entry) => ({
-        mop: paymentMethods.find((item) => item.value === entry.method)?.label || entry.method,
+        mop: entry.method === 'TRANSFER' && entry.bankName ? `Transfer - ${entry.bankName}` : entry.method === 'OTHER' && entry.details ? `Other - ${entry.details}` : paymentMethods.find((item) => item.value === entry.method)?.label || entry.method,
         amount: Number(entry.amount || 0),
       }))
 
@@ -328,7 +366,9 @@ export default function PosPaymentModal({
         cashier: user?.name || order?.soldBy || 'Cashier',
         soldBy: user?.name || order?.soldBy || 'Cashier',
         bDate: busDate,
+        businessDateReason,
         amount: orderTotal,
+        deliveryCost: deliveryAmount,
         amountPaid: localAmountPaid,
         bal: 0,
         change: Number(change || 0),
@@ -358,7 +398,7 @@ export default function PosPaymentModal({
       toast.error(error?.message || 'Could not save sale locally')
       return { success: false }
     }
-  }, [selectedMethods, paymentAmounts, cartItems, store, slug, customer, user, change, location, busDate, pathname, orderTotal, allowDecimalQuantity, paymentMethods, order, rcpt, onSuccess])
+  }, [selectedMethods, paymentAmounts, cartItems, store, slug, customer, user, change, location, busDate, businessDateReason, pathname, orderTotal, deliveryAmount, allowDecimalQuantity, paymentMethods, order, rcpt, onSuccess])
 
   const isDbRetryableSyncIssue = useCallback((syncResult) => {
     const message = String(syncResult?.error || '').toLowerCase()
@@ -466,7 +506,7 @@ export default function PosPaymentModal({
       const paymentsList = isComplimentary
         ? [{ mop: 'Complimentary', amount: 0 }]
         : selectedMethods.map(method => ({
-            mop: paymentMethods.find(m => m.value === method)?.label || method,
+            mop: method === 'OTHER' && otherPaymentMethod ? `Other - ${otherPaymentMethod}` : paymentMethods.find(m => m.value === method)?.label || method,
             amount: parseFloat(paymentAmounts[method]) || 0
           })).filter(p => p.amount > 0)
 
@@ -479,8 +519,10 @@ export default function PosPaymentModal({
         orderNum: state?.orderNum || order?.orderNum || '',
         cashier: user?.name || order?.soldBy || '',
         soldBy: user?.name || order?.soldBy || '',
-        bDate: busDate,
+        bDate: state?.bDate || busDate,
+        businessDateReason,
         amount: orderTotal,
+        deliveryCost: deliveryAmount,
         amountPaid: totalPayment,
         bal: balance,
         change: Math.max(0, totalPayment - orderTotal),
@@ -497,7 +539,7 @@ export default function PosPaymentModal({
       if (onSuccess) onSuccess()
       currentSubmissionIdRef.current = null
     }
-  }, [state, isComplimentary, selectedMethods, paymentMethods, paymentAmounts, order, busDate, orderTotal, totalPayment, balance, customer, cartItems, onSuccess, walletSelected, walletUsed, walletBalanceAfterUse, customerOutstandingBalance, completeLocalFallbackSale])
+  }, [state, isComplimentary, selectedMethods, otherPaymentMethod, paymentMethods, paymentAmounts, order, busDate, businessDateReason, orderTotal, deliveryAmount, totalPayment, balance, customer, cartItems, onSuccess, walletSelected, walletUsed, walletBalanceAfterUse, customerOutstandingBalance, completeLocalFallbackSale])
 
   useEffect(() => {
     if (!pendingPrintOpenRef.current) return
@@ -593,6 +635,24 @@ export default function PosPaymentModal({
       return false
     }
 
+    if (selectedMethods.includes('OTHER') && !otherPaymentMethod) {
+      e?.preventDefault?.()
+      toast.error('Select the specific Other payment method')
+      return false
+    }
+
+    if (selectedMethods.includes('TRANSFER') && (!transferBank || !transferReference.trim())) {
+      e?.preventDefault?.()
+      toast.error('Select a bank and enter the transfer reference')
+      return false
+    }
+
+    if (selectedMethods.includes('OTHER') && !otherPaymentMethod) {
+      e?.preventDefault?.()
+      toast.error('Select the specific Other payment method')
+      return false
+    }
+
     const hasInvalidMethodAmount = selectedMethods.some((method) => {
       const amount = Number(paymentAmounts[method])
       return !Number.isFinite(amount) || amount < 0
@@ -613,6 +673,12 @@ export default function PosPaymentModal({
     if (isOverpayment) {
       e?.preventDefault?.()
       toast.error('Total payment cannot exceed order total')
+      return false
+    }
+
+    if (isBackdatedBusinessDate && !String(businessDateReason || '').trim()) {
+      e?.preventDefault?.()
+      toast.error('Please provide reason for backdated business date')
       return false
     }
 
@@ -653,7 +719,7 @@ export default function PosPaymentModal({
     submitLockRef.current = true
     setIsSubmitting(true)
     return true
-  }, [isComplimentary, isUnderpayment, isOverpayment, walletSelected, walletUsed, walletAmount, customerWalletBalance, orderTotal, selectedMethods, paymentAmounts, customer, isSubmitting, isPending, approvedBy, complimentaryReason])
+  }, [isComplimentary, isUnderpayment, isOverpayment, isBackdatedBusinessDate, businessDateReason, walletSelected, walletUsed, walletAmount, customerWalletBalance, orderTotal, selectedMethods, otherPaymentMethod, paymentAmounts, customer, isSubmitting, isPending, approvedBy, complimentaryReason])
 
   const handleWalletAmountChange = useCallback((value) => {
     const normalizedValue = String(value || '').trim()
@@ -761,6 +827,7 @@ export default function PosPaymentModal({
       `Customer: ${customerData?.name || 'Walk-in'}\n` +
       `Cashier: ${completedOrder?.cashier || user?.name || ''}\n\n` +
       `*ITEMS*\n${itemsList}\n\n` +
+      (Number(completedOrder?.deliveryCost || 0) > 0 ? `*DELIVERY:* ${currencyFormat(completedOrder.deliveryCost)}\n` : '') +
       `*TOTAL:* ${currencyFormat(completedOrder?.amount)}\n\n` +
       `*PAYMENT*\n${paymentsList}\n` +
       `*PAID:* ${currencyFormat(completedOrder?.amountPaid)}\n` +
@@ -825,6 +892,12 @@ export default function PosPaymentModal({
                 {customer ? (
                   <div className="space-y-2 text-sm">
                     <div className="font-bold text-lg text-gray-900">{customer.name}</div>
+                    {allowDelivery && !isComplimentary && (
+                      <label className="flex items-center justify-between gap-3 rounded-lg border border-purple-200 bg-white px-3 py-2 cursor-pointer">
+                        <span className="text-sm font-semibold text-gray-700">Add delivery ({currencyFormat(customer.deliveryCost || 0)})</span>
+                        <input type="checkbox" checked={deliverySelected} onChange={(e) => setDeliverySelected(e.target.checked)} className="h-4 w-4 accent-purple-600" />
+                      </label>
+                    )}
                     {customer.phone && (
                       <div className="flex items-center gap-2 text-gray-600">
                         <span>📱</span>
@@ -851,6 +924,25 @@ export default function PosPaymentModal({
                       <div className="font-bold text-lg text-gray-900">Walk-in Customer</div>
                       <div className="text-xs text-gray-500">No customer selected</div>
                     </div>
+                  </div>
+                )}
+                {allowDelivery && !customer && !isComplimentary && (
+                  <div className="mt-3 space-y-2 rounded-lg border border-purple-200 bg-white p-3">
+                    <label className="flex items-center justify-between gap-3 cursor-pointer">
+                      <span className="text-sm font-semibold text-gray-700">Add walk-in delivery</span>
+                      <input type="checkbox" checked={deliverySelected} onChange={(e) => setDeliverySelected(e.target.checked)} className="h-4 w-4 accent-purple-600" />
+                    </label>
+                    {deliverySelected && (
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={walkInDeliveryCost}
+                        onChange={(e) => setWalkInDeliveryCost(e.target.value)}
+                        placeholder="Enter delivery fee"
+                        className="w-full rounded-lg border border-purple-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -882,6 +974,12 @@ export default function PosPaymentModal({
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-300">
+                  {deliveryAmount > 0 && (
+                    <div className="flex justify-between items-center mb-2 text-sm">
+                      <span className="text-gray-600">Delivery</span>
+                      <span className="font-semibold text-gray-900">{currencyFormat(deliveryAmount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold text-gray-900">Order Total</span>
                     <span className="text-2xl font-bold text-blue-600">{currencyFormat(orderTotal)}</span>
@@ -968,6 +1066,21 @@ export default function PosPaymentModal({
                             <span>{label}</span>
                           </button>
                         ))}
+                        {selectedMethods.includes('TRANSFER') && (
+                          <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-3">
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">Transfer Bank</label>
+                              <select value={transferBank} onChange={(e) => setTransferBank(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="">Select a saved bank</option>
+                                {bankNames.map((bank) => <option key={bank} value={bank}>{bank}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">Transfer Reference</label>
+                              <input type="text" value={transferReference} onChange={(e) => setTransferReference(e.target.value)} placeholder="Enter transfer reference" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                            </div>
+                          </div>
+                        )}
 
                       </div>
 
@@ -1089,6 +1202,15 @@ export default function PosPaymentModal({
                         Pay Full Amount ({currencyFormat(orderTotal)})
                       </button>
                     )}
+                    {selectedMethods.includes('OTHER') && (
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Specific Other Method</label>
+                        <select value={otherPaymentMethod} onChange={(e) => setOtherPaymentMethod(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="">Select a saved method</option>
+                          {otherPaymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
+                        </select>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -1165,16 +1287,23 @@ export default function PosPaymentModal({
                 <input type="hidden" name="orderNum" value={order?.orderNum || ''} />
                 <input type="hidden" name="orderName" value={order?.orderName || ''} />
                 <input type="hidden" name="orderAmount" value={orderTotal} />
+                <input type="hidden" name="deliveryEnabled" value={deliverySelected ? 'true' : 'false'} />
+                <input type="hidden" name="deliveryCost" value={customer ? deliveryAmount : walkInDeliveryCost} />
                 <input type="hidden" name="mop" value={submittedPaymentMethods.join(',')} />
                 <input type="hidden" name="cashPaid" value={paymentAmounts.CASH || 0} />
                 <input type="hidden" name="posPaid" value={paymentAmounts.POS || 0} />
                 <input type="hidden" name="transferPaid" value={paymentAmounts.TRANSFER || 0} />
+                <input type="hidden" name="transferBank" value={transferBank} />
+                <input type="hidden" name="transferReference" value={transferReference} />
+                <input type="hidden" name="otherPaid" value={paymentAmounts.OTHER || 0} />
+                <input type="hidden" name="otherPaymentMethod" value={otherPaymentMethod} />
                 <input type="hidden" name="walletPaid" value={walletSelected ? walletUsed : 0} />
                 <input type="hidden" name="amountPaid" value={totalPayment} />
                 <input type="hidden" name="bal" value={balance} />
                 <input type="hidden" name="location" value={location || ''} />
                 <input type="hidden" name="user" value={user?.name || ''} />
                 <input type="hidden" name="bDate" value={busDate} />
+                <input type="hidden" name="businessDateReason" value={businessDateReason} />
                 <input type="hidden" name="path" value={pathname} />
                 <input type="hidden" name="customerId" value={customer?._id || ''} />
                 <input type="hidden" name="customerName" value={customer?.name || ''} />
@@ -1313,6 +1442,11 @@ export default function PosPaymentModal({
 
                   <div style={{ borderTop: '2px solid #000', margin: '8px 0' }}></div>
                   <div style={{ fontSize: '12px' }}>
+                    {Number(completedOrder?.deliveryCost || 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>DELIVERY:</span><span>{currencyFormat(completedOrder.deliveryCost)}</span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px' }}>
                       <span>TOTAL:</span><span>{currencyFormat(completedOrder?.amount)}</span>
                     </div>

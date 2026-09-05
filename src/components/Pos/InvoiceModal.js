@@ -119,6 +119,7 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, 
           <div class="divider"></div>
 
           <div class="section">
+            ${Number(invoiceData.deliveryCost || 0) > 0 ? `<div class="row"><strong>Delivery:</strong><span>${currencyFormat(invoiceData.deliveryCost)}</span></div>` : ''}
             <div class="row"><strong>Total Amount:</strong><span>${currencyFormat(invoiceData.totalAmount || 0)}</span></div>
             <div class="row"><strong>Amount Paid:</strong><span>${currencyFormat(invoiceData.paymentAmount || 0)}</span></div>
             ${showOutstandingBalanceOnReceipt ? `<div class="row"><strong>Outstanding Balance:</strong><span>${currencyFormat(invoiceBalances.outstandingBalance)}</span></div>` : ''}
@@ -234,7 +235,7 @@ ${invoiceData.items?.map((item, i) =>
 ).join('\n')}
 
 ━━━━━━━━━━━━━━━━━━━━
-*Total Amount:* ${currencyFormat(invoiceData.totalAmount)}
+${Number(invoiceData.deliveryCost || 0) > 0 ? `*Delivery:* ${currencyFormat(invoiceData.deliveryCost)}\n` : ''}*Total Amount:* ${currencyFormat(invoiceData.totalAmount)}
 *Amount Paid:* ${currencyFormat(invoiceData.paymentAmount || 0)}
 *Balance Due:* ${currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}
   ${showOutstandingBalanceOnReceipt ? `*Outstanding Balance:* ${currencyFormat(outstandingBalance)}` : ''}
@@ -257,7 +258,7 @@ powered by:  www.marketbook.app
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b bg-gradient-to-r from-blue-600 to-blue-700">
-          <h2 className="text-xl font-bold text-white">Credit Sale Invoice</h2>
+          <h2 className="text-xl font-bold text-white">{invoiceData.isPreview ? 'Sales Invoice' : 'Credit Sale Invoice'}</h2>
           <button
             onClick={onClose}
             className="text-white hover:bg-blue-500 rounded-full p-2 transition-colors"
@@ -276,10 +277,11 @@ powered by:  www.marketbook.app
               <p className="text-sm text-gray-600">Tel: {storeInfo?.number || ''}, {storeInfo?.whatsapp || ''} </p>
             </div>
 
-            {/* Credit Notice */}
-            <div className="bg-yellow-50 border-2 border-yellow-400 p-4 mb-6 text-center">
-              <p className="text-lg font-bold text-yellow-800">CREDIT SALE INVOICE</p>
-            </div>
+            {!invoiceData.isPreview && (
+              <div className="bg-yellow-50 border-2 border-yellow-400 p-4 mb-6 text-center">
+                <p className="text-lg font-bold text-yellow-800">CREDIT SALE INVOICE</p>
+              </div>
+            )}
 
             {/* Order Info */}
             <div className="mb-6">
@@ -373,6 +375,12 @@ powered by:  www.marketbook.app
                     ))}
                   </tbody>
                   <tfoot>
+                    {Number(invoiceData.deliveryCost || 0) > 0 && (
+                      <tr className="bg-gradient-to-r from-blue-50 to-blue-100 font-bold">
+                        <td colSpan="3" className="p-3 text-right text-sm text-gray-700">DELIVERY:</td>
+                        <td className="p-3 text-right text-base text-gray-900">{currencyFormat(invoiceData.deliveryCost)}</td>
+                      </tr>
+                    )}
                     <tr className="bg-gradient-to-r from-gray-50 to-gray-100 font-bold border-t-2 border-gray-300">
                       <td colSpan="3" className="p-3 text-right text-sm text-gray-700">TOTAL AMOUNT:</td>
                       <td className="p-3 text-right text-base text-gray-900">{currencyFormat(invoiceData.totalAmount)}</td>
@@ -414,6 +422,12 @@ powered by:  www.marketbook.app
 
                 {/* Mobile Summary Cards */}
                 <div className="space-y-2 mt-4 pt-4 border-t-2 border-gray-300">
+                  {Number(invoiceData.deliveryCost || 0) > 0 && (
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="font-semibold text-gray-700 text-sm">Delivery:</span>
+                      <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceData.deliveryCost)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
                     <span className="font-semibold text-gray-700 text-sm">Total Amount:</span>
                     <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceData.totalAmount)}</span>

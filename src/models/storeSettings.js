@@ -47,6 +47,28 @@ const StoreSettingsSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  enableBusinessDate: {
+    type: Boolean,
+    default: false
+  },
+  deliveryEnabled: {
+    type: Boolean,
+    default: false
+  },
+  otherPaymentMethods: {
+    type: [String],
+    default: []
+  },
+  bankNames: {
+    type: [String],
+    default: []
+  },
+  referrerBonusPercentage: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
 
   // Configurable store-specific price types (unlimited)
   priceTypes: {

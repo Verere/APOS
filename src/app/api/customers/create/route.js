@@ -15,13 +15,23 @@ export async function POST(req) {
     }
 
     const body = await req.json()
-    const { storeId, slug, name, email, phone, dateOfBirth, gender, street, city, state, zipCode, country, priceTypeId } = body
+    const { storeId, slug, name, email, phone, dateOfBirth, gender, street, city, state, zipCode, country, priceTypeId, deliveryCost, outstandingBalance } = body
 
     if (!storeId || !name || !phone) {
       return NextResponse.json(
         { error: 'Store ID, name, and phone are required' },
         { status: 400 }
       )
+    }
+
+    const normalizedDeliveryCost = Number(deliveryCost || 0)
+    if (!Number.isFinite(normalizedDeliveryCost) || normalizedDeliveryCost < 0) {
+      return NextResponse.json({ error: 'Delivery cost must be a non-negative number' }, { status: 400 })
+    }
+
+    const normalizedOutstandingBalance = Number(outstandingBalance || 0)
+    if (!Number.isFinite(normalizedOutstandingBalance) || normalizedOutstandingBalance < 0) {
+      return NextResponse.json({ error: 'Outstanding balance must be a non-negative number' }, { status: 400 })
     }
 
     await connectDB()
@@ -34,7 +44,10 @@ export async function POST(req) {
 
     // Verify user has permission (OWNER or MANAGER)
     try {
-      await requireStoreRole(session.user.id, storeId, ['OWNER', 'MANAGER'])
+      const membership = await requireStoreRole(session.user.id, storeId, ['OWNER', 'MANAGER'])
+      if (membership?.role && membership.role !== 'OWNER' && outstandingBalance !== undefined) {
+        return NextResponse.json({ error: 'Only owners can set outstanding balance' }, { status: 403 })
+      }
     } catch (e) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
@@ -89,6 +102,8 @@ export async function POST(req) {
       loyaltyPoints: 0,
       totalPurchases: 0,
       totalSpent: 0,
+      deliveryCost: normalizedDeliveryCost,
+      outstandingBalance: normalizedOutstandingBalance,
       isDeleted: false
     })
 
