@@ -69,6 +69,10 @@ const StoreSettingsSchema = new mongoose.Schema({
     max: 100,
     default: 0
   },
+  printInvoiceEnabled: {
+    type: Boolean,
+    default: false
+  },
 
   // Configurable store-specific price types (unlimited)
   priceTypes: {

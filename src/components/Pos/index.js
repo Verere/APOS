@@ -46,6 +46,7 @@ const PosPage = ({
   otherPaymentMethods = [],
   bankNames = [],
   referrerBonusPercentage = 0,
+  printInvoiceEnabled = false,
   allowComplimentarySale = false
 }) => {
   const { location, setBusDate, setHotel, setStore, payment, cartValue, user } = useContext(GlobalContext);
@@ -956,6 +957,7 @@ const PosPage = ({
                     Make Payment
                   </button>
 
+                  {printInvoiceEnabled && (
                   <button
                     onClick={printCartInvoice}
                     className="bg-blue-700 text-white px-3 py-2 rounded-lg uppercase hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
@@ -964,6 +966,7 @@ const PosPage = ({
                     <Receipt className="w-4 h-4" />
                     Print Invoice
                   </button>
+                  )}
                   
                   {/* Receipt button - Hidden
                   <Popover>

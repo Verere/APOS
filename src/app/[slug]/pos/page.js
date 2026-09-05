@@ -35,6 +35,7 @@ const Pos = async({params, searchParams})=>{
           otherPaymentMethods: [],
           bankNames: [],
           referrerBonusPercentage: 0,
+          printInvoiceEnabled: false,
           priceTypes: [],
           defaultPriceTypeId: null,
           receiptFormat: 'standard',
@@ -69,6 +70,7 @@ const Pos = async({params, searchParams})=>{
               otherPaymentMethods: [],
               bankNames: [],
               referrerBonusPercentage: 0,
+              printInvoiceEnabled: false,
               priceTypes: [],
               defaultPriceTypeId: null,
               receiptSpecialNote: ''
@@ -124,6 +126,7 @@ const Pos = async({params, searchParams})=>{
                  otherPaymentMethods={Array.isArray(settings?.otherPaymentMethods) ? settings.otherPaymentMethods : []}
                  bankNames={Array.isArray(settings?.bankNames) ? settings.bankNames : []}
                  referrerBonusPercentage={settings?.referrerBonusPercentage ?? 0}
+                 printInvoiceEnabled={serverUnavailable ? false : (settings?.printInvoiceEnabled ?? false)}
                  allowComplimentarySale={serverUnavailable ? false : (settings?.allowComplimentarySale ?? false)}
              />
             </>

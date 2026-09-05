@@ -71,6 +71,7 @@ export async function GET(request, { params }) {
         deliveryEnabled: false,
         otherPaymentMethods: [],
         bankNames: [],
+        printInvoiceEnabled: false,
         referrerBonusPercentage: 0,
         priceTypes: [],
         defaultPriceTypeId: null,
