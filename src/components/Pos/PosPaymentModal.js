@@ -63,6 +63,7 @@ export default function PosPaymentModal({
   const [transferBank, setTransferBank] = useState('')
   const [transferReference, setTransferReference] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showLongProcessingMessage, setShowLongProcessingMessage] = useState(false)
   const [receiptSettings, setReceiptSettings] = useState({
     receiptFontFamily: 'monospace',
     receiptFontSize: 12,
@@ -78,6 +79,16 @@ export default function PosPaymentModal({
   const formRef = useRef(null)
   const currentSubmissionIdRef = useRef(null)
   const lastHandledSubmissionIdRef = useRef(null)
+
+  useEffect(() => {
+    if (!isOpen || (!isPending && !isSubmitting)) {
+      setShowLongProcessingMessage(false)
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => setShowLongProcessingMessage(true), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [isOpen, isPending, isSubmitting])
 
   const paymentMethods = useMemo(() => [
     { value: 'CASH', label: 'Cash', icon: Banknote, color: 'green' },
@@ -719,7 +730,7 @@ export default function PosPaymentModal({
     submitLockRef.current = true
     setIsSubmitting(true)
     return true
-  }, [isComplimentary, isUnderpayment, isOverpayment, isBackdatedBusinessDate, businessDateReason, walletSelected, walletUsed, walletAmount, customerWalletBalance, orderTotal, selectedMethods, otherPaymentMethod, paymentAmounts, customer, isSubmitting, isPending, approvedBy, complimentaryReason])
+  }, [isComplimentary, isUnderpayment, isOverpayment, isBackdatedBusinessDate, businessDateReason, walletSelected, walletUsed, walletAmount, customerWalletBalance, orderTotal, selectedMethods, otherPaymentMethod, transferBank, transferReference, paymentAmounts, customer, isSubmitting, isPending, approvedBy, complimentaryReason])
 
   const handleWalletAmountChange = useCallback((value) => {
     const normalizedValue = String(value || '').trim()
@@ -1333,6 +1344,11 @@ export default function PosPaymentModal({
                     </>
                   )}
                 </button>
+                {showLongProcessingMessage && (
+                  <p className="mt-3 text-center text-sm text-amber-700" role="status" aria-live="polite">
+                    This is taking longer than usual. Your payment may still be processing—please wait and do not submit again.
+                  </p>
+                )}
               </form>
                 
             </div>

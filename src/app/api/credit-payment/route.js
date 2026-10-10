@@ -5,10 +5,16 @@ import { authOptions } from "@/auth";
 import Credit from "@/models/credit";
 import CreditPayment from "@/models/creditPayment";
 import Customer from "@/models/customer";
+import Order from "@/models/order";
 import Store from "@/models/store";
-import mongoose from "mongoose";
 import StoreSettings from "@/models/storeSettings";
 import WalletTransaction from "@/models/walletTransaction";
+import withTransaction from "@/lib/withTransaction";
+import { toClientSafeDbError } from "@/lib/dbError";
+
+function paymentError(message, status) {
+  return Object.assign(new Error(message), { status });
+}
 
 export async function POST(req) {
   try {
@@ -20,158 +26,150 @@ export async function POST(req) {
     }
 
     const { creditId, amount, paymentMethod, notes, receiptNumber, otherPaymentMethod, bankName, reference } = await req.json();
+    const paymentAmount = Number(amount);
 
-    if (!creditId || !amount || amount <= 0) {
+    if (!creditId || !Number.isFinite(paymentAmount) || paymentAmount <= 0) {
       return NextResponse.json(
         { error: "Credit ID and valid amount are required" },
         { status: 400 }
       );
     }
 
-    // Start transaction
-    const transactionSession = await mongoose.startSession();
-    transactionSession.startTransaction();
+    const result = await withTransaction(async (transactionSession) => {
+      const credit = await Credit.findById(creditId).session(transactionSession);
+      if (!credit) throw paymentError("Credit record not found", 404);
 
-    try {
-      // Get credit record with customer and order details
-      const credit = await Credit.findById(creditId)
-        .populate('customerId')
-        .populate('orderId')
-        .session(transactionSession);
-
-      if (!credit) {
-        await transactionSession.abortTransaction();
-        return NextResponse.json({ error: "Credit record not found" }, { status: 404 });
-      }
-
-      // Check if payment amount exceeds remaining balance
       const remainingBalance = credit.amount - (credit.amountPaid || 0);
-      if (amount > remainingBalance) {
-        await transactionSession.abortTransaction();
-        return NextResponse.json(
-          { error: `Payment amount (₦${amount}) exceeds remaining balance (₦${remainingBalance})` },
-          { status: 400 }
+      if (paymentAmount > remainingBalance) {
+        throw paymentError(
+          `Payment amount (₦${paymentAmount}) exceeds remaining balance (₦${remainingBalance})`,
+          400
         );
       }
 
-      const settings = await StoreSettings.findOne({ storeId: credit.storeId }).lean();
-      if (paymentMethod === 'OTHER' && !(settings?.otherPaymentMethods || []).includes(String(otherPaymentMethod || '').trim())) {
-        await transactionSession.abortTransaction();
-        return NextResponse.json({ error: 'Invalid or missing Other payment method' }, { status: 400 });
+      const normalizedPaymentMethod = String(paymentMethod || 'CASH').trim().toUpperCase();
+      const normalizedOtherPaymentMethod = String(otherPaymentMethod || '').trim();
+      const normalizedBankName = String(bankName || '').trim();
+      const normalizedReference = String(reference || '').trim();
+      const settings = await StoreSettings.findOne({ storeId: credit.storeId }).session(transactionSession).lean();
+
+      if (normalizedPaymentMethod === 'OTHER' && !(settings?.otherPaymentMethods || []).includes(normalizedOtherPaymentMethod)) {
+        throw paymentError('Invalid or missing Other payment method', 400);
       }
-      if (paymentMethod === 'TRANSFER' && (!(settings?.bankNames || []).includes(String(bankName || '').trim()) || !String(reference || '').trim())) {
-        await transactionSession.abortTransaction();
-        return NextResponse.json({ error: 'Invalid or missing transfer bank/reference' }, { status: 400 });
-      }
-      if (paymentMethod === 'WALLET' && Number(amount) > Number(credit.customerId?.walletBalance || 0)) {
-        await transactionSession.abortTransaction();
-        return NextResponse.json({ error: 'Payment amount exceeds customer wallet balance' }, { status: 400 });
+      if (normalizedPaymentMethod === 'TRANSFER' && (!(settings?.bankNames || []).includes(normalizedBankName) || !normalizedReference)) {
+        throw paymentError('Invalid or missing transfer bank/reference', 400);
       }
 
-      // Generate receipt number if not provided
-      const finalReceiptNumber = receiptNumber || `RCP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      const customer = await Customer.findById(credit.customerId).session(transactionSession);
+      if (!customer) throw paymentError('Customer record not found for this credit', 404);
+      if (normalizedPaymentMethod === 'WALLET' && paymentAmount > Number(customer.walletBalance || 0)) {
+        throw paymentError('Payment amount exceeds customer wallet balance', 400);
+      }
+      const order = await Order.findById(credit.orderId).select('orderNum').session(transactionSession).lean();
 
-      // Create payment record
+      const finalReceiptNumber = receiptNumber || `RCP-${Date.now()}-${Math.random().toString(36).slice(2, 11).toUpperCase()}`;
       const payment = await CreditPayment.create([{
         storeId: credit.storeId,
         creditId: credit._id,
         orderId: credit.orderId,
         customerId: credit.customerId,
-        amount,
-        paymentMethod: paymentMethod || 'CASH',
-        otherPaymentMethod: String(otherPaymentMethod || '').trim() || undefined,
-        bankName: String(bankName || '').trim() || undefined,
-        reference: String(reference || '').trim() || undefined,
+        amount: paymentAmount,
+        paymentMethod: normalizedPaymentMethod,
+        otherPaymentMethod: normalizedOtherPaymentMethod || undefined,
+        bankName: normalizedBankName || undefined,
+        reference: normalizedReference || undefined,
         receiptNumber: finalReceiptNumber,
         notes,
         recordedBy: session.user.name || session.user.email
       }], { session: transactionSession });
 
-      // Update credit record
-      const newAmountPaid = (credit.amountPaid || 0) + amount;
-      credit.amountPaid = newAmountPaid;
-      // Set isPaid to true if amountPaid equals or exceeds amount
-      if (typeof credit.amount === 'number' && typeof newAmountPaid === 'number' && newAmountPaid >= credit.amount) {
-        credit.isPaid = true;
-      }
+      credit.amountPaid = (credit.amountPaid || 0) + paymentAmount;
+      credit.isPaid = credit.amountPaid >= credit.amount;
       await credit.save({ session: transactionSession });
 
-      // Update customer's outstandingBalance
-      const customer = await Customer.findById(credit.customerId).session(transactionSession);
-      if (customer) {
-        if (paymentMethod === 'WALLET') {
-          const walletBalanceBefore = Number(customer.walletBalance || 0);
-          customer.walletBalance = walletBalanceBefore - Number(amount);
-          await new WalletTransaction({
-            customer: customer._id,
-            invoice: credit.orderId?.orderNum || String(credit._id),
-            type: 'Sale',
-            amount: Number(amount),
-            balanceBefore: walletBalanceBefore,
-            balanceAfter: customer.walletBalance,
-            paymentMethod: 'WALLET',
-            reference: receiptNumber || `credit-payment-${credit._id}`,
-            remarks: `Wallet used for credit payment`,
-            createdBy: session.user.name || session.user.email,
-            createdAt: new Date()
-          }).save({ session: transactionSession });
-        }
-        // Calculate all outstanding credits for this customer
-        const allCredits = await Credit.find({ customerId: customer._id, isCancelled: { $ne: true } }).session(transactionSession);
-        const totalOutstanding = allCredits.reduce((sum, c) => sum + Math.max((c.amount || 0) - (c.amountPaid || 0), 0), 0);
-        customer.outstandingBalance = totalOutstanding;
-        await customer.save({ session: transactionSession });
+      if (normalizedPaymentMethod === 'WALLET') {
+        const walletBalanceBefore = Number(customer.walletBalance || 0);
+        customer.walletBalance = walletBalanceBefore - paymentAmount;
+        await new WalletTransaction({
+          customer: customer._id,
+          invoice: order?.orderNum || String(credit._id),
+          type: 'Sale',
+          amount: paymentAmount,
+          balanceBefore: walletBalanceBefore,
+          balanceAfter: customer.walletBalance,
+          paymentMethod: 'WALLET',
+          reference: receiptNumber || `credit-payment-${credit._id}`,
+          remarks: 'Wallet used for credit payment',
+          createdBy: session.user.name || session.user.email,
+          createdAt: new Date()
+        }).save({ session: transactionSession });
       }
 
-      const remainingBalanceAfterPayment = Math.max(0, credit.amount - credit.amountPaid);
-      const currentOutstandingBalance = Number(customer?.outstandingBalance || 0);
-      const currentWalletBalance = Number(customer?.walletBalance || 0);
+      const [outstandingResult] = await Credit.aggregate([
+        { $match: { customerId: customer._id, isCancelled: { $ne: true } } },
+        {
+          $group: {
+            _id: null,
+            total: {
+              $sum: {
+                $cond: [
+                  { $gt: [{ $subtract: ['$amount', { $ifNull: ['$amountPaid', 0] }] }, 0] },
+                  { $subtract: ['$amount', { $ifNull: ['$amountPaid', 0] }] },
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ]).session(transactionSession);
+      customer.outstandingBalance = Number(outstandingResult?.total || 0);
+      await customer.save({ session: transactionSession });
+
       const store = await Store.findById(credit.storeId).select('name slug').session(transactionSession).lean();
+      const paymentRecord = payment[0].toObject();
 
-      // Commit transaction
-      await transactionSession.commitTransaction();
-
-      return NextResponse.json({
+      return {
         success: true,
-        payment: payment[0],
+        payment: paymentRecord,
         credit: {
           _id: credit._id,
           amount: credit.amount,
           amountPaid: credit.amountPaid,
-          remainingBalance: remainingBalanceAfterPayment,
+          remainingBalance: Math.max(0, credit.amount - credit.amountPaid),
           paid: credit.isPaid
         },
         receipt: {
           receiptNumber: finalReceiptNumber,
-          paymentAmount: Number(amount),
-          currentOutstandingBalance,
-          currentWalletBalance,
-          customerName: credit.customerId?.name || 'Unknown Customer',
-          customerPhone: credit.customerId?.phone || '',
+          paymentAmount,
+          currentOutstandingBalance: Number(customer.outstandingBalance || 0),
+          currentWalletBalance: Number(customer.walletBalance || 0),
+          customerName: customer.name || 'Unknown Customer',
+          customerPhone: customer.phone || '',
           storeName: store?.name || '',
           storeSlug: store?.slug || '',
-          paymentMethod: paymentMethod || 'CASH',
-          otherPaymentMethod: String(otherPaymentMethod || '').trim() || undefined,
-          bankName: String(bankName || '').trim() || undefined,
-          reference: String(reference || '').trim() || undefined,
-          paymentDate: payment[0]?.paymentDate || new Date(),
-          orderNumber: credit.orderId?.orderNum || '',
+          paymentMethod: normalizedPaymentMethod,
+          otherPaymentMethod: normalizedOtherPaymentMethod || undefined,
+          bankName: normalizedBankName || undefined,
+          reference: normalizedReference || undefined,
+          paymentDate: paymentRecord.paymentDate || new Date(),
+          orderNumber: order?.orderNum || '',
           notes: notes || '',
         },
-      });
+      };
+    });
 
-    } catch (error) {
-      await transactionSession.abortTransaction();
-      throw error;
-    } finally {
-      transactionSession.endSession();
-    }
+    return NextResponse.json(result);
 
   } catch (error) {
     console.error("Error recording payment:", error);
+    const safeDbError = toClientSafeDbError(error);
+    if (safeDbError) {
+      return NextResponse.json(safeDbError, { status: 503 });
+    }
+
     return NextResponse.json(
-      { error: "Failed to record payment" },
-      { status: 500 }
+      { error: error?.message || "Failed to record payment" },
+      { status: error?.status || 500 }
     );
   }
 }
