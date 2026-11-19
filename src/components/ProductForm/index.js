@@ -36,7 +36,6 @@ const ProductForm = ({slug, categories, pricingSettings}) => {
   const pathname = usePathname();
 const {user} = useContext(GlobalContext)
  const [state, formAction, isPending] = useActionState(addProduct, {});
-const [loading, setLoading] = useState(false)
 const [category, setCategory] = useState('')
 console.log(
   'user', user
@@ -110,11 +109,9 @@ const serializedPrices = useMemo(() => {
 
 if(state.error){
  toast.error(state.error)
- setLoading(false)
 }
 if(state.success){
  toast.success(state.success)
- setLoading(false)
  setUp(false)
  setName('')
  setLegacyPrice('')
@@ -309,8 +306,8 @@ useEffect(()=>{
        <input type="hidden"  name="expiration" value={formattedExpiration} /> 
       <input type="hidden"  name="path" value={pathname} />
           
-      <button onClick={()=>setLoading(true)}  className="border border-gray-400 rounded-md bg-black text-white p-2 w-full block">
-        {loading? 'loading...' : id ? 'UPDATE PRODUCT': 'Add New Product'}</button>
+      <button type="submit" disabled={isPending} className="border border-gray-400 rounded-md bg-black text-white p-2 w-full block">
+        {isPending ? 'loading...' : id ? 'UPDATE PRODUCT': 'Add New Product'}</button>
       </div>
     
       </form>
