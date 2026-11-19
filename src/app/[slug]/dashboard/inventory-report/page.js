@@ -1,5 +1,6 @@
 import { fetchProducts } from '@/actions/fetch'
 import { getInventoryReport } from '@/lib/inventory-report.service'
+import InventoryReportExport from '@/components/InventoryReportExport.js'
 
 function formatNumber(value) {
   return new Intl.NumberFormat('en-US').format(Number(value || 0))
@@ -149,11 +150,25 @@ export default async function InventoryReportPage({ params, searchParams }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Inventory Report</h1>
-        <p className="text-sm md:text-base text-gray-600">
-          Stock movement summary from transactions between {startDate} and {endDate}.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Inventory Report</h1>
+          <p className="text-sm md:text-base text-gray-600">
+            Stock movement summary from transactions between {startDate} and {endDate}.
+          </p>
+        </div>
+        <InventoryReportExport
+          rows={rows}
+          totals={totals}
+          startDate={startDate}
+          endDate={endDate}
+          productFilter={productId
+            ? safeProducts.find((product) => String(product._id) === productId)?.name || 'Selected product'
+            : 'All products'}
+          searchTerm={q}
+          sortBy={safeSortBy}
+          sortOrder={sortOrder}
+        />
       </div>
 
       <form method="get" className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-5">

@@ -87,6 +87,7 @@ export async function GET(request) {
       Expense.find({
         storeId: store._id,
         slug,
+        status: { $ne: 'rejected' },
         $or: [
           { bDate: legacyDate },
           { bDate: date },

@@ -7,7 +7,7 @@ import DatePicker from 'react-datepicker'
 import { format } from 'date-fns'
 import moment from 'moment'
 import { useReactToPrint } from 'react-to-print'
-import { CheckCircle, Printer } from 'lucide-react'
+import { CheckCircle, Download, Printer } from 'lucide-react'
 
 import { GlobalContext } from '@/context'
 import { currencyFormat } from '@/utils/currency'
@@ -65,6 +65,7 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
 
   const [selectedDate, setSelectedDate] = useState(null)
   const [cancelingOrderId, setCancelingOrderId] = useState(null)
+  const [exportLoading, setExportLoading] = useState('')
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [completedOrder, setCompletedOrder] = useState(null)
   const [queuedItems, setQueuedItems] = useState([])
@@ -124,6 +125,340 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
     return (patients || []).filter((order) => order?.bDate === targetDate)
   }, [patients, selectedDate, bDate])
 
+  const exportReport = async (formatType) => {
+    setExportLoading(formatType)
+
+    try {
+      const exportedAt = new Date()
+      const dateStamp = [
+        exportedAt.getFullYear(),
+        String(exportedAt.getMonth() + 1).padStart(2, '0'),
+        String(exportedAt.getDate()).padStart(2, '0'),
+      ].join('-')
+      const fileBaseName = `Orders_Report_${dateStamp}`
+      const formatReportCurrency = (value) => new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(Number(value) || 0)
+      const amountValue = (value) => {
+        const amount = Number(value || 0)
+        return Number.isFinite(amount) ? amount : 0
+      }
+      const exportRows = filteredOrders.map((order) => {
+        const isoDate = normalizeOrderDate(order?.bDate, order?.createdAt)
+        return {
+          orderNumber: order?.orderNum || 'N/A',
+          customer: order?.orderName || order?.customerName || 'Walk-in Customer',
+          items: Array.isArray(order?.items) && order.items.length
+            ? order.items.map((item) => {
+                const quantity = Number(item?.qty ?? item?.quantity ?? 0)
+                const name = item?.item || item?.name || item?.productName || 'Item'
+                return `${quantity} x ${name}`
+              }).join('\n')
+            : 'No items',
+          amount: amountValue(order?.amount),
+          amountPaid: amountValue(order?.amountPaid),
+          businessDate: isoDate || order?.bDate || '',
+          time: order?.createdAt && !Number.isNaN(new Date(order.createdAt).getTime())
+            ? formatTime(order.createdAt)
+            : '',
+          user: order?.soldBy || order?.user || 'N/A',
+        }
+      })
+      const totalOrderAmount = exportRows.reduce((sum, order) => sum + order.amount, 0)
+      const totalAmountPaid = exportRows.reduce((sum, order) => sum + order.amountPaid, 0)
+      const outstandingBalance = exportRows.reduce(
+        (sum, order) => sum + Math.max(0, order.amount - order.amountPaid),
+        0
+      )
+      const formattedExportTime = exportedAt.toLocaleString('en-NG', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+      const reportDate = selectedDate ? format(selectedDate, 'dd/MM/yyyy') : bDate
+      const reportDescription = `Orders for ${reportDate}`
+      const headers = [
+        'Order No.',
+        'Customer',
+        'Items Sold',
+        'Order Amount (NGN)',
+        'Amount Paid (NGN)',
+        'Date',
+        'Time',
+        'User',
+      ]
+      const csvCell = (value) => {
+        let text = String(value ?? '')
+        if (typeof value !== 'number' && /^[\t\r ]*[=+\-@]/.test(text)) {
+          text = `'${text}`
+        }
+        return `"${text.replace(/"/g, '""')}"`
+      }
+
+      if (formatType === 'CSV') {
+        const metadataRow = (label, value) => [label, value, '', '', '', '', '', '']
+        const csvRows = [
+          ['Orders Report', '', '', '', '', '', '', ''],
+          ['Report description', reportDescription, '', '', '', '', '', ''],
+          ['Organization', 'MarketBook', 'Exported at', formattedExportTime, '', '', '', ''],
+          metadataRow('Total records exported', exportRows.length),
+          metadataRow('Total order value (NGN)', totalOrderAmount),
+          metadataRow('Amount collected (NGN)', totalAmountPaid),
+          metadataRow('Outstanding balance (NGN)', outstandingBalance),
+          ['', '', '', '', '', '', '', ''],
+          headers,
+          ...exportRows.map((order) => [
+            order.orderNumber,
+            order.customer,
+            order.items,
+            order.amount,
+            order.amountPaid,
+            order.businessDate,
+            order.time,
+            order.user,
+          ]),
+        ]
+        const csvContent = `\uFEFF${csvRows
+          .map((row) => row.map(csvCell).join(','))
+          .join('\r\n')}`
+        downloadOrderReport(
+          new Blob([csvContent], { type: 'text/csv;charset=utf-8' }),
+          `${fileBaseName}.csv`
+        )
+      } else if (formatType === 'Excel') {
+        const { default: ExcelJS } = await import('exceljs')
+        const workbook = new ExcelJS.Workbook()
+        workbook.creator = 'MarketBook'
+        workbook.created = exportedAt
+        const worksheet = workbook.addWorksheet('Orders')
+        const displayRows = exportRows.map((order) => [
+          order.orderNumber,
+          order.customer,
+          order.items,
+          formatReportCurrency(order.amount),
+          formatReportCurrency(order.amountPaid),
+          formatExcelBusinessDate(order.businessDate),
+          order.time,
+          order.user,
+        ])
+        const columnWidths = headers.map((header) => Math.min(42, Math.max(12, header.length + 2)))
+        displayRows.forEach((row) => row.forEach((value, index) => {
+          columnWidths[index] = Math.min(
+            42,
+            Math.max(columnWidths[index], String(value ?? '').length + 2)
+          )
+        }))
+        worksheet.columns = columnWidths.map((width) => ({ width }))
+        worksheet.mergeCells('A1:H1')
+        worksheet.getCell('A1').value = 'Orders Report'
+        worksheet.mergeCells('A2:H2')
+        worksheet.getCell('A2').value = reportDescription
+        worksheet.getRow(3).values = [
+          'Organization',
+          'MarketBook',
+          'Exported at',
+          formattedExportTime,
+        ]
+        worksheet.getRow(4).values = [
+          'Total records',
+          exportRows.length,
+          'Total order value (NGN)',
+          totalOrderAmount,
+          'Amount collected (NGN)',
+          totalAmountPaid,
+          'Outstanding (NGN)',
+          outstandingBalance,
+        ]
+        worksheet.getRow(5).values = headers
+        worksheet.getRow(1).height = 30
+        worksheet.getRow(2).height = 22
+        worksheet.getRow(3).height = 22
+        worksheet.getRow(4).height = 26
+        worksheet.getRow(5).height = 24
+        worksheet.getCell('A1').font = {
+          name: 'Arial',
+          size: 18,
+          bold: true,
+          color: { argb: 'FFFFFFFF' },
+        }
+        worksheet.getCell('A1').fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF17365D' },
+        }
+        worksheet.getCell('A2').font = {
+          name: 'Arial',
+          size: 11,
+          italic: true,
+          color: { argb: 'FF44546A' },
+        }
+        worksheet.getRow(3).eachCell((cell, columnNumber) => {
+          cell.font = {
+            name: 'Arial',
+            size: 9,
+            bold: columnNumber % 2 === 1,
+            color: { argb: 'FF1F2937' },
+          }
+          cell.border = { bottom: { style: 'thin', color: { argb: 'FFD9E2F3' } } }
+        })
+        worksheet.getRow(4).eachCell((cell, columnNumber) => {
+          cell.font = {
+            name: 'Arial',
+            size: 9,
+            bold: columnNumber % 2 === 1,
+            color: { argb: 'FF1F2937' },
+          }
+          cell.alignment = { vertical: 'middle', wrapText: true }
+          cell.border = { bottom: { style: 'thin', color: { argb: 'FFD9E2F3' } } }
+        })
+        for (const address of ['D4', 'F4', 'H4']) {
+          worksheet.getCell(address).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00'
+        }
+        worksheet.getRow(5).eachCell((cell) => {
+          cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFFFFFFF' } }
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF2563EB' },
+          }
+          cell.alignment = { vertical: 'middle', wrapText: true }
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF1D4ED8' } },
+            bottom: { style: 'thin', color: { argb: 'FF1D4ED8' } },
+          }
+        })
+        exportRows.forEach((order, index) => {
+          const excelDate = parseExcelBusinessDate(order.businessDate)
+          const row = worksheet.addRow([
+            order.orderNumber,
+            order.customer,
+            order.items,
+            order.amount,
+            order.amountPaid,
+            excelDate || order.businessDate,
+            order.time,
+            order.user,
+          ])
+          row.height = 24
+          row.eachCell((cell, columnNumber) => {
+            cell.font = { name: 'Arial', size: 9, color: { argb: 'FF1F2937' } }
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: index % 2 === 0 ? 'FFFFFFFF' : 'FFF1F5F9' },
+            }
+            cell.border = { bottom: { style: 'hair', color: { argb: 'FFD9E2F3' } } }
+            cell.alignment = {
+              vertical: 'middle',
+              horizontal: [4, 5].includes(columnNumber) ? 'right' : 'left',
+              wrapText: columnNumber === 3,
+            }
+          })
+          row.getCell(4).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00'
+          row.getCell(5).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00'
+          if (excelDate) row.getCell(6).numFmt = 'dd mmm yyyy'
+        })
+        worksheet.views = [{ state: 'frozen', ySplit: 5, topLeftCell: 'A6' }]
+        worksheet.autoFilter = `A5:H${Math.max(5, exportRows.length + 5)}`
+        worksheet.pageSetup = {
+          orientation: 'landscape',
+          fitToPage: true,
+          fitToWidth: 1,
+          fitToHeight: 0,
+          printTitlesRow: '5:5',
+        }
+        const buffer = await workbook.xlsx.writeBuffer()
+        downloadOrderReport(
+          new Blob([buffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          }),
+          `${fileBaseName}.xlsx`
+        )
+      } else {
+        const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+          import('jspdf'),
+          import('jspdf-autotable'),
+        ])
+        const document = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+        const pageWidth = document.internal.pageSize.getWidth()
+        document.setFont('helvetica', 'bold')
+        document.setFontSize(19)
+        document.setTextColor(23, 54, 93)
+        document.text('Orders Report', 12, 17)
+        document.setFont('helvetica', 'normal')
+        document.setFontSize(9)
+        document.setTextColor(71, 85, 105)
+        document.text(`MarketBook | ${reportDescription}`, 12, 24)
+        document.text(`Exported: ${formattedExportTime}`, 12, 30)
+        document.text(
+          `Records: ${exportRows.length} | Total order value: ${formatReportCurrency(totalOrderAmount).replace(/₦/g, 'NGN ')} | Collected: ${formatReportCurrency(totalAmountPaid).replace(/₦/g, 'NGN ')} | Outstanding: ${formatReportCurrency(outstandingBalance).replace(/₦/g, 'NGN ')}`,
+          12,
+          36
+        )
+        const pdfRows = exportRows.map((order) => [
+          order.orderNumber,
+          order.customer,
+          order.items,
+          formatReportCurrency(order.amount).replace(/₦/g, 'NGN '),
+          formatReportCurrency(order.amountPaid).replace(/₦/g, 'NGN '),
+          formatPdfBusinessDate(order.businessDate),
+          order.time,
+          order.user,
+        ])
+        autoTable(document, {
+          head: [headers],
+          body: pdfRows,
+          startY: 42,
+          margin: { top: 12, right: 12, bottom: 17, left: 12 },
+          theme: 'grid',
+          styles: {
+            font: 'helvetica',
+            fontSize: 8,
+            cellPadding: 2.5,
+            overflow: 'linebreak',
+            textColor: [31, 41, 55],
+            lineColor: [226, 232, 240],
+          },
+          headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+          },
+          alternateRowStyles: { fillColor: [241, 245, 249] },
+          columnStyles: {
+            0: { cellWidth: 24 },
+            1: { cellWidth: 31 },
+            2: { cellWidth: 70 },
+            3: { cellWidth: 32, halign: 'right' },
+            4: { cellWidth: 32, halign: 'right' },
+            5: { cellWidth: 24 },
+            6: { cellWidth: 19 },
+            7: { cellWidth: 28 },
+          },
+          didDrawPage: (page) => {
+            const pageHeight = document.internal.pageSize.getHeight()
+            document.setFontSize(8)
+            document.setTextColor(100, 116, 139)
+            document.text('MarketBook | Orders Report', 12, pageHeight - 7)
+            document.text(`Page ${page.pageNumber}`, pageWidth - 12, pageHeight - 7, {
+              align: 'right',
+            })
+          },
+        })
+        document.save(`${fileBaseName}.pdf`)
+      }
+
+      toast.success(`${formatType} report exported successfully (${exportRows.length} orders).`)
+    } catch (exportError) {
+      console.error('Order report export failed:', exportError)
+      toast.error(`Could not create the ${formatType} export. Please try again.`)
+    } finally {
+      setExportLoading('')
+    }
+  }
+
   const selectedOrderItems = useMemo(() => completedOrder?.items || [], [completedOrder])
 
   const openReceipt = useCallback((order) => {
@@ -175,7 +510,30 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
   return (
     <div className="p-6 -mt-[6px]">
       <div className="mb-6 bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Orders</h2>
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h2 className="text-2xl font-bold text-gray-800">Orders</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-sm font-semibold text-gray-600">Export:</span>
+            {['CSV', 'Excel', 'PDF'].map((formatType) => (
+              <button
+                key={formatType}
+                type="button"
+                onClick={() => exportReport(formatType)}
+                disabled={Boolean(exportLoading)}
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {exportLoading === formatType ? (
+                  `Preparing ${formatType}...`
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    {formatType === 'Excel' ? 'Excel (.xlsx)' : formatType}
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {serverUnavailable && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -539,3 +897,48 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
 }
 
 export default OrderTable
+
+function normalizeOrderDate(businessDate, createdAt) {
+  const value = String(businessDate || '').trim()
+  const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (isoMatch) return value
+
+  const slashMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (slashMatch) {
+    const [, day, month, year] = slashMatch
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+
+  const parsed = new Date(value || createdAt)
+  if (Number.isNaN(parsed.getTime())) return ''
+  return [
+    parsed.getFullYear(),
+    String(parsed.getMonth() + 1).padStart(2, '0'),
+    String(parsed.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
+function formatPdfBusinessDate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value || '')
+}
+
+function formatExcelBusinessDate(value) {
+  return formatPdfBusinessDate(value)
+}
+
+function parseExcelBusinessDate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return match ? new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`) : null
+}
+
+function downloadOrderReport(blob, filename) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+}

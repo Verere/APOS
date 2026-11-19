@@ -21,7 +21,8 @@ import {
   Receipt,
   Calendar,
   TrendingUp,
-  X
+  X,
+  Download
 } from 'lucide-react';
 
 const PaymentTable=({payments, allPayment, slug})=>{
@@ -30,6 +31,8 @@ const PaymentTable=({payments, allPayment, slug})=>{
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedStatus, setSelectedStatus] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [exportLoading, setExportLoading] = useState('');
+    const [exportMessage, setExportMessage] = useState(null);
 
     const filteredPayments = useMemo(() => {
       let filtered = selectedDate
@@ -102,6 +105,386 @@ const PaymentTable=({payments, allPayment, slug})=>{
 
       return stats;
     }, [filteredPayments]);
+
+    const exportReport = async (formatType) => {
+      setExportLoading(formatType);
+      setExportMessage(null);
+
+      try {
+        const exportedAt = new Date();
+        const dateStamp = [
+          exportedAt.getFullYear(),
+          String(exportedAt.getMonth() + 1).padStart(2, '0'),
+          String(exportedAt.getDate()).padStart(2, '0'),
+        ].join('-');
+        const fileBaseName = `Payments_Report_${dateStamp}`;
+        const formatReportCurrency = (value) =>
+          new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(Number(value) || 0);
+        const normalizePayment = (payment) => {
+          const amount = (value) => {
+            const numericValue = Number(value || 0);
+            return Number.isFinite(numericValue) ? numericValue : 0;
+          };
+          const methods = Array.isArray(payment.paymentMethods) && payment.paymentMethods.length
+            ? payment.paymentMethods
+                .map((method) => `${String(method.method || 'Other').toUpperCase()}: ${formatReportCurrency(method.amount)}`)
+                .join(' | ')
+            : String(
+                payment.mop ||
+                (payment.cash ? 'CASH' : payment.pos ? 'POS' : payment.transfer ? 'TRANSFER' : 'OTHER')
+              ).toUpperCase();
+          const status = String(payment.status || 'completed');
+          const isoDate = normalizePaymentDate(payment.bDate, payment.createdAt);
+
+          return {
+            receipt: payment.receiptNumber || payment.receipt || '',
+            customer: payment.customerName || (
+              String(payment.customerType || '').toUpperCase() === 'REGISTERED' ? 'Registered' : 'Walk-in'
+            ),
+            methods,
+            amountPaid: amount(payment.amountPaid),
+            change: amount(payment.change),
+            balance: amount(payment.balance),
+            status: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(),
+            businessDate: payment.bDate || (isoDate ? formatReportDate(isoDate) : ''),
+            isoDate,
+            time: payment.createdAt && !Number.isNaN(new Date(payment.createdAt).getTime())
+              ? formatTime(payment.createdAt)
+              : '',
+            user: payment.user || '',
+          };
+        };
+        const exportRows = filteredPayments.map(normalizePayment);
+        const headers = [
+          'Receipt No.',
+          'Customer',
+          'Payment Method(s)',
+          'Amount Paid (NGN)',
+          'Change (NGN)',
+          'Balance (NGN)',
+          'Status',
+          'Business Date',
+          'Time',
+          'User',
+        ];
+        const filterDescription = [
+          `Date: ${selectedDate ? format(selectedDate, 'dd/MM/yyyy') : 'All dates'}`,
+          `Status: ${selectedStatus === 'all' ? 'All statuses' : selectedStatus}`,
+          `Search: ${searchTerm.trim() || 'None'}`,
+        ].join(' | ');
+        const formattedExportTime = exportedAt.toLocaleString('en-NG', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        });
+        const csvCell = (value) => {
+          let text = String(value ?? '');
+          if (typeof value !== 'number' && /^[\t\r ]*[=+\-@]/.test(text)) {
+            text = `'${text}`;
+          }
+          return `"${text.replace(/"/g, '""')}"`;
+        };
+
+        if (formatType === 'CSV') {
+          const csvRows = [
+            ['Payments Report', '', '', '', '', '', '', '', '', ''],
+            ['Report description', 'Payment records matching the selected filters', '', '', '', '', '', '', '', ''],
+            ['Organization', 'MarketBook', 'Exported at', formattedExportTime, '', '', '', '', '', ''],
+            ['Active filters', filterDescription, '', '', '', '', '', '', '', ''],
+            ['Total records exported', exportRows.length, 'Total amount paid (NGN)', paymentStats.total, '', '', '', '', '', ''],
+            ['Cash (NGN)', paymentStats.cash, 'POS (NGN)', paymentStats.pos, 'Transfer (NGN)', paymentStats.transfer, 'Other (NGN)', paymentStats.other, 'Split payments', paymentStats.splitPayments],
+            ['', '', '', '', '', '', '', '', '', ''],
+            headers,
+            ...exportRows.map((payment) => [
+              payment.receipt,
+              payment.customer,
+              payment.methods.replace(/₦/g, 'NGN '),
+              payment.amountPaid,
+              payment.change,
+              payment.balance,
+              payment.status,
+              payment.businessDate,
+              payment.time,
+              payment.user,
+            ]),
+          ];
+          const csvContent = `\uFEFF${csvRows
+            .map((row) => row.map(csvCell).join(','))
+            .join('\r\n')}`;
+          downloadReportFile(
+            new Blob([csvContent], { type: 'text/csv;charset=utf-8' }),
+            `${fileBaseName}.csv`
+          );
+        } else if (formatType === 'Excel') {
+          const { default: ExcelJS } = await import('exceljs');
+          const workbook = new ExcelJS.Workbook();
+          workbook.creator = 'MarketBook';
+          workbook.created = exportedAt;
+          const worksheet = workbook.addWorksheet('Payments');
+          const columnWidths = headers.map((header) => Math.min(42, Math.max(12, header.length + 2)));
+          exportRows.forEach((payment) => {
+            const values = [
+              payment.receipt,
+              payment.customer,
+              payment.methods,
+              formatReportCurrency(payment.amountPaid),
+              formatReportCurrency(payment.change),
+              formatReportCurrency(payment.balance),
+              payment.status,
+              payment.businessDate,
+              payment.time,
+              payment.user,
+            ];
+            values.forEach((value, index) => {
+              columnWidths[index] = Math.min(
+                42,
+                Math.max(columnWidths[index], String(value ?? '').length + 2)
+              );
+            });
+          });
+          worksheet.columns = columnWidths.map((width) => ({ width }));
+          worksheet.mergeCells('A1:J1');
+          worksheet.getCell('A1').value = 'Payments Report';
+          worksheet.mergeCells('A2:J2');
+          worksheet.getCell('A2').value = 'Payment records matching the selected filters';
+          worksheet.getRow(3).values = [
+            'Organization',
+            'MarketBook',
+            'Exported at',
+            formattedExportTime,
+          ];
+          worksheet.mergeCells('B4:J4');
+          worksheet.getCell('A4').value = 'Active filters';
+          worksheet.getCell('B4').value = filterDescription;
+          worksheet.getRow(5).values = [
+            'Total records',
+            exportRows.length,
+            'Total paid (NGN)',
+            paymentStats.total,
+            'Cash (NGN)',
+            paymentStats.cash,
+            'POS (NGN)',
+            paymentStats.pos,
+            'Transfer (NGN)',
+            paymentStats.transfer,
+          ];
+          worksheet.getRow(6).values = [
+            'Other (NGN)',
+            paymentStats.other,
+            'Split payments',
+            paymentStats.splitPayments,
+            'Date filter',
+            selectedDate ? format(selectedDate, 'dd/MM/yyyy') : 'All dates',
+            'Status filter',
+            selectedStatus === 'all' ? 'All statuses' : selectedStatus,
+            'Search',
+            searchTerm.trim() || 'None',
+          ];
+          worksheet.getRow(7).values = headers;
+
+          worksheet.getRow(1).height = 30;
+          worksheet.getRow(2).height = 22;
+          for (const rowNumber of [3, 4, 5, 6, 7]) {
+            worksheet.getRow(rowNumber).height = 24;
+          }
+          worksheet.getCell('A1').font = {
+            name: 'Arial',
+            size: 18,
+            bold: true,
+            color: { argb: 'FFFFFFFF' },
+          };
+          worksheet.getCell('A1').fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF17365D' },
+          };
+          worksheet.getCell('A2').font = {
+            name: 'Arial',
+            size: 11,
+            italic: true,
+            color: { argb: 'FF44546A' },
+          };
+          for (const rowNumber of [3, 4, 5, 6]) {
+            worksheet.getRow(rowNumber).eachCell((cell, columnNumber) => {
+              cell.font = {
+                name: 'Arial',
+                size: 9,
+                bold: columnNumber % 2 === 1,
+                color: { argb: 'FF1F2937' },
+              };
+              cell.alignment = { vertical: 'middle', wrapText: true };
+              cell.border = {
+                bottom: { style: 'thin', color: { argb: 'FFD9E2F3' } },
+              };
+            });
+          }
+          for (const address of ['D5', 'F5', 'H5', 'J5', 'B6']) {
+            worksheet.getCell(address).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00';
+          }
+          worksheet.getRow(7).eachCell((cell) => {
+            cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FF2563EB' },
+            };
+            cell.alignment = { vertical: 'middle', wrapText: true };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FF1D4ED8' } },
+              bottom: { style: 'thin', color: { argb: 'FF1D4ED8' } },
+            };
+          });
+          exportRows.forEach((payment, index) => {
+            const excelDate = payment.isoDate
+              ? new Date(`${payment.isoDate}T00:00:00.000Z`)
+              : payment.businessDate;
+            const row = worksheet.addRow([
+              payment.receipt,
+              payment.customer,
+              payment.methods,
+              payment.amountPaid,
+              payment.change,
+              payment.balance,
+              payment.status,
+              excelDate,
+              payment.time,
+              payment.user,
+            ]);
+            row.height = 21;
+            row.eachCell((cell, columnNumber) => {
+              cell.font = { name: 'Arial', size: 9, color: { argb: 'FF1F2937' } };
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: index % 2 === 0 ? 'FFFFFFFF' : 'FFF1F5F9' },
+              };
+              cell.border = {
+                bottom: { style: 'hair', color: { argb: 'FFD9E2F3' } },
+              };
+              cell.alignment = {
+                vertical: 'middle',
+                horizontal: [4, 5, 6].includes(columnNumber) ? 'right' : 'left',
+                wrapText: [2, 3].includes(columnNumber),
+              };
+            });
+            for (const columnNumber of [4, 5, 6]) {
+              row.getCell(columnNumber).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00';
+            }
+            if (payment.isoDate) row.getCell(8).numFmt = 'dd mmm yyyy';
+          });
+          worksheet.views = [{ state: 'frozen', ySplit: 7, topLeftCell: 'A8' }];
+          worksheet.autoFilter = `A7:J${Math.max(7, exportRows.length + 7)}`;
+          worksheet.pageSetup = {
+            orientation: 'landscape',
+            fitToPage: true,
+            fitToWidth: 1,
+            fitToHeight: 0,
+            printTitlesRow: '7:7',
+          };
+          const buffer = await workbook.xlsx.writeBuffer();
+          downloadReportFile(
+            new Blob([buffer], {
+              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            }),
+            `${fileBaseName}.xlsx`
+          );
+        } else {
+          const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+            import('jspdf'),
+            import('jspdf-autotable'),
+          ]);
+          const document = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+          const pageWidth = document.internal.pageSize.getWidth();
+          document.setFont('helvetica', 'bold');
+          document.setFontSize(19);
+          document.setTextColor(23, 54, 93);
+          document.text('Payments Report', 12, 17);
+          document.setFont('helvetica', 'normal');
+          document.setFontSize(9);
+          document.setTextColor(71, 85, 105);
+          document.text('Payment records matching the selected filters | MarketBook', 12, 24);
+          document.text(`Exported: ${formattedExportTime}`, 12, 30);
+          const wrappedFilters = document.splitTextToSize(`Filters: ${filterDescription}`, pageWidth - 24);
+          document.text(wrappedFilters, 12, 36);
+          const summaryY = 36 + wrappedFilters.length * 4.5;
+          const summary = `Records: ${exportRows.length} | Total paid: ${formatReportCurrency(paymentStats.total).replace(/₦/g, 'NGN ')} | Cash: ${formatReportCurrency(paymentStats.cash).replace(/₦/g, 'NGN ')} | POS: ${formatReportCurrency(paymentStats.pos).replace(/₦/g, 'NGN ')} | Transfer: ${formatReportCurrency(paymentStats.transfer).replace(/₦/g, 'NGN ')} | Other: ${formatReportCurrency(paymentStats.other).replace(/₦/g, 'NGN ')}`;
+          document.text(document.splitTextToSize(summary, pageWidth - 24), 12, summaryY);
+          const tableStartY = summaryY + 7;
+
+          autoTable(document, {
+            head: [headers],
+            body: exportRows.map((payment) => [
+              payment.receipt,
+              payment.customer,
+              payment.methods.replace(/₦/g, 'NGN '),
+              formatReportCurrency(payment.amountPaid).replace(/₦/g, 'NGN '),
+              formatReportCurrency(payment.change).replace(/₦/g, 'NGN '),
+              formatReportCurrency(payment.balance).replace(/₦/g, 'NGN '),
+              payment.status,
+              payment.businessDate,
+              payment.time,
+              payment.user,
+            ]),
+            startY: tableStartY,
+            margin: { top: 12, right: 12, bottom: 17, left: 12 },
+            theme: 'grid',
+            styles: {
+              font: 'helvetica',
+              fontSize: 7,
+              cellPadding: 2,
+              overflow: 'linebreak',
+              textColor: [31, 41, 55],
+              lineColor: [226, 232, 240],
+            },
+            headStyles: {
+              fillColor: [37, 99, 235],
+              textColor: [255, 255, 255],
+              fontStyle: 'bold',
+            },
+            alternateRowStyles: { fillColor: [241, 245, 249] },
+            columnStyles: {
+              0: { cellWidth: 24 },
+              1: { cellWidth: 29 },
+              2: { cellWidth: 42 },
+              3: { cellWidth: 29, halign: 'right' },
+              4: { cellWidth: 23, halign: 'right' },
+              5: { cellWidth: 23, halign: 'right' },
+              6: { cellWidth: 22 },
+              7: { cellWidth: 23 },
+              8: { cellWidth: 20 },
+              9: { cellWidth: 25 },
+            },
+            didDrawPage: (page) => {
+              const pageHeight = document.internal.pageSize.getHeight();
+              document.setFontSize(8);
+              document.setTextColor(100, 116, 139);
+              document.text('MarketBook | Payments Report', 12, pageHeight - 7);
+              document.text(`Page ${page.pageNumber}`, pageWidth - 12, pageHeight - 7, {
+                align: 'right',
+              });
+            },
+          });
+          document.save(`${fileBaseName}.pdf`);
+        }
+
+        setExportMessage({
+          type: 'success',
+          text: `${formatType} report exported successfully (${exportRows.length} records).`,
+        });
+      } catch (exportError) {
+        console.error('Payment report export failed:', exportError);
+        setExportMessage({
+          type: 'error',
+          text: `Could not create the ${formatType} export. Please try again.`,
+        });
+      } finally {
+        setExportLoading('');
+      }
+    };
 
     const getPaymentMethodIcon = (method) => {
       const methodLower = method?.toLowerCase();
@@ -224,7 +607,40 @@ return(
       <div className="flex flex-col gap-4 mb-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h2 className="text-2xl font-bold text-gray-800">Payment Records</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-sm font-semibold text-gray-600">Export:</span>
+            {['CSV', 'Excel', 'PDF'].map((formatType) => (
+              <button
+                key={formatType}
+                type="button"
+                onClick={() => exportReport(formatType)}
+                disabled={Boolean(exportLoading)}
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {exportLoading === formatType ? (
+                  `Preparing ${formatType}...`
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    {formatType === 'Excel' ? 'Excel (.xlsx)' : formatType}
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
+        {exportMessage && (
+          <div
+            role={exportMessage.type === 'error' ? 'alert' : 'status'}
+            className={`rounded-lg px-4 py-3 text-sm ${
+              exportMessage.type === 'error'
+                ? 'bg-red-50 text-red-700'
+                : 'bg-green-50 text-green-700'
+            }`}
+          >
+            {exportMessage.text}
+          </div>
+        )}
         
         <div className="flex flex-col sm:flex-row gap-3 w-full">
           {/* Date Filter */}
@@ -470,3 +886,39 @@ return(
 )
 }
 export default PaymentTable
+
+function normalizePaymentDate(businessDate, createdAt) {
+  const value = String(businessDate || '').trim();
+  const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) return value;
+
+  const slashMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, day, month, year] = slashMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  const parsed = new Date(value || createdAt);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return [
+    parsed.getFullYear(),
+    String(parsed.getMonth() + 1).padStart(2, '0'),
+    String(parsed.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function formatReportDate(isoDate) {
+  const [year, month, day] = isoDate.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function downloadReportFile(blob, filename) {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+}

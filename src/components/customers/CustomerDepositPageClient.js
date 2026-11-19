@@ -5,6 +5,7 @@ import { Search, Wallet, Banknote, CreditCard, ArrowRightLeft, FileText, CheckCi
 import { toast } from 'react-toastify'
 
 import { currencyFormat } from '@/utils/currency'
+import CustomerDepositExport from './CustomerDepositExport'
 
 const PAYMENT_METHODS = [
   { value: 'CASH', label: 'Cash', icon: Banknote, color: 'from-green-600 to-emerald-600' },
@@ -181,9 +182,99 @@ export default function CustomerDepositPageClient({ slug, storeName = '', initia
     })
   }, [customers, searchTerm])
 
+  const customerExportColumns = useMemo(() => [
+    { label: 'Customer', type: 'text' },
+    { label: 'Phone', type: 'text' },
+    { label: 'Email', type: 'text' },
+    { label: 'Wallet Balance (NGN)', type: 'currency' },
+    { label: 'Outstanding Balance (NGN)', type: 'currency' },
+  ], [])
+  const customerExportRows = useMemo(() => filteredCustomers.map((customer) => [
+    customer?.name || 'Unnamed Customer',
+    customer?.phone || '',
+    customer?.email || '',
+    Number(customer?.walletBalance || 0),
+    Number(customer?.outstandingBalance || 0),
+  ]), [filteredCustomers])
+  const customerExportSummary = useMemo(() => [
+    { label: 'Customers exported', value: filteredCustomers.length, type: 'integer' },
+    {
+      label: 'Total wallet balance',
+      value: filteredCustomers.reduce((sum, customer) => sum + Number(customer?.walletBalance || 0), 0),
+      type: 'currency',
+    },
+    {
+      label: 'Total outstanding balance',
+      value: filteredCustomers.reduce((sum, customer) => sum + Number(customer?.outstandingBalance || 0), 0),
+      type: 'currency',
+    },
+  ], [filteredCustomers])
+
   const selectedCustomer = useMemo(() => {
     return customers.find((customer) => String(customer?._id) === String(selectedCustomerId)) || null
   }, [customers, selectedCustomerId])
+
+  const historyExportColumns = useMemo(() => [
+    { label: 'Transaction ID', type: 'text' },
+    { label: 'Type', type: 'text' },
+    { label: 'Amount (NGN)', type: 'currency' },
+    { label: 'Balance Change (NGN)', type: 'currency' },
+    { label: 'Balance Before (NGN)', type: 'currency' },
+    { label: 'Balance After (NGN)', type: 'currency' },
+    { label: 'Payment Method', type: 'text' },
+    { label: 'Reference', type: 'text' },
+    { label: 'Remarks', type: 'text' },
+    { label: 'Date & Time', type: 'date' },
+    { label: 'Recorded By', type: 'text' },
+  ], [])
+  const historyExportRows = useMemo(() => historyModal.transactions.map((transaction) => [
+    transaction?._id || 'N/A',
+    transaction?.type || 'N/A',
+    Number(transaction?.amount || 0),
+    Number(transaction?.balanceAfter || 0) - Number(transaction?.balanceBefore || 0),
+    Number(transaction?.balanceBefore || 0),
+    Number(transaction?.balanceAfter || 0),
+    transaction?.paymentMethod || '',
+    transaction?.reference || '',
+    transaction?.remarks || '',
+    transaction?.createdAt && !Number.isNaN(new Date(transaction.createdAt).getTime())
+      ? new Date(transaction.createdAt)
+      : '',
+    transaction?.createdBy || 'N/A',
+  ]), [historyModal.transactions])
+  const historyExportSummary = useMemo(() => {
+    const transactions = historyModal.transactions
+    const openingBalance = Number(transactions[0]?.balanceBefore || 0)
+    const currentBalance = Number(transactions[transactions.length - 1]?.balanceAfter || 0)
+    return [
+      { label: 'Transactions exported', value: transactions.length, type: 'integer' },
+      { label: 'Opening balance', value: openingBalance, type: 'currency' },
+      { label: 'Closing balance (exported history)', value: currentBalance, type: 'currency' },
+      { label: 'Net balance change', value: currentBalance - openingBalance, type: 'currency' },
+      {
+        label: 'Credits',
+        value: transactions.reduce(
+          (sum, transaction) => sum + Math.max(
+            0,
+            Number(transaction?.balanceAfter || 0) - Number(transaction?.balanceBefore || 0)
+          ),
+          0
+        ),
+        type: 'currency',
+      },
+      {
+        label: 'Debits',
+        value: transactions.reduce(
+          (sum, transaction) => sum + Math.max(
+            0,
+            Number(transaction?.balanceBefore || 0) - Number(transaction?.balanceAfter || 0)
+          ),
+          0
+        ),
+        type: 'currency',
+      },
+    ]
+  }, [historyModal.transactions])
 
   const displayedBalance = latestBalance ?? Number(selectedCustomer?.walletBalance || 0)
 
@@ -305,6 +396,20 @@ export default function CustomerDepositPageClient({ slug, storeName = '', initia
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search customer"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div className="mb-4">
+              <CustomerDepositExport
+                title="Customer Wallet Balances Report"
+                description="Wallet and outstanding balances for customers matching the current search."
+                filePrefix="Customer_Wallet_Balances_Report"
+                organization={storeName || slug}
+                filtersDescription={`Customer search: ${searchTerm.trim() || 'None'}`}
+                columns={customerExportColumns}
+                rows={customerExportRows}
+                summary={customerExportSummary}
+                label="Export customers"
               />
             </div>
 
@@ -613,9 +718,22 @@ export default function CustomerDepositPageClient({ slug, storeName = '', initia
           </div>
 
           {/* Modal Footer */}
-          {!historyModal.loading && historyModal.transactions.length > 0 && (
-            <div className="px-6 py-3 border-t border-gray-100 text-xs text-gray-400 text-center">
-              {historyModal.transactions.length} transaction{historyModal.transactions.length !== 1 ? 's' : ''} · oldest to newest
+          {!historyModal.loading && (
+            <div className="px-4 sm:px-6 py-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <span className="text-xs text-gray-400">
+                {historyModal.transactions.length} transaction{historyModal.transactions.length !== 1 ? 's' : ''} · oldest to newest
+              </span>
+              <CustomerDepositExport
+                title="Wallet Transaction History"
+                description={`Wallet activity for ${historyModal.customer?.name || 'Customer'}.`}
+                filePrefix="Wallet_Transaction_History"
+                organization={storeName || slug}
+                filtersDescription={`Customer: ${historyModal.customer?.name || 'Customer'} | Loaded transactions: ${historyModal.transactions.length}`}
+                columns={historyExportColumns}
+                rows={historyExportRows}
+                summary={historyExportSummary}
+                label="Export history"
+              />
             </div>
           )}
         </div>

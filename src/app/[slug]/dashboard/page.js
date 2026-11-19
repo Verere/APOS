@@ -130,6 +130,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
     storeId: store._id,
     slug: slug,
     isCancelled: false,
+    status: { $ne: 'rejected' },
     createdAt: { $gte: startOfMonth, $lte: endOfMonth }
   }).lean()
   

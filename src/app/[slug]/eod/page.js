@@ -49,6 +49,7 @@ async function getEodData(slug) {
     Expense.find({
       storeId: store._id,
       slug,
+      status: { $ne: 'rejected' },
       $or: [
         { bDate },
         { bDate: isoDate },

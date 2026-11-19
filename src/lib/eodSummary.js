@@ -212,6 +212,9 @@ export function summarizeEod({
   date = '',
 }) {
   const thresholdMap = { ...DEFAULT_THRESHOLDS, ...thresholds };
+  const includedExpenses = (expenses || []).filter(
+    (expense) => String(expense?.status || '').toLowerCase() !== 'rejected'
+  );
 
   const saleOrders = (orders || []).filter((order) => !order?.isCancelled && String(order?.transactionType || 'STANDARD').toUpperCase() !== 'COMPLIMENTARY');
   const complimentaryOrders = (orders || []).filter((order) => String(order?.transactionType || '').toUpperCase() === 'COMPLIMENTARY');
@@ -223,7 +226,7 @@ export function summarizeEod({
   const netSales = Math.max(0, revenue - refundsTotal);
   const grossProfit = saleOrders.reduce((sum, order) => sum + toNumber(order?.profit, 0), 0);
   const costOfGoodsSold = Math.max(0, revenue - grossProfit);
-  const totalExpenses = expenses.reduce((sum, expense) => sum + toNumber(expense?.amount, 0), 0);
+  const totalExpenses = includedExpenses.reduce((sum, expense) => sum + toNumber(expense?.amount, 0), 0);
   const netProfit = grossProfit - totalExpenses;
   const totalTransactions = saleOrders.length;
   const averageTransactionValue = totalTransactions > 0 ? revenue / totalTransactions : 0;
@@ -327,10 +330,10 @@ export function summarizeEod({
     lowStockProducts: inventoryAlerts.filter((item) => item.type === 'low_stock').length,
   };
 
-  const expenseBreakdown = buildExpenseBreakdown(expenses);
+  const expenseBreakdown = buildExpenseBreakdown(includedExpenses);
   const expensesSummary = {
     totalExpenses,
-    expenseCount: expenses.length,
+    expenseCount: includedExpenses.length,
     breakdown: expenseBreakdown,
   };
 
