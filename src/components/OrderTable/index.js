@@ -7,7 +7,7 @@ import DatePicker from 'react-datepicker'
 import { format } from 'date-fns'
 import moment from 'moment'
 import { useReactToPrint } from 'react-to-print'
-import { CheckCircle, Download, Printer } from 'lucide-react'
+import { CheckCircle, Printer } from 'lucide-react'
 
 import { GlobalContext } from '@/context'
 import { currencyFormat } from '@/utils/currency'
@@ -16,6 +16,7 @@ import { updateCancelOrder } from '@/actions/update'
 import { toast } from 'react-toastify'
 import db from '@/lib/db/db'
 import { getOrderTotal, getProductSalesAmount } from '@/lib/orderAmounts'
+import ExportButtons from '@/components/ExportButtons'
 
 function CancelConfirmToast({ onConfirm, onClose }) {
   const [reason, setReason] = useState('')
@@ -578,27 +579,7 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
       <div className="mb-6 bg-white rounded-lg shadow-sm p-4 border border-gray-200">
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-2xl font-bold text-gray-800">Orders</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-sm font-semibold text-gray-600">Export:</span>
-            {['CSV', 'Excel', 'PDF'].map((formatType) => (
-              <button
-                key={formatType}
-                type="button"
-                onClick={() => exportReport(formatType)}
-                disabled={Boolean(exportLoading)}
-                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {exportLoading === formatType ? (
-                  `Preparing ${formatType}...`
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    {formatType === 'Excel' ? 'Excel (.xlsx)' : formatType}
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
+          <ExportButtons onExport={exportReport} exportLoading={exportLoading} />
         </div>
 
         {serverUnavailable && (

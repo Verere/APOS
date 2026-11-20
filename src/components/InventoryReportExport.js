@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { Download } from 'lucide-react'
+import ExportButtons from '@/components/ExportButtons'
 
 const REPORT_COLUMNS = [
   { key: 'productName', label: 'Product', type: 'text' },
@@ -359,27 +359,7 @@ export default function InventoryReportExport({
 
   return (
     <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-sm font-semibold text-gray-600">Export:</span>
-        {['CSV', 'Excel', 'PDF'].map((formatType) => (
-          <button
-            key={formatType}
-            type="button"
-            onClick={() => exportReport(formatType)}
-            disabled={Boolean(exportLoading)}
-            className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {exportLoading === formatType ? (
-              `Preparing ${formatType}...`
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                {formatType === 'Excel' ? 'Excel (.xlsx)' : formatType}
-              </>
-            )}
-          </button>
-        ))}
-      </div>
+      <ExportButtons onExport={exportReport} exportLoading={exportLoading} />
       {exportMessage && (
         <div
           role={exportMessage.type === 'error' ? 'alert' : 'status'}

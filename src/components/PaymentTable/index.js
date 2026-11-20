@@ -22,9 +22,9 @@ import {
   Calendar,
   TrendingUp,
   Truck,
-  X,
-  Download
+  X
 } from 'lucide-react';
+import ExportButtons from '@/components/ExportButtons';
 
 const PaymentTable=({payments, allPayment, slug, deliveryEnabled = false, serviceChargeEnabled = false})=>{
  
@@ -666,27 +666,7 @@ return(
       <div className="flex flex-col gap-4 mb-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h2 className="text-2xl font-bold text-gray-800">Payment Records</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-sm font-semibold text-gray-600">Export:</span>
-            {['CSV', 'Excel', 'PDF'].map((formatType) => (
-              <button
-                key={formatType}
-                type="button"
-                onClick={() => exportReport(formatType)}
-                disabled={Boolean(exportLoading)}
-                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {exportLoading === formatType ? (
-                  `Preparing ${formatType}...`
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    {formatType === 'Excel' ? 'Excel (.xlsx)' : formatType}
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
+          <ExportButtons onExport={exportReport} exportLoading={exportLoading} />
         </div>
         {exportMessage && (
           <div

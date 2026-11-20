@@ -1,7 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { Search, Download, Filter, Eye } from 'lucide-react'
+import { Search, Filter, Eye } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import ExportButtons from '@/components/ExportButtons'
 import { currencyFormat } from '@/utils/currency'
 
 const OrdersContent = ({ orders }) => {
@@ -23,15 +24,14 @@ const OrdersContent = ({ orders }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <h1 className="text-2xl font-bold">Orders</h1>
-        <button
-          onClick={exportToCSV}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-        >
-          <Download size={20} />
-          Export CSV
-        </button>
+        <ExportButtons
+          label=""
+          formats={['CSV']}
+          buttonLabels={{ CSV: 'Export CSV' }}
+          onExport={exportToCSV}
+        />
       </div>
 
       <Card>

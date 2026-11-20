@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Download } from 'lucide-react'
 import { toast } from 'react-toastify'
+import ExportButtons from '@/components/ExportButtons'
 
 function toFiniteNumber(value) {
   const number = Number(value)
@@ -353,26 +353,6 @@ export default function CustomerDepositExport({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="mr-1 text-xs font-semibold text-gray-600">{label}:</span>
-      {['CSV', 'Excel', 'PDF'].map((formatType) => (
-        <button
-          key={formatType}
-          type="button"
-          onClick={() => exportReport(formatType)}
-          disabled={Boolean(exportLoading)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {exportLoading === formatType ? (
-            `Preparing ${formatType}...`
-          ) : (
-            <>
-              <Download className="h-3.5 w-3.5" />
-              {formatType === 'Excel' ? 'Excel (.xlsx)' : formatType}
-            </>
-          )}
-        </button>
-      ))}
-    </div>
+    <ExportButtons label={label} onExport={exportReport} exportLoading={exportLoading} />
   )
 }

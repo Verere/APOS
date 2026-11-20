@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import ExportButtons from "@/components/ExportButtons";
 
 export default function ExpenseTablePage() {
   const { slug } = useParams();
@@ -410,25 +411,13 @@ export default function ExpenseTablePage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <span className="mr-1 text-sm font-semibold text-gray-700 dark:text-gray-200">
-            Export report:
-          </span>
-          {["CSV", "Excel", "PDF"].map((format) => (
-            <button
-              key={format}
-              type="button"
-              onClick={() => exportReport(format)}
-              disabled={Boolean(exportLoading) || loading || Boolean(error)}
-              className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-blue-300 dark:hover:bg-gray-700"
-            >
-              {exportLoading === format
-                ? `Preparing ${format}...`
-                : format === "Excel"
-                  ? "Excel (.xlsx)"
-                  : format}
-            </button>
-          ))}
+        <div className="mb-6">
+          <ExportButtons
+            label="Export report"
+            onExport={exportReport}
+            exportLoading={exportLoading}
+            disabled={loading || Boolean(error)}
+          />
         </div>
         {exportMessage && (
           <div

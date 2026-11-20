@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/dialog"
 import { currencyFormat } from "@/utils/currency";
 import { MdSearch } from "react-icons/md";
-import { Download } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
+import ExportButtons from "@/components/ExportButtons";
 import BarcodePrinter from "../BarCodePrinter";
 import { updateBarcode } from "@/actions/update";
 import { toast } from "react-toastify";
@@ -627,26 +627,8 @@ return(
            </div>
          )}
        </div>
-       <div className="mt-4 flex flex-wrap items-center gap-2">
-         <span className="mr-1 text-sm font-semibold text-gray-700">Export:</span>
-         {['CSV', 'Excel', 'PDF'].map((formatType) => (
-           <button
-             key={formatType}
-             type="button"
-             onClick={() => exportReport(formatType)}
-             disabled={Boolean(exportLoading)}
-             className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-           >
-             {exportLoading === formatType ? (
-               `Preparing ${formatType}...`
-             ) : (
-               <>
-                 <Download className="h-4 w-4" />
-                 {formatType === 'Excel' ? 'Excel (.xlsx)' : formatType}
-               </>
-             )}
-           </button>
-         ))}
+       <div className="mt-4">
+         <ExportButtons onExport={exportReport} exportLoading={exportLoading} />
        </div>
        {exportMessage && (
          <div

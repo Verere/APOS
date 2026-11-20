@@ -10,9 +10,9 @@ import {
   Calendar,
   Search,
   Filter,
-  Download
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import ExportButtons from '@/components/ExportButtons'
 
 const InventoryMovementTable = ({ transactions, productName }) => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -101,7 +101,7 @@ const InventoryMovementTable = ({ transactions, productName }) => {
   return (
     <div className="w-full space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Inventory Movements</h2>
           {productName && (
@@ -111,13 +111,12 @@ const InventoryMovementTable = ({ transactions, productName }) => {
             </p>
           )}
         </div>
-        <button
-          onClick={exportToCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
-        >
-          <Download size={16} />
-          <span className="hidden sm:inline">Export CSV</span>
-        </button>
+        <ExportButtons
+          label=""
+          formats={['CSV']}
+          buttonLabels={{ CSV: 'Export CSV' }}
+          onExport={exportToCSV}
+        />
       </div>
 
       {/* Filters */}
