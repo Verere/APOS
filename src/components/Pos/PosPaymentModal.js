@@ -984,9 +984,7 @@ export default function PosPaymentModal({
                         type="checkbox"
                         checked={deliverySelected}
                         onChange={(e) => {
-                          const checked = e.target.checked
-                          setDeliverySelected(checked)
-                          if (checked) setDeliveryFeeInput(String(customer?.deliveryCost ?? ''))
+                          setDeliverySelected(e.target.checked)
                         }}
                         className="h-4 w-4 accent-purple-600"
                       />

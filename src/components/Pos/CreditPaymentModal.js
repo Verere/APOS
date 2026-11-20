@@ -122,9 +122,7 @@ const CreditPaymentModal = ({ isOpen, onClose, totalAmount, customerName, custom
                   type="checkbox"
                   checked={deliverySelected}
                   onChange={(e) => {
-                    const checked = e.target.checked
-                    setDeliverySelected(checked)
-                    if (checked) setDeliveryFeeInput(String(customer?.deliveryCost ?? ''))
+                    setDeliverySelected(e.target.checked)
                   }}
                   className="h-5 w-5 accent-purple-600"
                 />

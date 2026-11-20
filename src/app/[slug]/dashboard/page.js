@@ -39,6 +39,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
     redirect('/dashboard')
   }
   const storeSettings = await StoreSettings.findOne({ slug }).select('deliveryEnabled serviceChargeEnabled').lean()
+  const deliveryEnabled = storeSettings?.deliveryEnabled === true
 
   const membership = await StoreMembership.findOne({
     userId: session.user.id,
@@ -172,10 +173,12 @@ const DashBoardPage = async ({ params, searchParams }) => {
 
   const totalRevenue = monthlyOrders.reduce((sum, order) => sum + getProductSalesAmount(order), 0)
 
-  const totalDelivery = monthlyOrders.reduce((sum, order) => {
-    if (order.isCancelled || String(order.transactionType || '').toUpperCase() === 'COMPLIMENTARY') return sum
-    return sum + (Number(order.deliveryCost) || 0)
-  }, 0)
+  const totalDelivery = deliveryEnabled
+    ? monthlyOrders.reduce((sum, order) => {
+        if (order.isCancelled || String(order.transactionType || '').toUpperCase() === 'COMPLIMENTARY') return sum
+        return sum + Math.max(0, Number(order.deliveryCost) || 0)
+      }, 0)
+    : 0
   const totalServiceCharge = monthlyOrders.reduce((sum, order) => {
     if (order.isCancelled || String(order.transactionType || '').toUpperCase() === 'COMPLIMENTARY') return sum
     return sum + (Number(order.serviceChargeCost) || 0)
@@ -270,7 +273,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
       salesData={dailySalesData}
       selectedMonth={selectedMonth}
       selectedMonthLabel={selectedMonthLabel}
-      deliveryEnabled={storeSettings?.deliveryEnabled === true}
+      deliveryEnabled={deliveryEnabled}
       serviceChargeEnabled={storeSettings?.serviceChargeEnabled === true}
     />
   )

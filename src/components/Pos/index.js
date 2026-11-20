@@ -488,17 +488,13 @@ const PosPage = ({
 
     let deliveryCost = 0;
     if (deliveryEnabled && window.confirm('Do you want to add delivery to this invoice?')) {
-      if (selectedCustomerData) {
-        deliveryCost = Math.max(0, Number(selectedCustomerData.deliveryCost || 0));
-      } else {
-        const walkInFee = window.prompt('Enter the delivery fee for this walk-in customer:', '0');
-        const parsedWalkInFee = Number(walkInFee);
-        if (walkInFee !== null && Number.isFinite(parsedWalkInFee) && parsedWalkInFee >= 0) {
-          deliveryCost = parsedWalkInFee;
-        } else if (walkInFee !== null) {
-          toast.error('Delivery fee must be a non-negative number');
-          return;
-        }
+      const deliveryFeeInput = window.prompt('Enter the delivery fee for this invoice:', '0');
+      const parsedDeliveryFee = Number(deliveryFeeInput);
+      if (deliveryFeeInput !== null && Number.isFinite(parsedDeliveryFee) && parsedDeliveryFee >= 0) {
+        deliveryCost = parsedDeliveryFee;
+      } else if (deliveryFeeInput !== null) {
+        toast.error('Delivery fee must be a non-negative number');
+        return;
       }
     }
     let serviceChargeCost = 0;
