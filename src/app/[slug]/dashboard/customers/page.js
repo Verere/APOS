@@ -6,6 +6,7 @@ import StoreMembership from '@/models/storeMembership'
 import Store from '@/models/store'
 import Customer from '@/models/customer'
 import Order from '@/models/order'
+import StoreSettings from '@/models/storeSettings'
 import CustomersListClient from '@/components/customers/CustomersListClient'
 
 export default async function CustomersPage({ params }) {
@@ -23,6 +24,7 @@ export default async function CustomersPage({ params }) {
     if (!store) {
       return <div>Store not found</div>
     }
+    const storeSettings = await StoreSettings.findOne({ slug }).select('deliveryEnabled').lean()
 
     const membership = await StoreMembership.findOne({
       userId: session.user.id,
@@ -90,6 +92,7 @@ export default async function CustomersPage({ params }) {
           slug={slug}
           currentUserRole={membership.role}
           storeId={store._id.toString()}
+          deliveryEnabled={storeSettings?.deliveryEnabled === true}
         />
       </div>
     )

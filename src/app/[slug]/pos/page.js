@@ -32,6 +32,7 @@ const Pos = async({params, searchParams})=>{
           allowDecimalQuantity: false,
           enableBusinessDate: false,
           deliveryEnabled: false,
+          serviceChargeEnabled: false,
           otherPaymentMethods: [],
           bankNames: [],
           referrerBonusPercentage: 0,
@@ -67,6 +68,7 @@ const Pos = async({params, searchParams})=>{
               allowDecimalQuantity: false,
               enableBusinessDate: false,
               deliveryEnabled: false,
+              serviceChargeEnabled: false,
               otherPaymentMethods: [],
               bankNames: [],
               referrerBonusPercentage: 0,
@@ -123,6 +125,7 @@ const Pos = async({params, searchParams})=>{
                  allowDecimalQuantity={settings?.allowDecimalQuantity ?? false}
                  enableBusinessDate={settings?.enableBusinessDate ?? false}
                  deliveryEnabled={serverUnavailable ? false : (settings?.deliveryEnabled ?? false)}
+                 serviceChargeEnabled={serverUnavailable ? false : (settings?.serviceChargeEnabled ?? false)}
                  otherPaymentMethods={Array.isArray(settings?.otherPaymentMethods) ? settings.otherPaymentMethods : []}
                  bankNames={Array.isArray(settings?.bankNames) ? settings.bankNames : []}
                  referrerBonusPercentage={settings?.referrerBonusPercentage ?? 0}

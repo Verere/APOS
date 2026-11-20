@@ -5,7 +5,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { toast } from 'react-toastify'
 import { currencyFormat } from '@/utils/currency'
 
-export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, printingSettings = {} }) {
+export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, printingSettings = {}, deliveryEnabled = false, serviceChargeEnabled = false }) {
   const [sendingEmail, setSendingEmail] = useState(false)
 
   const receiptFontFamily = printingSettings?.receiptFontFamily || 'monospace'
@@ -119,7 +119,8 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, 
           <div class="divider"></div>
 
           <div class="section">
-            ${Number(invoiceData.deliveryCost || 0) > 0 ? `<div class="row"><strong>Delivery:</strong><span>${currencyFormat(invoiceData.deliveryCost)}</span></div>` : ''}
+            ${deliveryEnabled && Number(invoiceData.deliveryCost || 0) > 0 ? `<div class="row"><strong>Delivery:</strong><span>${currencyFormat(invoiceData.deliveryCost)}</span></div>` : ''}
+            ${serviceChargeEnabled && Number(invoiceData.serviceChargeCost || 0) > 0 ? `<div class="row"><strong>Service charge:</strong><span>${currencyFormat(invoiceData.serviceChargeCost)}</span></div>` : ''}
             <div class="row"><strong>Total Amount:</strong><span>${currencyFormat(invoiceData.totalAmount || 0)}</span></div>
             <div class="row"><strong>Amount Paid:</strong><span>${currencyFormat(invoiceData.paymentAmount || 0)}</span></div>
             ${showOutstandingBalanceOnReceipt ? `<div class="row"><strong>Outstanding Balance:</strong><span>${currencyFormat(invoiceBalances.outstandingBalance)}</span></div>` : ''}
@@ -144,7 +145,7 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, 
       printWindow.print()
       printWindow.close()
     }, 250)
-  }, [invoiceData, invoiceBalances, receiptFontFamily, receiptFontSize, receiptFooterNote, formatDateTime, storeInfo])
+  }, [deliveryEnabled, serviceChargeEnabled, invoiceData, invoiceBalances, receiptFontFamily, receiptFontSize, receiptFooterNote, formatDateTime, showOutstandingBalanceOnReceipt, showWalletBalanceOnReceipt, storeInfo])
 
   const handleSendEmail = useCallback(async () => {
     if (!invoiceData?.customer?.email) {
@@ -164,6 +165,8 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, 
           invoiceData,
           storeInfo,
           customerEmail: invoiceData.customer.email,
+          deliveryEnabled,
+          serviceChargeEnabled,
         }),
       })
 
@@ -180,7 +183,7 @@ export default function InvoiceModal({ isOpen, onClose, invoiceData, storeInfo, 
     } finally {
       setSendingEmail(false)
     }
-  }, [invoiceData, storeInfo])
+  }, [deliveryEnabled, serviceChargeEnabled, invoiceData, storeInfo])
 
   const formatDate = useCallback((date) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -235,7 +238,7 @@ ${invoiceData.items?.map((item, i) =>
 ).join('\n')}
 
 ━━━━━━━━━━━━━━━━━━━━
-${Number(invoiceData.deliveryCost || 0) > 0 ? `*Delivery:* ${currencyFormat(invoiceData.deliveryCost)}\n` : ''}*Total Amount:* ${currencyFormat(invoiceData.totalAmount)}
+${deliveryEnabled && Number(invoiceData.deliveryCost || 0) > 0 ? `*Delivery:* ${currencyFormat(invoiceData.deliveryCost)}\n` : ''}${serviceChargeEnabled && Number(invoiceData.serviceChargeCost || 0) > 0 ? `*Service charge:* ${currencyFormat(invoiceData.serviceChargeCost)}\n` : ''}*Total Amount:* ${currencyFormat(invoiceData.totalAmount)}
 *Amount Paid:* ${currencyFormat(invoiceData.paymentAmount || 0)}
 *Balance Due:* ${currencyFormat(invoiceData.creditAmount || invoiceData.totalAmount)}
   ${showOutstandingBalanceOnReceipt ? `*Outstanding Balance:* ${currencyFormat(outstandingBalance)}` : ''}
@@ -248,7 +251,7 @@ powered by:  www.marketbook.app
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
     toast.success('Opening WhatsApp...')
-  }, [invoiceData, storeInfo, formatDate])
+  }, [deliveryEnabled, serviceChargeEnabled, invoiceData, invoiceBalances, showOutstandingBalanceOnReceipt, showWalletBalanceOnReceipt, storeInfo, formatDate])
 
   // Conditional return AFTER all hooks
   if (!isOpen || !invoiceData) return null
@@ -375,10 +378,16 @@ powered by:  www.marketbook.app
                     ))}
                   </tbody>
                   <tfoot>
-                    {Number(invoiceData.deliveryCost || 0) > 0 && (
+                    {deliveryEnabled && Number(invoiceData.deliveryCost || 0) > 0 && (
                       <tr className="bg-gradient-to-r from-blue-50 to-blue-100 font-bold">
                         <td colSpan="3" className="p-3 text-right text-sm text-gray-700">DELIVERY:</td>
                         <td className="p-3 text-right text-base text-gray-900">{currencyFormat(invoiceData.deliveryCost)}</td>
+                      </tr>
+                    )}
+                    {serviceChargeEnabled && Number(invoiceData.serviceChargeCost || 0) > 0 && (
+                      <tr className="bg-gradient-to-r from-violet-50 to-violet-100 font-bold">
+                        <td colSpan="3" className="p-3 text-right text-sm text-gray-700">SERVICE CHARGE:</td>
+                        <td className="p-3 text-right text-base text-gray-900">{currencyFormat(invoiceData.serviceChargeCost)}</td>
                       </tr>
                     )}
                     <tr className="bg-gradient-to-r from-gray-50 to-gray-100 font-bold border-t-2 border-gray-300">
@@ -422,10 +431,16 @@ powered by:  www.marketbook.app
 
                 {/* Mobile Summary Cards */}
                 <div className="space-y-2 mt-4 pt-4 border-t-2 border-gray-300">
-                  {Number(invoiceData.deliveryCost || 0) > 0 && (
+                  {deliveryEnabled && Number(invoiceData.deliveryCost || 0) > 0 && (
                     <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                       <span className="font-semibold text-gray-700 text-sm">Delivery:</span>
                       <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceData.deliveryCost)}</span>
+                    </div>
+                  )}
+                  {serviceChargeEnabled && Number(invoiceData.serviceChargeCost || 0) > 0 && (
+                    <div className="flex justify-between items-center p-3 bg-violet-50 rounded-lg">
+                      <span className="font-semibold text-gray-700 text-sm">Service charge:</span>
+                      <span className="font-bold text-gray-900 text-lg">{currencyFormat(invoiceData.serviceChargeCost)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">

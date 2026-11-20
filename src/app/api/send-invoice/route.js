@@ -11,7 +11,13 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { invoiceData, storeInfo, customerEmail } = await req.json()
+    const {
+      invoiceData,
+      storeInfo,
+      customerEmail,
+      deliveryEnabled = false,
+      serviceChargeEnabled = false,
+    } = await req.json()
 
     if (!customerEmail || !invoiceData) {
       return NextResponse.json(
@@ -22,6 +28,9 @@ export async function POST(req) {
 
     const outstandingBalance = Number(invoiceData?.outstandingBalance ?? invoiceData?.customer?.outstandingBalance ?? invoiceData?.creditAmount ?? 0)
     const walletBalance = Number(invoiceData?.walletBalance ?? invoiceData?.customer?.walletBalance ?? 0)
+    const totalAmount = Number(invoiceData.totalAmount) || 0
+    const amountPaid = Number(invoiceData.paymentAmount) || 0
+    const balanceDue = Number(invoiceData.creditAmount ?? Math.max(0, totalAmount - amountPaid))
 
     // Generate email HTML
     const emailHTML = `
@@ -156,17 +165,29 @@ export async function POST(req) {
                 `).join('')}
               </tbody>
               <tfoot>
+                ${deliveryEnabled && Number(invoiceData.deliveryCost || 0) > 0 ? `
+                <tr>
+                  <td colspan="3" class="text-right">DELIVERY FEE:</td>
+                  <td class="text-right">${currencyFormat(invoiceData.deliveryCost)}</td>
+                </tr>
+                ` : ''}
+                ${serviceChargeEnabled && Number(invoiceData.serviceChargeCost || 0) > 0 ? `
+                <tr>
+                  <td colspan="3" class="text-right">SERVICE CHARGE:</td>
+                  <td class="text-right">${currencyFormat(invoiceData.serviceChargeCost)}</td>
+                </tr>
+                ` : ''}
                 <tr class="total-row">
                   <td colspan="3" class="text-right">TOTAL AMOUNT:</td>
-                  <td class="text-right">${currencyFormat(invoiceData.totalAmount)}</td>
+                  <td class="text-right">${currencyFormat(totalAmount)}</td>
                 </tr>
                 <tr class="total-row">
                   <td colspan="3" class="text-right">AMOUNT PAID:</td>
-                  <td class="text-right">${currencyFormat(0)}</td>
+                  <td class="text-right">${currencyFormat(amountPaid)}</td>
                 </tr>
                 <tr class="balance-row">
                   <td colspan="3" class="text-right">BALANCE DUE:</td>
-                  <td class="text-right">${currencyFormat(invoiceData.totalAmount)}</td>
+                  <td class="text-right">${currencyFormat(balanceDue)}</td>
                 </tr>
                 <tr class="total-row">
                   <td colspan="3" class="text-right">OUTSTANDING BALANCE:</td>

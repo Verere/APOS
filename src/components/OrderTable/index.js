@@ -15,6 +15,7 @@ import { formatTime } from '@/utils/date'
 import { updateCancelOrder } from '@/actions/update'
 import { toast } from 'react-toastify'
 import db from '@/lib/db/db'
+import { getOrderTotal, getProductSalesAmount } from '@/lib/orderAmounts'
 
 function CancelConfirmToast({ onConfirm, onClose }) {
   const [reason, setReason] = useState('')
@@ -57,7 +58,7 @@ function CancelConfirmToast({ onConfirm, onClose }) {
   )
 }
 
-const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErrorMessage = '' }) => {
+const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErrorMessage = '', deliveryEnabled = false, serviceChargeEnabled = false }) => {
   const { user, store } = useContext(GlobalContext)
   const pathname = usePathname()
   const { replace } = useRouter()
@@ -158,8 +159,11 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
                 return `${quantity} x ${name}`
               }).join('\n')
             : 'No items',
-          amount: amountValue(order?.amount),
+          amount: amountValue(getProductSalesAmount(order)),
           amountPaid: amountValue(order?.amountPaid),
+          totalDue: amountValue(getOrderTotal(order)),
+          deliveryCost: amountValue(order?.deliveryCost),
+          serviceChargeCost: amountValue(order?.serviceChargeCost),
           businessDate: isoDate || order?.bDate || '',
           time: order?.createdAt && !Number.isNaN(new Date(order.createdAt).getTime())
             ? formatTime(order.createdAt)
@@ -169,8 +173,15 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
       })
       const totalOrderAmount = exportRows.reduce((sum, order) => sum + order.amount, 0)
       const totalAmountPaid = exportRows.reduce((sum, order) => sum + order.amountPaid, 0)
+      const totalAmountDue = exportRows.reduce((sum, order) => sum + order.totalDue, 0)
+      const totalDelivery = deliveryEnabled
+        ? exportRows.reduce((sum, order) => sum + order.deliveryCost, 0)
+        : 0
+      const totalServiceCharge = serviceChargeEnabled
+        ? exportRows.reduce((sum, order) => sum + order.serviceChargeCost, 0)
+        : 0
       const outstandingBalance = exportRows.reduce(
-        (sum, order) => sum + Math.max(0, order.amount - order.amountPaid),
+        (sum, order) => sum + Math.max(0, order.totalDue - order.amountPaid),
         0
       )
       const formattedExportTime = exportedAt.toLocaleString('en-NG', {
@@ -183,11 +194,14 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
         'Order No.',
         'Customer',
         'Items Sold',
-        'Order Amount (NGN)',
+        'Product Subtotal (NGN)',
         'Amount Paid (NGN)',
         'Date',
         'Time',
         'User',
+        'Total Due (NGN)',
+        ...(deliveryEnabled ? ['Delivery Fee (NGN)'] : []),
+        ...(serviceChargeEnabled ? ['Service Charge (NGN)'] : []),
       ]
       const csvCell = (value) => {
         let text = String(value ?? '')
@@ -198,16 +212,24 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
       }
 
       if (formatType === 'CSV') {
-        const metadataRow = (label, value) => [label, value, '', '', '', '', '', '']
+        const metadataRow = (label, value) => {
+          const row = Array(headers.length).fill('')
+          row[0] = label
+          row[1] = value
+          return row
+        }
         const csvRows = [
-          ['Orders Report', '', '', '', '', '', '', ''],
-          ['Report description', reportDescription, '', '', '', '', '', ''],
-          ['Organization', 'MarketBook', 'Exported at', formattedExportTime, '', '', '', ''],
+          metadataRow('Orders Report', ''),
+          metadataRow('Report description', reportDescription),
+          ['Organization', 'MarketBook', 'Exported at', formattedExportTime, ...Array(Math.max(0, headers.length - 4)).fill('')],
           metadataRow('Total records exported', exportRows.length),
-          metadataRow('Total order value (NGN)', totalOrderAmount),
+          metadataRow('Total product sales (NGN)', totalOrderAmount),
+          metadataRow('Total amount due (NGN)', totalAmountDue),
           metadataRow('Amount collected (NGN)', totalAmountPaid),
           metadataRow('Outstanding balance (NGN)', outstandingBalance),
-          ['', '', '', '', '', '', '', ''],
+          ...(deliveryEnabled ? [metadataRow('Total delivery fees (NGN)', totalDelivery)] : []),
+          ...(serviceChargeEnabled ? [metadataRow('Total service charges (NGN)', totalServiceCharge)] : []),
+          Array(headers.length).fill(''),
           headers,
           ...exportRows.map((order) => [
             order.orderNumber,
@@ -218,6 +240,9 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
             order.businessDate,
             order.time,
             order.user,
+            order.totalDue,
+            ...(deliveryEnabled ? [order.deliveryCost] : []),
+            ...(serviceChargeEnabled ? [order.serviceChargeCost] : []),
           ]),
         ]
         const csvContent = `\uFEFF${csvRows
@@ -242,6 +267,9 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
           formatExcelBusinessDate(order.businessDate),
           order.time,
           order.user,
+          formatReportCurrency(order.totalDue),
+          ...(deliveryEnabled ? [formatReportCurrency(order.deliveryCost)] : []),
+          ...(serviceChargeEnabled ? [formatReportCurrency(order.serviceChargeCost)] : []),
         ])
         const columnWidths = headers.map((header) => Math.min(42, Math.max(12, header.length + 2)))
         displayRows.forEach((row) => row.forEach((value, index) => {
@@ -251,9 +279,10 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
           )
         }))
         worksheet.columns = columnWidths.map((width) => ({ width }))
-        worksheet.mergeCells('A1:H1')
+        const lastColumn = worksheet.getColumn(headers.length).letter
+        worksheet.mergeCells(`A1:${lastColumn}1`)
         worksheet.getCell('A1').value = 'Orders Report'
-        worksheet.mergeCells('A2:H2')
+        worksheet.mergeCells(`A2:${lastColumn}2`)
         worksheet.getCell('A2').value = reportDescription
         worksheet.getRow(3).values = [
           'Organization',
@@ -264,19 +293,30 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
         worksheet.getRow(4).values = [
           'Total records',
           exportRows.length,
-          'Total order value (NGN)',
+          'Total product sales (NGN)',
           totalOrderAmount,
           'Amount collected (NGN)',
           totalAmountPaid,
           'Outstanding (NGN)',
           outstandingBalance,
         ]
-        worksheet.getRow(5).values = headers
+        const feeSummary = ['Total due (NGN)', totalAmountDue]
+        let nextFeeSummaryColumn = 4
+        if (deliveryEnabled) {
+          feeSummary.push('Delivery fees (NGN)', totalDelivery)
+          nextFeeSummaryColumn += 2
+        }
+        if (serviceChargeEnabled) {
+          feeSummary.push('Service charges (NGN)', totalServiceCharge)
+        }
+        worksheet.getRow(5).values = feeSummary
+        worksheet.getRow(6).values = headers
         worksheet.getRow(1).height = 30
         worksheet.getRow(2).height = 22
         worksheet.getRow(3).height = 22
         worksheet.getRow(4).height = 26
         worksheet.getRow(5).height = 24
+        worksheet.getRow(6).height = 24
         worksheet.getCell('A1').font = {
           name: 'Arial',
           size: 18,
@@ -316,7 +356,13 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
         for (const address of ['D4', 'F4', 'H4']) {
           worksheet.getCell(address).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00'
         }
-        worksheet.getRow(5).eachCell((cell) => {
+        const feeSummaryAmountColumns = [2]
+        if (deliveryEnabled) feeSummaryAmountColumns.push(4)
+        if (serviceChargeEnabled) feeSummaryAmountColumns.push(nextFeeSummaryColumn)
+        feeSummaryAmountColumns.forEach((columnNumber) => {
+          worksheet.getCell(5, columnNumber).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00'
+        })
+        worksheet.getRow(6).eachCell((cell) => {
           cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFFFFFFF' } }
           cell.fill = {
             type: 'pattern',
@@ -340,6 +386,9 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
             excelDate || order.businessDate,
             order.time,
             order.user,
+            order.totalDue,
+            ...(deliveryEnabled ? [order.deliveryCost] : []),
+            ...(serviceChargeEnabled ? [order.serviceChargeCost] : []),
           ])
           row.height = 24
           row.eachCell((cell, columnNumber) => {
@@ -352,22 +401,25 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
             cell.border = { bottom: { style: 'hair', color: { argb: 'FFD9E2F3' } } }
             cell.alignment = {
               vertical: 'middle',
-              horizontal: [4, 5].includes(columnNumber) ? 'right' : 'left',
+              horizontal: [4, 5, 9, ...(deliveryEnabled ? [10] : []), ...(serviceChargeEnabled ? [deliveryEnabled ? 11 : 10] : [])].includes(columnNumber) ? 'right' : 'left',
               wrapText: columnNumber === 3,
             }
           })
           row.getCell(4).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00'
           row.getCell(5).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00'
+          for (const columnNumber of [9, ...(deliveryEnabled ? [10] : []), ...(serviceChargeEnabled ? [deliveryEnabled ? 11 : 10] : [])]) {
+            row.getCell(columnNumber).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00'
+          }
           if (excelDate) row.getCell(6).numFmt = 'dd mmm yyyy'
         })
-        worksheet.views = [{ state: 'frozen', ySplit: 5, topLeftCell: 'A6' }]
-        worksheet.autoFilter = `A5:H${Math.max(5, exportRows.length + 5)}`
+        worksheet.views = [{ state: 'frozen', ySplit: 6, topLeftCell: 'A7' }]
+        worksheet.autoFilter = `A6:${lastColumn}${Math.max(6, exportRows.length + 6)}`
         worksheet.pageSetup = {
           orientation: 'landscape',
           fitToPage: true,
           fitToWidth: 1,
           fitToHeight: 0,
-          printTitlesRow: '5:5',
+          printTitlesRow: '6:6',
         }
         const buffer = await workbook.xlsx.writeBuffer()
         downloadOrderReport(
@@ -392,11 +444,19 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
         document.setTextColor(71, 85, 105)
         document.text(`MarketBook | ${reportDescription}`, 12, 24)
         document.text(`Exported: ${formattedExportTime}`, 12, 30)
-        document.text(
-          `Records: ${exportRows.length} | Total order value: ${formatReportCurrency(totalOrderAmount).replace(/₦/g, 'NGN ')} | Collected: ${formatReportCurrency(totalAmountPaid).replace(/₦/g, 'NGN ')} | Outstanding: ${formatReportCurrency(outstandingBalance).replace(/₦/g, 'NGN ')}`,
-          12,
-          36
-        )
+        const orderSummary = `Records: ${exportRows.length} | Product sales: ${formatReportCurrency(totalOrderAmount).replace(/₦/g, 'NGN ')} | Total due: ${formatReportCurrency(totalAmountDue).replace(/₦/g, 'NGN ')} | Collected: ${formatReportCurrency(totalAmountPaid).replace(/₦/g, 'NGN ')} | Outstanding: ${formatReportCurrency(outstandingBalance).replace(/₦/g, 'NGN ')}`
+        const orderSummaryLines = document.splitTextToSize(orderSummary, pageWidth - 24)
+        document.text(orderSummaryLines, 12, 36)
+        const enabledFeeTotals = [
+          ...(deliveryEnabled ? [`Delivery fees: ${formatReportCurrency(totalDelivery).replace(/₦/g, 'NGN ')}`] : []),
+          ...(serviceChargeEnabled ? [`Service charges: ${formatReportCurrency(totalServiceCharge).replace(/₦/g, 'NGN ')}`] : []),
+        ]
+        const feeSummaryLines = enabledFeeTotals.length
+          ? document.splitTextToSize(enabledFeeTotals.join(' | '), pageWidth - 24)
+          : []
+        if (feeSummaryLines.length) {
+          document.text(feeSummaryLines, 12, 36 + orderSummaryLines.length * 4.5)
+        }
         const pdfRows = exportRows.map((order) => [
           order.orderNumber,
           order.customer,
@@ -406,11 +466,14 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
           formatPdfBusinessDate(order.businessDate),
           order.time,
           order.user,
+          formatReportCurrency(order.totalDue).replace(/₦/g, 'NGN '),
+          ...(deliveryEnabled ? [formatReportCurrency(order.deliveryCost).replace(/₦/g, 'NGN ')] : []),
+          ...(serviceChargeEnabled ? [formatReportCurrency(order.serviceChargeCost).replace(/₦/g, 'NGN ')] : []),
         ])
         autoTable(document, {
           head: [headers],
           body: pdfRows,
-          startY: 42,
+          startY: Math.max(42, 36 + orderSummaryLines.length * 4.5 + feeSummaryLines.length * 4.5 + 2),
           margin: { top: 12, right: 12, bottom: 17, left: 12 },
           theme: 'grid',
           styles: {
@@ -428,14 +491,17 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
           },
           alternateRowStyles: { fillColor: [241, 245, 249] },
           columnStyles: {
-            0: { cellWidth: 24 },
-            1: { cellWidth: 31 },
-            2: { cellWidth: 70 },
-            3: { cellWidth: 32, halign: 'right' },
-            4: { cellWidth: 32, halign: 'right' },
-            5: { cellWidth: 24 },
-            6: { cellWidth: 19 },
-            7: { cellWidth: 28 },
+            0: { cellWidth: 20 },
+            1: { cellWidth: 25 },
+            2: { cellWidth: 48 },
+            3: { cellWidth: 23, halign: 'right' },
+            4: { cellWidth: 23, halign: 'right' },
+            5: { cellWidth: 19 },
+            6: { cellWidth: 14 },
+            7: { cellWidth: 18 },
+            8: { cellWidth: 23, halign: 'right' },
+            ...(deliveryEnabled ? { 9: { cellWidth: 20, halign: 'right' } } : {}),
+            ...(serviceChargeEnabled ? { [deliveryEnabled ? 10 : 9]: { cellWidth: 20, halign: 'right' } } : {}),
           },
           didDrawPage: (page) => {
             const pageHeight = document.internal.pageSize.getHeight()
@@ -575,7 +641,7 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
           )}
         </div>
 
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className={`mt-4 grid grid-cols-1 ${deliveryEnabled && serviceChargeEnabled ? 'sm:grid-cols-5' : deliveryEnabled || serviceChargeEnabled ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-4`}>
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
             <p className="text-sm text-gray-600 mb-1">Total Orders</p>
             <p className="text-2xl font-bold text-blue-700">{filteredOrders.length}</p>
@@ -583,7 +649,7 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
           <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
             <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
             <p className="text-2xl font-bold text-green-700">
-              {currencyFormat(filteredOrders.reduce((sum, order) => sum + Number(order?.amount || 0), 0))}
+              {currencyFormat(filteredOrders.reduce((sum, order) => sum + getProductSalesAmount(order), 0))}
             </p>
           </div>
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
@@ -592,6 +658,22 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
               {currencyFormat(filteredOrders.reduce((sum, order) => sum + Number(order?.amountPaid || 0), 0))}
             </p>
           </div>
+          {deliveryEnabled && (
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200">
+              <p className="text-sm text-gray-600 mb-1">Delivery Fees</p>
+              <p className="text-2xl font-bold text-amber-700">
+                {currencyFormat(filteredOrders.reduce((sum, order) => sum + Number(order?.deliveryCost || 0), 0))}
+              </p>
+            </div>
+          )}
+          {serviceChargeEnabled && (
+            <div className="bg-gradient-to-br from-violet-50 to-violet-100 p-4 rounded-lg border border-violet-200">
+              <p className="text-sm text-gray-600 mb-1">Service Charges</p>
+              <p className="text-2xl font-bold text-violet-700">
+                {currencyFormat(filteredOrders.reduce((sum, order) => sum + Number(order?.serviceChargeCost || 0), 0))}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -728,7 +810,27 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
                         <span className="text-gray-400 text-sm italic">No items</span>
                       )}
                     </Table.Cell>
-                    <Table.Cell className="font-semibold text-gray-800">{currencyFormat(order?.amount)}</Table.Cell>
+                    <Table.Cell className="font-semibold text-gray-800">
+                      <div>{currencyFormat(getProductSalesAmount(order))}</div>
+                      {(deliveryEnabled && Number(order?.deliveryCost || 0) > 0) ||
+                        (serviceChargeEnabled && Number(order?.serviceChargeCost || 0) > 0) ? (
+                        <div className="mt-1 text-xs font-normal text-gray-500">
+                          {deliveryEnabled && Number(order?.deliveryCost || 0) > 0 && (
+                            <>
+                              Delivery: {currencyFormat(order.deliveryCost)}
+                              <br />
+                            </>
+                          )}
+                          {serviceChargeEnabled && Number(order?.serviceChargeCost || 0) > 0 && (
+                            <>
+                              Service charge: {currencyFormat(order.serviceChargeCost)}
+                              <br />
+                            </>
+                          )}
+                          Total due: {currencyFormat(getOrderTotal(order))}
+                        </div>
+                      ) : null}
+                    </Table.Cell>
                     <Table.Cell>
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
                         {currencyFormat(order?.amountPaid)}
@@ -848,8 +950,18 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
 
                 <div style={{ borderTop: '2px solid #000', margin: '8px 0' }} />
                 <div style={{ fontSize: '14px', fontWeight: '500' }}>
+                  {deliveryEnabled && Number(completedOrder?.deliveryCost || 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '500' }}>
+                      <span>DELIVERY:</span><span>{currencyFormat(completedOrder.deliveryCost)}</span>
+                    </div>
+                  )}
+                  {serviceChargeEnabled && Number(completedOrder?.serviceChargeCost || 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '500' }}>
+                      <span>SERVICE CHARGE:</span><span>{currencyFormat(completedOrder.serviceChargeCost)}</span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                    <span>TOTAL:</span><span>{currencyFormat(completedOrder?.amount || 0)}</span>
+                    <span>TOTAL:</span><span>{currencyFormat(getOrderTotal(completedOrder))}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '500' }}>
                     <span>PAID:</span><span>{currencyFormat(completedOrder?.amountPaid || 0)}</span>

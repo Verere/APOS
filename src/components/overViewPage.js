@@ -1,7 +1,7 @@
 'use client'
 import DashboardContent from '@/components/dashboard/DashboardContent'
 
-const OverViewPage = ({ slug, user, stats, recentOrders, salesData, selectedMonth, selectedMonthLabel }) => {
+const OverViewPage = ({ slug, user, stats, recentOrders, salesData, selectedMonth, selectedMonthLabel, deliveryEnabled, serviceChargeEnabled }) => {
   return (
     <DashboardContent
       slug={slug}
@@ -10,6 +10,8 @@ const OverViewPage = ({ slug, user, stats, recentOrders, salesData, selectedMont
       salesData={salesData}
       selectedMonth={selectedMonth}
       selectedMonthLabel={selectedMonthLabel}
+      deliveryEnabled={deliveryEnabled}
+      serviceChargeEnabled={serviceChargeEnabled}
     />
   )
 }

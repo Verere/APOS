@@ -21,11 +21,12 @@ import {
   Receipt,
   Calendar,
   TrendingUp,
+  Truck,
   X,
   Download
 } from 'lucide-react';
 
-const PaymentTable=({payments, allPayment, slug})=>{
+const PaymentTable=({payments, allPayment, slug, deliveryEnabled = false, serviceChargeEnabled = false})=>{
  
     const { replace } = useRouter();
     const [selectedDate, setSelectedDate] = useState(null);
@@ -68,6 +69,8 @@ const PaymentTable=({payments, allPayment, slug})=>{
         pos: 0,
         transfer: 0,
         other: 0,
+        delivery: 0,
+        serviceCharge: 0,
         completed: 0,
         partial: 0,
         splitPayments: 0
@@ -75,6 +78,8 @@ const PaymentTable=({payments, allPayment, slug})=>{
 
       filteredPayments.forEach(payment => {
         stats.total += payment.amountPaid || 0;
+        stats.delivery += Number(payment.deliveryCost || 0);
+        stats.serviceCharge += Number(payment.serviceChargeCost || 0);
 
         // Check if it's new schema with paymentMethods array
         if (payment.paymentMethods && Array.isArray(payment.paymentMethods)) {
@@ -150,6 +155,8 @@ const PaymentTable=({payments, allPayment, slug})=>{
             amountPaid: amount(payment.amountPaid),
             change: amount(payment.change),
             balance: amount(payment.balance),
+            deliveryCost: amount(payment.deliveryCost),
+            serviceChargeCost: amount(payment.serviceChargeCost),
             status: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(),
             businessDate: payment.bDate || (isoDate ? formatReportDate(isoDate) : ''),
             isoDate,
@@ -171,6 +178,8 @@ const PaymentTable=({payments, allPayment, slug})=>{
           'Business Date',
           'Time',
           'User',
+          ...(deliveryEnabled ? ['Delivery Fee (NGN)'] : []),
+          ...(serviceChargeEnabled ? ['Service Charge (NGN)'] : []),
         ];
         const filterDescription = [
           `Date: ${selectedDate ? format(selectedDate, 'dd/MM/yyyy') : 'All dates'}`,
@@ -190,14 +199,17 @@ const PaymentTable=({payments, allPayment, slug})=>{
         };
 
         if (formatType === 'CSV') {
+          const metadataRow = (...values) => [...values, ...Array(Math.max(0, headers.length - values.length)).fill('')];
           const csvRows = [
-            ['Payments Report', '', '', '', '', '', '', '', '', ''],
-            ['Report description', 'Payment records matching the selected filters', '', '', '', '', '', '', '', ''],
-            ['Organization', 'MarketBook', 'Exported at', formattedExportTime, '', '', '', '', '', ''],
-            ['Active filters', filterDescription, '', '', '', '', '', '', '', ''],
-            ['Total records exported', exportRows.length, 'Total amount paid (NGN)', paymentStats.total, '', '', '', '', '', ''],
-            ['Cash (NGN)', paymentStats.cash, 'POS (NGN)', paymentStats.pos, 'Transfer (NGN)', paymentStats.transfer, 'Other (NGN)', paymentStats.other, 'Split payments', paymentStats.splitPayments],
-            ['', '', '', '', '', '', '', '', '', ''],
+            metadataRow('Payments Report'),
+            metadataRow('Report description', 'Payment records matching the selected filters'),
+            metadataRow('Organization', 'MarketBook', 'Exported at', formattedExportTime),
+            metadataRow('Active filters', filterDescription),
+            metadataRow('Total records exported', exportRows.length, 'Total amount paid (NGN)', paymentStats.total),
+            metadataRow('Cash (NGN)', paymentStats.cash, 'POS (NGN)', paymentStats.pos, 'Transfer (NGN)', paymentStats.transfer, 'Other (NGN)', paymentStats.other, 'Split payments', paymentStats.splitPayments),
+            ...(deliveryEnabled ? [metadataRow('Total delivery fees (NGN)', paymentStats.delivery)] : []),
+            ...(serviceChargeEnabled ? [metadataRow('Total service charges (NGN)', paymentStats.serviceCharge)] : []),
+            metadataRow(),
             headers,
             ...exportRows.map((payment) => [
               payment.receipt,
@@ -210,6 +222,8 @@ const PaymentTable=({payments, allPayment, slug})=>{
               payment.businessDate,
               payment.time,
               payment.user,
+              ...(deliveryEnabled ? [payment.deliveryCost] : []),
+              ...(serviceChargeEnabled ? [payment.serviceChargeCost] : []),
             ]),
           ];
           const csvContent = `\uFEFF${csvRows
@@ -238,6 +252,8 @@ const PaymentTable=({payments, allPayment, slug})=>{
               payment.businessDate,
               payment.time,
               payment.user,
+              ...(deliveryEnabled ? [formatReportCurrency(payment.deliveryCost)] : []),
+              ...(serviceChargeEnabled ? [formatReportCurrency(payment.serviceChargeCost)] : []),
             ];
             values.forEach((value, index) => {
               columnWidths[index] = Math.min(
@@ -247,9 +263,15 @@ const PaymentTable=({payments, allPayment, slug})=>{
             });
           });
           worksheet.columns = columnWidths.map((width) => ({ width }));
-          worksheet.mergeCells('A1:J1');
+          const reportLastColumn = worksheet.getColumn(headers.length).letter;
+          const summaryLastColumn = worksheet.getColumn(
+            Math.max(headers.length, 10 + (deliveryEnabled ? 2 : 0) + (serviceChargeEnabled ? 2 : 0))
+          ).letter;
+          let feeSummaryColumn = 11;
+          const lastColumn = summaryLastColumn;
+          worksheet.mergeCells(`A1:${lastColumn}1`);
           worksheet.getCell('A1').value = 'Payments Report';
-          worksheet.mergeCells('A2:J2');
+          worksheet.mergeCells(`A2:${lastColumn}2`);
           worksheet.getCell('A2').value = 'Payment records matching the selected filters';
           worksheet.getRow(3).values = [
             'Organization',
@@ -257,7 +279,7 @@ const PaymentTable=({payments, allPayment, slug})=>{
             'Exported at',
             formattedExportTime,
           ];
-          worksheet.mergeCells('B4:J4');
+          worksheet.mergeCells(`B4:${lastColumn}4`);
           worksheet.getCell('A4').value = 'Active filters';
           worksheet.getCell('B4').value = filterDescription;
           worksheet.getRow(5).values = [
@@ -284,6 +306,16 @@ const PaymentTable=({payments, allPayment, slug})=>{
             'Search',
             searchTerm.trim() || 'None',
           ];
+          if (deliveryEnabled) {
+            worksheet.getCell(6, feeSummaryColumn).value = 'Delivery fees (NGN)';
+            worksheet.getCell(6, feeSummaryColumn + 1).value = paymentStats.delivery;
+            feeSummaryColumn += 2;
+          }
+          if (serviceChargeEnabled) {
+            worksheet.getCell(6, feeSummaryColumn).value = 'Service charges (NGN)';
+            worksheet.getCell(6, feeSummaryColumn + 1).value = paymentStats.serviceCharge;
+            feeSummaryColumn += 2;
+          }
           worksheet.getRow(7).values = headers;
 
           worksheet.getRow(1).height = 30;
@@ -325,6 +357,14 @@ const PaymentTable=({payments, allPayment, slug})=>{
           for (const address of ['D5', 'F5', 'H5', 'J5', 'B6']) {
             worksheet.getCell(address).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00';
           }
+          if (deliveryEnabled) {
+            const deliveryAmountColumn = 12;
+            worksheet.getCell(6, deliveryAmountColumn).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00';
+          }
+          if (serviceChargeEnabled) {
+            const serviceChargeAmountColumn = deliveryEnabled ? 14 : 12;
+            worksheet.getCell(6, serviceChargeAmountColumn).numFmt = '"₦"#,##0.00;[Red]-"₦"#,##0.00';
+          }
           worksheet.getRow(7).eachCell((cell) => {
             cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
             cell.fill = {
@@ -353,6 +393,8 @@ const PaymentTable=({payments, allPayment, slug})=>{
               excelDate,
               payment.time,
               payment.user,
+              ...(deliveryEnabled ? [payment.deliveryCost] : []),
+              ...(serviceChargeEnabled ? [payment.serviceChargeCost] : []),
             ]);
             row.height = 21;
             row.eachCell((cell, columnNumber) => {
@@ -377,7 +419,7 @@ const PaymentTable=({payments, allPayment, slug})=>{
             if (payment.isoDate) row.getCell(8).numFmt = 'dd mmm yyyy';
           });
           worksheet.views = [{ state: 'frozen', ySplit: 7, topLeftCell: 'A8' }];
-          worksheet.autoFilter = `A7:J${Math.max(7, exportRows.length + 7)}`;
+          worksheet.autoFilter = `A7:${reportLastColumn}${Math.max(7, exportRows.length + 7)}`;
           worksheet.pageSetup = {
             orientation: 'landscape',
             fitToPage: true,
@@ -412,8 +454,17 @@ const PaymentTable=({payments, allPayment, slug})=>{
           document.text(wrappedFilters, 12, 36);
           const summaryY = 36 + wrappedFilters.length * 4.5;
           const summary = `Records: ${exportRows.length} | Total paid: ${formatReportCurrency(paymentStats.total).replace(/₦/g, 'NGN ')} | Cash: ${formatReportCurrency(paymentStats.cash).replace(/₦/g, 'NGN ')} | POS: ${formatReportCurrency(paymentStats.pos).replace(/₦/g, 'NGN ')} | Transfer: ${formatReportCurrency(paymentStats.transfer).replace(/₦/g, 'NGN ')} | Other: ${formatReportCurrency(paymentStats.other).replace(/₦/g, 'NGN ')}`;
-          document.text(document.splitTextToSize(summary, pageWidth - 24), 12, summaryY);
-          const tableStartY = summaryY + 7;
+          const summaryLines = document.splitTextToSize(summary, pageWidth - 24);
+          document.text(summaryLines, 12, summaryY);
+          const feeSummary = [
+            ...(deliveryEnabled ? [`Delivery fees: ${formatReportCurrency(paymentStats.delivery).replace(/₦/g, 'NGN ')}`] : []),
+            ...(serviceChargeEnabled ? [`Service charges: ${formatReportCurrency(paymentStats.serviceCharge).replace(/₦/g, 'NGN ')}`] : []),
+          ];
+          const feeSummaryLines = feeSummary.length
+            ? document.splitTextToSize(feeSummary.join(' | '), pageWidth - 24)
+            : [];
+          if (feeSummaryLines.length) document.text(feeSummaryLines, 12, summaryY + 5);
+          const tableStartY = summaryY + summaryLines.length * 4.5 + 2 + feeSummaryLines.length * 4.5;
 
           autoTable(document, {
             head: [headers],
@@ -428,6 +479,12 @@ const PaymentTable=({payments, allPayment, slug})=>{
               payment.businessDate,
               payment.time,
               payment.user,
+              ...(deliveryEnabled
+                ? [formatReportCurrency(payment.deliveryCost).replace(/₦/g, 'NGN ')]
+                : []),
+              ...(serviceChargeEnabled
+                ? [formatReportCurrency(payment.serviceChargeCost).replace(/₦/g, 'NGN ')]
+                : []),
             ]),
             startY: tableStartY,
             margin: { top: 12, right: 12, bottom: 17, left: 12 },
@@ -447,16 +504,18 @@ const PaymentTable=({payments, allPayment, slug})=>{
             },
             alternateRowStyles: { fillColor: [241, 245, 249] },
             columnStyles: {
-              0: { cellWidth: 24 },
-              1: { cellWidth: 29 },
-              2: { cellWidth: 42 },
-              3: { cellWidth: 29, halign: 'right' },
-              4: { cellWidth: 23, halign: 'right' },
-              5: { cellWidth: 23, halign: 'right' },
-              6: { cellWidth: 22 },
-              7: { cellWidth: 23 },
-              8: { cellWidth: 20 },
-              9: { cellWidth: 25 },
+              0: { cellWidth: 20 },
+              1: { cellWidth: 24 },
+              2: { cellWidth: 35 },
+              3: { cellWidth: 20, halign: 'right' },
+              4: { cellWidth: 17, halign: 'right' },
+              5: { cellWidth: 17, halign: 'right' },
+              6: { cellWidth: 17 },
+              7: { cellWidth: 20 },
+              8: { cellWidth: 14 },
+              9: { cellWidth: 19 },
+              ...(deliveryEnabled ? { 10: { cellWidth: 20, halign: 'right' } } : {}),
+              ...(serviceChargeEnabled ? { [deliveryEnabled ? 11 : 10]: { cellWidth: 20, halign: 'right' } } : {}),
             },
             didDrawPage: (page) => {
               const pageHeight = document.internal.pageSize.getHeight();
@@ -689,7 +748,7 @@ return(
       </div>
 
       {/* Payment Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+      <div className={`grid grid-cols-2 sm:grid-cols-3 ${deliveryEnabled && serviceChargeEnabled ? 'lg:grid-cols-7' : deliveryEnabled || serviceChargeEnabled ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3 mb-4`}>
         <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign className="w-4 h-4 text-green-600" />
@@ -718,6 +777,24 @@ return(
           </div>
           <p className="text-lg font-bold text-orange-700">{currencyFormat(paymentStats.other)}</p>
         </div>
+        {deliveryEnabled && (
+          <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 p-3 rounded-lg border border-cyan-200">
+            <div className="flex items-center gap-2 mb-1">
+              <Truck className="w-4 h-4 text-cyan-600" />
+              <p className="text-xs text-gray-600">Delivery Fees</p>
+            </div>
+            <p className="text-lg font-bold text-cyan-700">{currencyFormat(paymentStats.delivery)}</p>
+          </div>
+        )}
+        {serviceChargeEnabled && (
+          <div className="bg-gradient-to-br from-violet-50 to-violet-100 p-3 rounded-lg border border-violet-200">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="w-4 h-4 text-violet-600" />
+              <p className="text-xs text-gray-600">Service Charges</p>
+            </div>
+            <p className="text-lg font-bold text-violet-700">{currencyFormat(paymentStats.serviceCharge)}</p>
+          </div>
+        )}
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-3 rounded-lg border border-gray-300">
           <div className="flex items-center gap-2 mb-1">
             <Receipt className="w-4 h-4 text-gray-600" />
@@ -815,6 +892,16 @@ return(
                         <span className="inline-flex items-center px-2 py-1 rounded-md text-sm font-semibold bg-green-50 text-green-700 border border-green-200">
                           {currencyFormat(payment?.amountPaid)}
                         </span>
+                        {deliveryEnabled && Number(payment.deliveryCost || 0) > 0 && (
+                          <span className="text-xs text-cyan-700">
+                            Delivery: {currencyFormat(payment.deliveryCost)}
+                          </span>
+                        )}
+                        {serviceChargeEnabled && Number(payment.serviceChargeCost || 0) > 0 && (
+                          <span className="text-xs text-violet-700">
+                            Service charge: {currencyFormat(payment.serviceChargeCost)}
+                          </span>
+                        )}
                         {payment.change > 0 && (
                           <span className="text-xs text-gray-500">
                             Change: {currencyFormat(payment.change)}

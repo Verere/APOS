@@ -11,12 +11,13 @@ import {
   ArrowDownRight,
   ArrowDownCircle,
   Wallet,
+  Truck,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { currencyFormat } from '@/utils/currency'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
-const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selectedMonthLabel }) => {
+const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selectedMonthLabel, deliveryEnabled = false, serviceChargeEnabled = false }) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -46,6 +47,24 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
       icon: DollarSign,
       color: 'bg-blue-500',
     },
+    ...(deliveryEnabled ? [{
+      title: 'Delivery Fees',
+      value: currencyFormat(stats?.totalDelivery || 0),
+      subtitle: 'Tracked separately from product revenue',
+      change: null,
+      isPositive: true,
+      icon: Truck,
+      color: 'bg-cyan-600',
+    }] : []),
+    ...(serviceChargeEnabled ? [{
+      title: 'Service Charges',
+      value: currencyFormat(stats?.totalServiceCharge || 0),
+      subtitle: 'Tracked separately from product revenue',
+      change: null,
+      isPositive: true,
+      icon: DollarSign,
+      color: 'bg-violet-600',
+    }] : []),
   
     {
       title: 'Total Profit',

@@ -59,6 +59,8 @@ function normalizePayload(transaction) {
     allowDecimalQuantity: Boolean(payload.allowDecimalQuantity || order.allowDecimalQuantity),
     deliveryEnabled: Boolean(payload.deliveryEnabled || order.deliveryEnabled || order?.meta?.deliveryEnabled),
     deliveryCost: Number(payload.deliveryCost ?? order.deliveryCost ?? order?.meta?.deliveryCost ?? 0),
+    serviceChargeEnabled: Boolean(payload.serviceChargeEnabled || order.serviceChargeEnabled || order?.meta?.serviceChargeEnabled),
+    serviceChargeCost: Number(payload.serviceChargeCost ?? order.serviceChargeCost ?? order?.meta?.serviceChargeCost ?? 0),
     submissionId: String(transaction?.transactionId || payload.transactionId || ''),
     transactionId: String(transaction?.transactionId || payload.transactionId || ''),
     deviceId: payload.deviceId || transaction?.deviceId || '',

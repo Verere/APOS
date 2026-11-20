@@ -22,6 +22,43 @@ test('cash sale totals and profit match the real business flow', () => {
   assert.equal(summary.attentionRequired.length, 0);
 });
 
+test('delivery fees only include active standard sales', () => {
+  const summary = summarizeEod({
+    orders: [
+      { amount: 1100, deliveryCost: 100 },
+      { amount: 500, deliveryCost: 250, transactionType: 'COMPLIMENTARY' },
+      { amount: 700, deliveryCost: 70, isCancelled: true },
+    ],
+  });
+
+  assert.equal(summary.totalDelivery, 100);
+  assert.equal(summary.businessSummary.totalDelivery, 100);
+});
+
+test('revenue excludes delivery fees for new and legacy orders', () => {
+  const summary = summarizeEod({
+    orders: [
+      { amount: 1000, totalAmount: 1250, deliveryCost: 250, profit: 300 },
+      { amount: 1250, totalAmount: 1250, deliveryCost: 250, profit: 300 },
+    ],
+  });
+
+  assert.equal(summary.businessSummary.revenue, 2000);
+  assert.equal(summary.totalDelivery, 500);
+});
+
+test('service charges are totaled separately and excluded from product revenue', () => {
+  const summary = summarizeEod({
+    orders: [
+      { amount: 1000, totalAmount: 1200, serviceChargeCost: 200, profit: 300 },
+      { amount: 900, totalAmount: 1200, deliveryCost: 100, serviceChargeCost: 200, profit: 250 },
+    ],
+  });
+
+  assert.equal(summary.businessSummary.revenue, 1900);
+  assert.equal(summary.totalServiceCharge, 400);
+});
+
 test('credit sales and debt collections stay separate from sales revenue', () => {
   const summary = summarizeEod({
     orders: [{ amount: 2500, profit: 700 }],

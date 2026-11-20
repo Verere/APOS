@@ -15,6 +15,7 @@ import {
   BriefcaseBusiness,
   ArrowDownCircle,
   CheckCircle,
+  Truck,
 } from "lucide-react";
 import { currencyFormat } from "@/utils/currency";
 import { useRef } from "react";
@@ -22,7 +23,7 @@ import { useReactToPrint } from "react-to-print";
 
 const safeNumber = (value) => Number(value || 0);
 
-export default function EodDisplay({ eodData, slug }) {
+export default function EodDisplay({ eodData, slug, deliveryEnabled = false, serviceChargeEnabled = false }) {
   const printRef = useRef(null);
   const summary = eodData?.businessSummary || eodData || {};
   const settlement = eodData?.settlement || {};
@@ -40,6 +41,8 @@ export default function EodDisplay({ eodData, slug }) {
 
   const metricCards = [
     { label: "Revenue", value: summary.revenue ?? eodData?.totalRevenue ?? 0, tone: "green", icon: TrendingUp },
+    ...(deliveryEnabled ? [{ label: "Delivery Fees", value: summary.totalDelivery ?? eodData?.totalDelivery ?? 0, tone: "cyan", icon: Truck }] : []),
+    ...(serviceChargeEnabled ? [{ label: "Service Charges", value: summary.totalServiceCharge ?? eodData?.totalServiceCharge ?? 0, tone: "violet", icon: DollarSign }] : []),
     { label: "Gross Profit", value: summary.grossProfit ?? eodData?.totalProfit ?? 0, tone: "indigo", icon: TrendingUp },
     { label: "Net Profit", value: summary.netProfit ?? 0, tone: "emerald", icon: CheckCircle },
     { label: "Money Received", value: settlement?.moneyReceivedToday?.amount ?? eodData?.totalPayment ?? 0, tone: "cyan", icon: DollarSign },
@@ -86,7 +89,7 @@ export default function EodDisplay({ eodData, slug }) {
         </div>
 
         <div ref={printRef} className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+          <div className={`grid grid-cols-1 md:grid-cols-2 ${deliveryEnabled && serviceChargeEnabled ? 'xl:grid-cols-8' : deliveryEnabled || serviceChargeEnabled ? 'xl:grid-cols-7' : 'xl:grid-cols-6'} gap-4`}>
             {metricCards.map((card) => {
               const Icon = card.icon;
               const toneClasses = {
@@ -94,6 +97,7 @@ export default function EodDisplay({ eodData, slug }) {
                 indigo: 'border-indigo-200 bg-indigo-50',
                 emerald: 'border-emerald-200 bg-emerald-50',
                 cyan: 'border-cyan-200 bg-cyan-50',
+                violet: 'border-violet-200 bg-violet-50',
                 amber: 'border-amber-200 bg-amber-50',
                 red: 'border-red-200 bg-red-50'
               }[card.tone] || 'border-slate-200 bg-white';
@@ -120,6 +124,8 @@ export default function EodDisplay({ eodData, slug }) {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               {[
                 ['Revenue', summary.revenue ?? eodData?.totalRevenue ?? 0],
+                ...(deliveryEnabled ? [['Delivery Fees', summary.totalDelivery ?? eodData?.totalDelivery ?? 0]] : []),
+                ...(serviceChargeEnabled ? [['Service Charges', summary.totalServiceCharge ?? eodData?.totalServiceCharge ?? 0]] : []),
                 ['Complementary', summary.complementary ?? 0],
                 ['Returns / Refunds', summary.returnsRefunds ?? 0],
                 ['Net Sales', summary.netSales ?? 0],

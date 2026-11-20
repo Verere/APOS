@@ -95,6 +95,16 @@ const PaymentSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  deliveryCost: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  serviceChargeCost: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   amountPaid: {
     type: Number,
     required: true,

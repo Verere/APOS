@@ -90,6 +90,7 @@ export default function SettingsPageClient({ slug, user }) {
     allowDecimalQuantity: false,
     enableBusinessDate: false,
     deliveryEnabled: false,
+    serviceChargeEnabled: false,
     otherPaymentMethods: [],
     bankNames: [],
     referrerBonusPercentage: 0,
@@ -305,6 +306,12 @@ export default function SettingsPageClient({ slug, user }) {
       
       if (response.ok) {
         setPriceTypeUsage(data.priceTypeUsage || {})
+        if (typeof data.settings?.serviceChargeEnabled === 'boolean') {
+          setFormData((previous) => ({
+            ...previous,
+            serviceChargeEnabled: data.settings.serviceChargeEnabled,
+          }))
+        }
         setSaveStatus('success')
         setTimeout(() => setSaveStatus(null), 3000)
       } else {
@@ -1216,6 +1223,29 @@ export default function SettingsPageClient({ slug, user }) {
           </div>
         </div>
 
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-violet-300 transition-colors">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="bg-violet-50 p-3 rounded-lg">
+                <DollarSign className="w-6 h-6 text-violet-600" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Enable Service Charge at Checkout</div>
+                <div className="text-sm text-gray-500">Allow an optional service charge per checkout. It is reported separately from product revenue.</div>
+              </div>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={formData.serviceChargeEnabled}
+                onChange={(e) => handleInputChange('serviceChargeEnabled', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-violet-600"></div>
+            </div>
+          </label>
+        </div>
+
         {/* Allow Credit Sales */}
         <div className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-cyan-300 transition-colors">
           <label className="flex items-center justify-between cursor-pointer">
@@ -1224,8 +1254,8 @@ export default function SettingsPageClient({ slug, user }) {
                 <Truck className="w-6 h-6 text-cyan-600" />
               </div>
               <div>
-                <div className="font-semibold text-gray-900">Enable Delivery at Checkout</div>
-                <div className="text-sm text-gray-500">Allow cashiers to add the selected registered customer&apos;s delivery cost.</div>
+                <div className="font-semibold text-gray-900">Enable Delivery Fee at Checkout</div>
+                <div className="text-sm text-gray-500">Allow cashiers to enter an optional delivery fee for any checkout.</div>
               </div>
             </div>
             <div className="relative">

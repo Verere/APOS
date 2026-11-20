@@ -11,6 +11,8 @@ import StoreMembership from '@/models/storeMembership'
 import Store from '@/models/store'
 import User from '@/models/user'
 import UserSubscription from '@/models/userSubscription'
+import StoreSettings from '@/models/storeSettings'
+import { getProductSalesAmount } from '@/lib/orderAmounts'
 
 const DashBoardPage = async ({ params, searchParams }) => {
   const session = await getServerSession(authOptions)
@@ -36,6 +38,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
   if (!store) {
     redirect('/dashboard')
   }
+  const storeSettings = await StoreSettings.findOne({ slug }).select('deliveryEnabled serviceChargeEnabled').lean()
 
   const membership = await StoreMembership.findOne({
     userId: session.user.id,
@@ -158,7 +161,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
         if (isInRange) {
           console.log('Monthly order found:', {
             date: orderDate,
-            amount: order.totalAmount || order.amount
+            amount: getProductSalesAmount(order)
           })
         }
         return isInRange
@@ -167,10 +170,15 @@ const DashBoardPage = async ({ params, searchParams }) => {
 
   console.log('Monthly orders count:', monthlyOrders.length)
 
-  // Calculate monthly revenue - check both totalAmount and amount fields
-  const totalRevenue = monthlyOrders.reduce((sum, order) => {
-    const amount = order.totalAmount || order.amount || 0
-    return sum + amount
+  const totalRevenue = monthlyOrders.reduce((sum, order) => sum + getProductSalesAmount(order), 0)
+
+  const totalDelivery = monthlyOrders.reduce((sum, order) => {
+    if (order.isCancelled || String(order.transactionType || '').toUpperCase() === 'COMPLIMENTARY') return sum
+    return sum + (Number(order.deliveryCost) || 0)
+  }, 0)
+  const totalServiceCharge = monthlyOrders.reduce((sum, order) => {
+    if (order.isCancelled || String(order.transactionType || '').toUpperCase() === 'COMPLIMENTARY') return sum
+    return sum + (Number(order.serviceChargeCost) || 0)
   }, 0)
   
   console.log('Total Revenue:', totalRevenue)
@@ -208,6 +216,8 @@ const DashBoardPage = async ({ params, searchParams }) => {
 
   const stats = {
     totalRevenue,
+    totalDelivery,
+    totalServiceCharge,
     totalOrders,
     totalProfit,
     totalExpenses,
@@ -227,7 +237,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
     })
     
     const dayRevenue = dayOrders.reduce((sum, order) => {
-      return sum + (order.totalAmount || order.amount || 0)
+      return sum + getProductSalesAmount(order)
     }, 0)
     
     dailySalesData.push({
@@ -247,7 +257,7 @@ const DashBoardPage = async ({ params, searchParams }) => {
       id: order._id.toString(),
       customer: order.customerName || order.orderName || 'Walk-in-Customer',
       date: new Date(order.createdAt).toLocaleDateString(),
-      amount: order.totalAmount || order.amount || 0,
+      amount: getProductSalesAmount(order),
       status: order.status || 'pending',
     }))
 :[]
@@ -260,6 +270,8 @@ const DashBoardPage = async ({ params, searchParams }) => {
       salesData={dailySalesData}
       selectedMonth={selectedMonth}
       selectedMonthLabel={selectedMonthLabel}
+      deliveryEnabled={storeSettings?.deliveryEnabled === true}
+      serviceChargeEnabled={storeSettings?.serviceChargeEnabled === true}
     />
   )
 }

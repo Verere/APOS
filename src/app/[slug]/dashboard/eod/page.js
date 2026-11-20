@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/auth";
 import connectDB from "@/utils/connectDB";
 import Store from "@/models/store";
+import StoreSettings from "@/models/storeSettings";
 import StoreMembership from "@/models/storeMembership";
 import Payment from "@/models/payments";
 import Order from "@/models/order";
@@ -105,6 +106,7 @@ export default async function EodPage({ params }) {
   }
 
   const eodData = await getEodData(slug);
+  const storeSettings = await StoreSettings.findOne({ slug }).select('deliveryEnabled serviceChargeEnabled').lean();
 
   if (!eodData) {
     return (
@@ -117,5 +119,5 @@ export default async function EodPage({ params }) {
     );
   }
 
-  return <EodDisplay eodData={eodData} slug={slug} />;
+  return <EodDisplay eodData={eodData} slug={slug} deliveryEnabled={storeSettings?.deliveryEnabled === true} serviceChargeEnabled={storeSettings?.serviceChargeEnabled === true} />;
 }

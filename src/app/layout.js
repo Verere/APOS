@@ -41,8 +41,11 @@ export const metadata = genMeta({
     'small business POS'
   ],
   manifest: '/manifest.webmanifest',
-  themeColor: '#2563eb',
 })
+
+export const viewport = {
+  themeColor: '#2563eb',
+}
 
 
 export default function RootLayout({ children }) {
@@ -51,7 +54,6 @@ export default function RootLayout({ children }) {
         <head>    
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel='icon' href='/nlogo.svg'/>
-        <meta name="theme-color" content="#2563eb" />
         <meta name="google-site-verification" content="KWSs8Woy63tW1YiEI9i6ZX597xC6KbP7D74a5Sn9cIk" />
         {/* Google Tag Manager */}
         <script dangerouslySetInnerHTML={{ __html: `

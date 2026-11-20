@@ -59,9 +59,10 @@ const OrderSchema = new mongoose.Schema({
    orderName:{type: String},
    orderNum:{type: String},
     items:{type: [OrderItemSchema], default: []},
-   amount: {type: Number}, 
+   amount: {type: Number}, // Product subtotal; checkout charges are tracked separately.
     deliveryCost: {type: Number, default: 0, min: 0},
-   totalAmount: {type: Number}, // For consistency with other endpoints
+    serviceChargeCost: {type: Number, default: 0, min: 0},
+   totalAmount: {type: Number}, // Amount due, including enabled checkout charges.
    profit: {type: Number, default: 0},
    amountPaid: {type: Number, default:0}, 
    bal: {type: Number}, 

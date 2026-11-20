@@ -64,7 +64,9 @@ export async function completeLocalCashSale({
   const transactionId = makeLocalId('tx')
   const orderNum = `OFF-${Date.now().toString(36).toUpperCase()}`
   const deliveryCost = Math.max(0, Number(orderMeta?.deliveryCost || 0))
-  const orderAmount = items.reduce((sum, item) => sum + Number(item.total || item.amount || 0), 0) + deliveryCost
+  const serviceChargeCost = Math.max(0, Number(orderMeta?.serviceChargeCost || 0))
+  const productSubtotal = items.reduce((sum, item) => sum + Number(item.total || item.amount || 0), 0)
+  const orderAmount = productSubtotal + deliveryCost + serviceChargeCost
   const normalizedPayments = normalizePaymentMethods({
     paymentMethods,
     paymentMethod,
@@ -93,7 +95,10 @@ export async function completeLocalCashSale({
     user: cashier || 'Cashier',
     bDate: businessDate,
     businessDateReason,
-    amount: orderAmount,
+    amount: productSubtotal,
+    totalAmount: orderAmount,
+    deliveryCost,
+    serviceChargeCost,
     amountPaid: subtotal,
     total: orderAmount,
     change: Number(change || Math.max(0, subtotal - orderAmount)),
@@ -123,6 +128,9 @@ export async function completeLocalCashSale({
       customerName: localOrder.customerName,
       cashier: localOrder.cashier,
       amount: localOrder.amount,
+      totalAmount: localOrder.totalAmount,
+      deliveryCost: localOrder.deliveryCost,
+      serviceChargeCost: localOrder.serviceChargeCost,
       amountPaid: localOrder.amountPaid,
       total: localOrder.total,
       change: localOrder.change,
@@ -161,6 +169,8 @@ export async function completeLocalCashSale({
       methods: normalizedPayments,
       amount: Number(subtotal || 0),
       orderAmount: orderAmount,
+      deliveryCost,
+      serviceChargeCost,
       change: Number(localOrder.change || 0),
       syncStatus: LOCAL_SYNC_STATUS.PENDING,
       createdAt: new Date().toISOString(),

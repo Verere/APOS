@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/auth";
 import connectDB from "@/utils/connectDB";
 import Store from "@/models/store";
+import StoreSettings from "@/models/storeSettings";
 import StoreMembership from "@/models/storeMembership";
 import Payment from "@/models/payments";
 import Order from "@/models/order";
@@ -92,6 +93,8 @@ export default async function EodPage({ params }) {
 
   const { slug } = await params;
   let eodData = null;
+  let deliveryEnabled = false;
+  let serviceChargeEnabled = false;
 
   try {
     await connectDB();
@@ -99,6 +102,9 @@ export default async function EodPage({ params }) {
     if (!store) {
       redirect('/dashboard');
     }
+    const storeSettings = await StoreSettings.findOne({ slug }).select('deliveryEnabled serviceChargeEnabled').lean();
+    deliveryEnabled = storeSettings?.deliveryEnabled === true;
+    serviceChargeEnabled = storeSettings?.serviceChargeEnabled === true;
 
     const membership = await StoreMembership.findOne({
       userId: session.user.id,
@@ -145,7 +151,7 @@ export default async function EodPage({ params }) {
   return (
     <>
       <TopBar />
-      <EodDisplay eodData={eodData} slug={slug} />
+      <EodDisplay eodData={eodData} slug={slug} deliveryEnabled={deliveryEnabled} serviceChargeEnabled={serviceChargeEnabled} />
     </>
   );
 }

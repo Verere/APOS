@@ -5,8 +5,9 @@ import { CartContext } from "@/context/CartContext"
 import { useContext, useRef } from "react"
 import { currencyFormat } from '@/utils/currency'
 import { useReactToPrint } from 'react-to-print';
+import { getOrderTotal } from '@/lib/orderAmounts'
 
-const PrintPage = ({ cart, payments }) => {
+const PrintPage = ({ cart, payments, deliveryEnabled = false, serviceChargeEnabled = false }) => {
   const { order } = useContext(CartContext)
   const { store, cartValue, payment, bal } = useContext(GlobalContext)
 
@@ -106,15 +107,21 @@ const PrintPage = ({ cart, payments }) => {
 
         {/* Totals */}
         <div style={{ fontSize: '12px', marginBottom: '10px' }}>
-          {Number(order?.deliveryCost || 0) > 0 && (
+          {deliveryEnabled && Number(order?.deliveryCost || 0) > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
               <span>DELIVERY:</span>
               <span>{currencyFormat(order.deliveryCost)}</span>
             </div>
           )}
+          {serviceChargeEnabled && Number(order?.serviceChargeCost || 0) > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+              <span>SERVICE CHARGE:</span>
+              <span>{currencyFormat(order.serviceChargeCost)}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', padding: '4px 0' }}>
             <span>TOTAL:</span>
-            <span>{currencyFormat(cartValue || order?.amount)}</span>
+            <span>{currencyFormat(order ? getOrderTotal(order) : cartValue)}</span>
           </div>
           
           {/* Payment Details */}

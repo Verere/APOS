@@ -76,9 +76,6 @@ const CartIndexPage = () => {
                     <span>Total Amount:</span>
                     <span>{currencyFormat(total)}</span>
                   </li>
-                  <li className="border-t  pt-3">
-                  <p className="mt-1 text-gray-400">Delivery fees are not yet added</p>
-                  </li>
                 </ul>
                 <Link
                  style={{

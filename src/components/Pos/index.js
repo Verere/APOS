@@ -43,6 +43,7 @@ const PosPage = ({
   allowDecimalQuantity = false,
   enableBusinessDate = false,
   deliveryEnabled = false,
+  serviceChargeEnabled = false,
   otherPaymentMethods = [],
   bankNames = [],
   referrerBonusPercentage = 0,
@@ -128,7 +129,6 @@ const PosPage = ({
         classes: 'bg-red-100 text-red-700',
       }
     }
-
     const lastSyncedAt = new Date(localCatalogLastSyncedAt).getTime()
     if (!Number.isFinite(lastSyncedAt)) {
       return {
@@ -487,10 +487,8 @@ const PosPage = ({
     }
 
     let deliveryCost = 0;
-    if (window.confirm('Do you want to add delivery to this invoice?')) {
-      if (!deliveryEnabled) {
-        toast.info('Delivery is disabled in store settings');
-      } else if (selectedCustomerData) {
+    if (deliveryEnabled && window.confirm('Do you want to add delivery to this invoice?')) {
+      if (selectedCustomerData) {
         deliveryCost = Math.max(0, Number(selectedCustomerData.deliveryCost || 0));
       } else {
         const walkInFee = window.prompt('Enter the delivery fee for this walk-in customer:', '0');
@@ -503,6 +501,17 @@ const PosPage = ({
         }
       }
     }
+    let serviceChargeCost = 0;
+    if (serviceChargeEnabled && window.confirm('Do you want to add a service charge to this invoice?')) {
+      const serviceChargeInput = window.prompt('Enter the service charge amount:', '0');
+      const parsedServiceCharge = Number(serviceChargeInput);
+      if (serviceChargeInput !== null && Number.isFinite(parsedServiceCharge) && parsedServiceCharge >= 0) {
+        serviceChargeCost = parsedServiceCharge;
+      } else if (serviceChargeInput !== null) {
+        toast.error('Service charge must be a non-negative number');
+        return;
+      }
+    }
     const subtotal = items.reduce((sum, item) => (
       sum + Number(item.amount ?? item.total ?? ((item.price ?? item.unitPrice ?? 0) * (item.qty ?? item.quantity ?? 0)))
     ), 0);
@@ -510,18 +519,19 @@ const PosPage = ({
     setInvoiceData({
       orderNum: 'DRAFT',
       items,
-      totalAmount: subtotal + deliveryCost,
+      totalAmount: subtotal + deliveryCost + serviceChargeCost,
       deliveryCost,
+      serviceChargeCost,
       paymentAmount: 0,
-      creditAmount: subtotal + deliveryCost,
+      creditAmount: subtotal + deliveryCost + serviceChargeCost,
       bDate,
       customer: selectedCustomerData || null,
       isPreview: true,
     });
     setShowInvoiceModal(true);
-  }, [cart, deliveryEnabled, selectedCustomerData, bDate]);
+  }, [cart, deliveryEnabled, serviceChargeEnabled, selectedCustomerData, bDate]);
 
-  const handleConfirmCreditPayment = useCallback(async ({ paymentAmount, creditAmount, paymentMethod, otherPaymentMethod, transferBank, transferReference }) => {
+  const handleConfirmCreditPayment = useCallback(async ({ paymentAmount, creditAmount, paymentMethod, otherPaymentMethod, transferBank, transferReference, deliveryEnabled: addDelivery, deliveryCost, serviceChargeEnabled: addServiceCharge, serviceChargeCost }) => {
     const items = cart?.cartItems || cart || [];
     setShowCreditPaymentModal(false);
     setLoading(true);
@@ -543,6 +553,10 @@ const PosPage = ({
           otherPaymentMethod,
           bankName: transferBank,
           reference: transferReference,
+          deliveryEnabled: addDelivery,
+          deliveryCost,
+          serviceChargeEnabled: addServiceCharge,
+          serviceChargeCost,
           allowDecimalQuantity,
         }),
       });
@@ -979,7 +993,7 @@ const PosPage = ({
                       </button>
                     </PopoverTrigger>
                     <PopoverContent> 
-                      <PrintPage cart={sales} payment={payment} />
+                      <PrintPage cart={sales} payment={payment} deliveryEnabled={deliveryEnabled} serviceChargeEnabled={serviceChargeEnabled} />
                     </PopoverContent>
                   </Popover>
                   */}
@@ -1119,6 +1133,8 @@ const PosPage = ({
           invoiceData={invoiceData}
           storeInfo={getHotel?.[0]}
           printingSettings={printingSettingsState}
+          deliveryEnabled={deliveryEnabled}
+          serviceChargeEnabled={serviceChargeEnabled}
         />
 
         {/* Payment Modal */}
@@ -1145,6 +1161,7 @@ const PosPage = ({
           printingSettings={printingSettingsState}
           customer={selectedCustomerData}
           allowDelivery={deliveryEnabled}
+          allowServiceCharge={serviceChargeEnabled}
           otherPaymentMethods={otherPaymentMethods}
           bankNames={bankNames}
           onSuccess={() => {
@@ -1166,6 +1183,8 @@ const PosPage = ({
           customer={selectedCustomerData}
           otherPaymentMethods={otherPaymentMethods}
           bankNames={bankNames}
+          allowDelivery={deliveryEnabled}
+          allowServiceCharge={serviceChargeEnabled}
           onConfirm={handleConfirmCreditPayment}
         />
       </>

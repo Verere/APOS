@@ -1,3 +1,5 @@
+import { getProductSalesAmount } from './orderAmounts.js'
+
 const DEFAULT_THRESHOLDS = {
   largeRefundAmount: 5000,
   largeStockAdjustmentQty: 50,
@@ -219,7 +221,9 @@ export function summarizeEod({
   const saleOrders = (orders || []).filter((order) => !order?.isCancelled && String(order?.transactionType || 'STANDARD').toUpperCase() !== 'COMPLIMENTARY');
   const complimentaryOrders = (orders || []).filter((order) => String(order?.transactionType || '').toUpperCase() === 'COMPLIMENTARY');
 
-  const revenue = saleOrders.reduce((sum, order) => sum + toNumber(order?.amount, 0), 0);
+  const revenue = saleOrders.reduce((sum, order) => sum + getProductSalesAmount(order), 0);
+  const totalDelivery = saleOrders.reduce((sum, order) => sum + toNumber(order?.deliveryCost, 0), 0);
+  const totalServiceCharge = saleOrders.reduce((sum, order) => sum + toNumber(order?.serviceChargeCost, 0), 0);
   const complimentary = complimentaryOrders.reduce((sum, order) => sum + toNumber(order?.amount, 0), 0);
   const refundsTotal = (walletTransactions || []).filter((transaction) => String(transaction?.type || '').toUpperCase() === 'REFUND').reduce((sum, item) => sum + toNumber(item?.amount, 0), 0)
     + (Array.isArray(payments) ? payments.filter((payment) => String(payment?.status || '').toUpperCase() === 'REFUNDED').reduce((sum, item) => sum + toNumber(item?.amountPaid || item?.orderAmount || 0, 0), 0) : 0);
@@ -348,6 +352,8 @@ export function summarizeEod({
 
   const totals = {
     totalRevenue: revenue,
+    totalDelivery,
+    totalServiceCharge,
     complementary: complimentary,
     returnsRefunds: refundsTotal,
     netSales,
@@ -374,6 +380,8 @@ export function summarizeEod({
     date,
     businessSummary: {
       revenue,
+      totalDelivery,
+      totalServiceCharge,
       complementary: complimentary,
       returnsRefunds: refundsTotal,
       netSales,

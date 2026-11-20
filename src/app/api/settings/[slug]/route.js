@@ -69,6 +69,7 @@ export async function GET(request, { params }) {
         allowDecimalQuantity: false,
         enableBusinessDate: false,
         deliveryEnabled: false,
+        serviceChargeEnabled: false,
         otherPaymentMethods: [],
         bankNames: [],
         printInvoiceEnabled: false,

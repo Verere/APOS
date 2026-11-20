@@ -46,6 +46,8 @@ export async function processSale({
   allowDecimalQuantity,
   deliveryEnabled,
   deliveryCost,
+  serviceChargeEnabled,
+  serviceChargeCost,
   submissionId,
   transactionId,
   deviceId,
@@ -121,19 +123,27 @@ export async function processSale({
 
         const totalOrderAmount = complimentarySale ? 0 : computedOrderAmount
         let deliveryAmount = 0
+        let serviceChargeAmount = 0
         if (!complimentarySale && (deliveryEnabled === 'true' || deliveryEnabled === true) && storeSettings?.deliveryEnabled) {
           if (customerId) {
             const deliveryCustomer = await Customer.findOne({ _id: customerId, storeId: store._id, isDeleted: false }).session(databaseSession).lean()
             if (!deliveryCustomer) throw Object.assign(new Error('Customer not found for delivery'), { code: 'BAD_DELIVERY' })
-            deliveryAmount = Math.max(0, Number(deliveryCustomer.deliveryCost || 0))
-          } else {
-            deliveryAmount = Number(deliveryCost || 0)
-            if (!Number.isFinite(deliveryAmount) || deliveryAmount < 0) {
-              throw Object.assign(new Error('Delivery cost must be a non-negative number'), { code: 'BAD_DELIVERY' })
-            }
+          }
+          deliveryAmount = Number(deliveryCost || 0)
+          if (!Number.isFinite(deliveryAmount) || deliveryAmount < 0) {
+            throw Object.assign(new Error('Delivery cost must be a non-negative number'), { code: 'BAD_DELIVERY' })
           }
         }
-        const finalOrderAmount = totalOrderAmount + deliveryAmount
+        if (!complimentarySale && (serviceChargeEnabled === 'true' || serviceChargeEnabled === true)) {
+          if (!storeSettings?.serviceChargeEnabled) {
+            throw Object.assign(new Error('Service charge is disabled in store settings'), { code: 'BAD_SERVICE_CHARGE' })
+          }
+          serviceChargeAmount = Number(serviceChargeCost || 0)
+          if (!Number.isFinite(serviceChargeAmount) || serviceChargeAmount < 0) {
+            throw Object.assign(new Error('Service charge must be a non-negative number'), { code: 'BAD_SERVICE_CHARGE' })
+          }
+        }
+        const finalOrderAmount = totalOrderAmount + deliveryAmount + serviceChargeAmount
         const totalOrderProfit = complimentarySale ? 0 : computedOrderProfit
         const paid = Number(amountPaid || 0)
         const walletAmount = complimentarySale ? 0 : Number(walletPaid || 0)
@@ -171,9 +181,10 @@ export async function processSale({
         }
 
         newOrder.items = itemsWithCostProfit
-        newOrder.amount = finalOrderAmount
+        newOrder.amount = totalOrderAmount
         newOrder.totalAmount = finalOrderAmount
         newOrder.deliveryCost = deliveryAmount
+        newOrder.serviceChargeCost = serviceChargeAmount
         newOrder.profit = totalOrderProfit
         newOrder.status = 'Completed'
         newOrder.isCompleted = true
@@ -249,6 +260,8 @@ export async function processSale({
           receiptNumber: orderNum,
           paymentMethods: paymentMethodsArray,
           orderAmount: finalOrderAmount,
+          deliveryCost: deliveryAmount,
+          serviceChargeCost: serviceChargeAmount,
           amountPaid: complimentarySale ? 0 : Number(amountPaid || 0),
           balance: complimentarySale ? 0 : 0,
           change: complimentarySale ? 0 : Math.max(0, Number(amountPaid || 0) - finalOrderAmount),

@@ -55,6 +55,10 @@ const StoreSettingsSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  serviceChargeEnabled: {
+    type: Boolean,
+    default: false
+  },
   otherPaymentMethods: {
     type: [String],
     default: []
@@ -216,5 +220,10 @@ StoreSettingsSchema.path('priceTypes').validate(function (value) {
   const ids = (value || []).map((pt) => pt?.id).filter(Boolean);
   return ids.length === new Set(ids).size;
 }, 'priceTypes ids must be unique.');
+
+const cachedStoreSettingsModel = mongoose.models.StoreSettings;
+if (cachedStoreSettingsModel && !cachedStoreSettingsModel.schema.path('serviceChargeEnabled')) {
+  delete mongoose.models.StoreSettings;
+}
 
 export default mongoose.models.StoreSettings || mongoose.model('StoreSettings', StoreSettingsSchema);

@@ -11,6 +11,7 @@ import { syncPendingTransactions } from '@/lib/pos/syncEngine'
 import { isLocalFirstCheckoutEligible, shouldTryImmediateServerSync } from '@/lib/pos/operationRouter'
 import { validateLocalCartStock } from '@/lib/pos/localStockValidator'
 import { getLocalProductsBySlug } from '@/lib/pos/localCatalogService'
+import { getOrderTotal } from '@/lib/orderAmounts'
 
 const OFFLINE_POS_ENABLED = process.env.NEXT_PUBLIC_OFFLINE_POS_ENABLED !== 'false'
 
@@ -34,6 +35,7 @@ export default function PosPaymentModal({
   printingSettings = {},
   customer,
   allowDelivery = false,
+  allowServiceCharge = false,
   otherPaymentMethods = [],
   bankNames = [],
   onSuccess 
@@ -58,7 +60,9 @@ export default function PosPaymentModal({
   const [complimentaryRemarks, setComplimentaryRemarks] = useState('')
   const [walletAmount, setWalletAmount] = useState(0)
   const [deliverySelected, setDeliverySelected] = useState(false)
-  const [walkInDeliveryCost, setWalkInDeliveryCost] = useState('')
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState('')
+  const [serviceChargeSelected, setServiceChargeSelected] = useState(false)
+  const [serviceChargeInput, setServiceChargeInput] = useState('')
   const [otherPaymentMethod, setOtherPaymentMethod] = useState('')
   const [transferBank, setTransferBank] = useState('')
   const [transferReference, setTransferReference] = useState('')
@@ -107,12 +111,26 @@ export default function PosPaymentModal({
   }, [isComplimentary, selectedMethods, paymentAmounts])
 
   const deliveryAmount = useMemo(
-    () => deliverySelected && allowDelivery && !isComplimentary
-      ? Math.max(0, Number(customer?.deliveryCost ?? walkInDeliveryCost ?? 0))
-      : 0,
-    [deliverySelected, allowDelivery, customer, walkInDeliveryCost, isComplimentary]
+    () => {
+      if (!deliverySelected || !allowDelivery || isComplimentary) return 0
+      const parsed = Number(deliveryFeeInput || 0)
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+    },
+    [deliverySelected, allowDelivery, deliveryFeeInput, isComplimentary]
   )
-  const orderTotal = useMemo(() => (parseFloat(cartValue || 0) || 0) + deliveryAmount, [cartValue, deliveryAmount])
+  const serviceChargeAmount = useMemo(
+    () => {
+      if (!serviceChargeSelected || !allowServiceCharge || isComplimentary) return 0
+      const parsed = Number(serviceChargeInput || 0)
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+    },
+    [serviceChargeSelected, allowServiceCharge, serviceChargeInput, isComplimentary]
+  )
+  const productSubtotal = parseFloat(cartValue || 0) || 0
+  const orderTotal = useMemo(
+    () => productSubtotal + deliveryAmount + serviceChargeAmount,
+    [productSubtotal, deliveryAmount, serviceChargeAmount]
+  )
   const customerWalletBalance = useMemo(() => Number(customer?.walletBalance || 0), [customer])
   const customerOutstandingBalance = useMemo(() => Number(customer?.outstandingBalance || 0), [customer])
   const canUseWallet = useMemo(
@@ -254,7 +272,9 @@ export default function PosPaymentModal({
     setComplimentaryRemarks('')
     setWalletAmount(0)
     setDeliverySelected(false)
-    setWalkInDeliveryCost('')
+    setDeliveryFeeInput('')
+    setServiceChargeSelected(false)
+    setServiceChargeInput('')
     setOtherPaymentMethod('')
     setTransferBank('')
     setTransferReference('')
@@ -263,6 +283,10 @@ export default function PosPaymentModal({
   useEffect(() => {
     if (!allowDelivery || !customer || isComplimentary) setDeliverySelected(false)
   }, [allowDelivery, customer, isComplimentary])
+
+  useEffect(() => {
+    if (!allowServiceCharge || isComplimentary) setServiceChargeSelected(false)
+  }, [allowServiceCharge, isComplimentary])
 
   useEffect(() => {
     if (isComplimentary || selectedMethods.length !== 1 || selectedMethods[0] !== 'CASH') return
@@ -362,6 +386,8 @@ export default function PosPaymentModal({
           orderAmount: orderTotal,
           deliveryCost: deliveryAmount,
           deliveryEnabled: deliverySelected,
+          serviceChargeCost: serviceChargeAmount,
+          serviceChargeEnabled: serviceChargeSelected,
           allowDecimalQuantity,
         },
       })
@@ -378,8 +404,10 @@ export default function PosPaymentModal({
         soldBy: user?.name || order?.soldBy || 'Cashier',
         bDate: busDate,
         businessDateReason,
-        amount: orderTotal,
+        amount: productSubtotal,
+        totalAmount: orderTotal,
         deliveryCost: deliveryAmount,
+        serviceChargeCost: serviceChargeAmount,
         amountPaid: localAmountPaid,
         bal: 0,
         change: Number(change || 0),
@@ -409,7 +437,7 @@ export default function PosPaymentModal({
       toast.error(error?.message || 'Could not save sale locally')
       return { success: false }
     }
-  }, [selectedMethods, paymentAmounts, cartItems, store, slug, customer, user, change, location, busDate, businessDateReason, pathname, orderTotal, deliveryAmount, allowDecimalQuantity, paymentMethods, order, rcpt, onSuccess])
+  }, [selectedMethods, paymentAmounts, cartItems, store, slug, customer, user, change, location, busDate, businessDateReason, pathname, orderTotal, productSubtotal, deliveryAmount, deliverySelected, serviceChargeAmount, serviceChargeSelected, allowDecimalQuantity, paymentMethods, order, rcpt, onSuccess])
 
   const isDbRetryableSyncIssue = useCallback((syncResult) => {
     const message = String(syncResult?.error || '').toLowerCase()
@@ -532,8 +560,10 @@ export default function PosPaymentModal({
         soldBy: user?.name || order?.soldBy || '',
         bDate: state?.bDate || busDate,
         businessDateReason,
-        amount: orderTotal,
+        amount: productSubtotal,
+        totalAmount: orderTotal,
         deliveryCost: deliveryAmount,
+        serviceChargeCost: serviceChargeAmount,
         amountPaid: totalPayment,
         bal: balance,
         change: Math.max(0, totalPayment - orderTotal),
@@ -550,7 +580,7 @@ export default function PosPaymentModal({
       if (onSuccess) onSuccess()
       currentSubmissionIdRef.current = null
     }
-  }, [state, isComplimentary, selectedMethods, otherPaymentMethod, paymentMethods, paymentAmounts, order, busDate, businessDateReason, orderTotal, deliveryAmount, totalPayment, balance, customer, cartItems, onSuccess, walletSelected, walletUsed, walletBalanceAfterUse, customerOutstandingBalance, completeLocalFallbackSale])
+  }, [state, isComplimentary, selectedMethods, otherPaymentMethod, paymentMethods, paymentAmounts, order, busDate, businessDateReason, orderTotal, productSubtotal, deliveryAmount, serviceChargeAmount, totalPayment, balance, customer, cartItems, onSuccess, walletSelected, walletUsed, walletBalanceAfterUse, customerOutstandingBalance, completeLocalFallbackSale])
 
   useEffect(() => {
     if (!pendingPrintOpenRef.current) return
@@ -658,6 +688,20 @@ export default function PosPaymentModal({
       return false
     }
 
+    const parsedDeliveryFee = Number(deliveryFeeInput || 0)
+    if (deliverySelected && (!Number.isFinite(parsedDeliveryFee) || parsedDeliveryFee < 0)) {
+      e?.preventDefault?.()
+      toast.error('Delivery fee must be a valid non-negative amount')
+      return false
+    }
+
+    const parsedServiceCharge = Number(serviceChargeInput || 0)
+    if (serviceChargeSelected && (!Number.isFinite(parsedServiceCharge) || parsedServiceCharge < 0)) {
+      e?.preventDefault?.()
+      toast.error('Service charge must be a valid non-negative amount')
+      return false
+    }
+
     if (selectedMethods.includes('OTHER') && !otherPaymentMethod) {
       e?.preventDefault?.()
       toast.error('Select the specific Other payment method')
@@ -730,7 +774,7 @@ export default function PosPaymentModal({
     submitLockRef.current = true
     setIsSubmitting(true)
     return true
-  }, [isComplimentary, isUnderpayment, isOverpayment, isBackdatedBusinessDate, businessDateReason, walletSelected, walletUsed, walletAmount, customerWalletBalance, orderTotal, selectedMethods, otherPaymentMethod, transferBank, transferReference, paymentAmounts, customer, isSubmitting, isPending, approvedBy, complimentaryReason])
+  }, [isComplimentary, isUnderpayment, isOverpayment, isBackdatedBusinessDate, businessDateReason, walletSelected, walletUsed, walletAmount, customerWalletBalance, orderTotal, selectedMethods, otherPaymentMethod, transferBank, transferReference, paymentAmounts, deliverySelected, deliveryFeeInput, serviceChargeSelected, serviceChargeInput, customer, isSubmitting, isPending, approvedBy, complimentaryReason])
 
   const handleWalletAmountChange = useCallback((value) => {
     const normalizedValue = String(value || '').trim()
@@ -838,8 +882,9 @@ export default function PosPaymentModal({
       `Customer: ${customerData?.name || 'Walk-in'}\n` +
       `Cashier: ${completedOrder?.cashier || user?.name || ''}\n\n` +
       `*ITEMS*\n${itemsList}\n\n` +
-      (Number(completedOrder?.deliveryCost || 0) > 0 ? `*DELIVERY:* ${currencyFormat(completedOrder.deliveryCost)}\n` : '') +
-      `*TOTAL:* ${currencyFormat(completedOrder?.amount)}\n\n` +
+      (allowDelivery && Number(completedOrder?.deliveryCost || 0) > 0 ? `*DELIVERY:* ${currencyFormat(completedOrder.deliveryCost)}\n` : '') +
+      (allowServiceCharge && Number(completedOrder?.serviceChargeCost || 0) > 0 ? `*SERVICE CHARGE:* ${currencyFormat(completedOrder.serviceChargeCost)}\n` : '') +
+      `*TOTAL:* ${currencyFormat(getOrderTotal(completedOrder))}\n\n` +
       `*PAYMENT*\n${paymentsList}\n` +
       `*PAID:* ${currencyFormat(completedOrder?.amountPaid)}\n` +
       (completedOrder?.change > 0 ? `*CHANGE:* ${currencyFormat(completedOrder?.change)}\n` : '') +
@@ -849,7 +894,7 @@ export default function PosPaymentModal({
 
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
-  }, [completedOrder, orderItems, paymentsData, store, user])
+  }, [allowDelivery, allowServiceCharge, completedOrder, orderItems, paymentsData, store, user])
 
   if (!isOpen) return null
 
@@ -903,12 +948,6 @@ export default function PosPaymentModal({
                 {customer ? (
                   <div className="space-y-2 text-sm">
                     <div className="font-bold text-lg text-gray-900">{customer.name}</div>
-                    {allowDelivery && !isComplimentary && (
-                      <label className="flex items-center justify-between gap-3 rounded-lg border border-purple-200 bg-white px-3 py-2 cursor-pointer">
-                        <span className="text-sm font-semibold text-gray-700">Add delivery ({currencyFormat(customer.deliveryCost || 0)})</span>
-                        <input type="checkbox" checked={deliverySelected} onChange={(e) => setDeliverySelected(e.target.checked)} className="h-4 w-4 accent-purple-600" />
-                      </label>
-                    )}
                     {customer.phone && (
                       <div className="flex items-center gap-2 text-gray-600">
                         <span>📱</span>
@@ -937,22 +976,61 @@ export default function PosPaymentModal({
                     </div>
                   </div>
                 )}
-                {allowDelivery && !customer && !isComplimentary && (
+                {allowDelivery && !isComplimentary && (
                   <div className="mt-3 space-y-2 rounded-lg border border-purple-200 bg-white p-3">
                     <label className="flex items-center justify-between gap-3 cursor-pointer">
-                      <span className="text-sm font-semibold text-gray-700">Add walk-in delivery</span>
-                      <input type="checkbox" checked={deliverySelected} onChange={(e) => setDeliverySelected(e.target.checked)} className="h-4 w-4 accent-purple-600" />
+                      <span className="text-sm font-semibold text-gray-700">Add delivery fee</span>
+                      <input
+                        type="checkbox"
+                        checked={deliverySelected}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          setDeliverySelected(checked)
+                          if (checked) setDeliveryFeeInput(String(customer?.deliveryCost ?? ''))
+                        }}
+                        className="h-4 w-4 accent-purple-600"
+                      />
                     </label>
                     {deliverySelected && (
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={walkInDeliveryCost}
-                        onChange={(e) => setWalkInDeliveryCost(e.target.value)}
-                        placeholder="Enter delivery fee"
-                        className="w-full rounded-lg border border-purple-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">Delivery amount</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={deliveryFeeInput}
+                          onChange={(e) => setDeliveryFeeInput(e.target.value)}
+                          placeholder="Enter delivery fee"
+                          className="w-full rounded-lg border border-purple-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    )}
+                    {allowServiceCharge && !isComplimentary && (
+                      <div className="mt-3 space-y-2 rounded-lg border border-violet-200 bg-white p-3">
+                        <label className="flex items-center justify-between gap-3 cursor-pointer">
+                          <span className="text-sm font-semibold text-gray-700">Add service charge</span>
+                          <input
+                            type="checkbox"
+                            checked={serviceChargeSelected}
+                            onChange={(e) => setServiceChargeSelected(e.target.checked)}
+                            className="h-4 w-4 accent-violet-600"
+                          />
+                        </label>
+                        {serviceChargeSelected && (
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">Service charge amount</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={serviceChargeInput}
+                              onChange={(e) => setServiceChargeInput(e.target.value)}
+                              placeholder="Enter service charge"
+                              className="w-full rounded-lg border border-violet-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                            />
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -989,6 +1067,12 @@ export default function PosPaymentModal({
                     <div className="flex justify-between items-center mb-2 text-sm">
                       <span className="text-gray-600">Delivery</span>
                       <span className="font-semibold text-gray-900">{currencyFormat(deliveryAmount)}</span>
+                    </div>
+                  )}
+                  {serviceChargeAmount > 0 && (
+                    <div className="flex justify-between items-center mb-2 text-sm">
+                      <span className="text-gray-600">Service charge</span>
+                      <span className="font-semibold text-gray-900">{currencyFormat(serviceChargeAmount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center">
@@ -1299,7 +1383,9 @@ export default function PosPaymentModal({
                 <input type="hidden" name="orderName" value={order?.orderName || ''} />
                 <input type="hidden" name="orderAmount" value={orderTotal} />
                 <input type="hidden" name="deliveryEnabled" value={deliverySelected ? 'true' : 'false'} />
-                <input type="hidden" name="deliveryCost" value={customer ? deliveryAmount : walkInDeliveryCost} />
+                <input type="hidden" name="deliveryCost" value={deliveryAmount} />
+                <input type="hidden" name="serviceChargeEnabled" value={serviceChargeSelected ? 'true' : 'false'} />
+                <input type="hidden" name="serviceChargeCost" value={serviceChargeAmount} />
                 <input type="hidden" name="mop" value={submittedPaymentMethods.join(',')} />
                 <input type="hidden" name="cashPaid" value={paymentAmounts.CASH || 0} />
                 <input type="hidden" name="posPaid" value={paymentAmounts.POS || 0} />
@@ -1458,13 +1544,18 @@ export default function PosPaymentModal({
 
                   <div style={{ borderTop: '2px solid #000', margin: '8px 0' }}></div>
                   <div style={{ fontSize: '12px' }}>
-                    {Number(completedOrder?.deliveryCost || 0) > 0 && (
+                    {allowDelivery && Number(completedOrder?.deliveryCost || 0) > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>DELIVERY:</span><span>{currencyFormat(completedOrder.deliveryCost)}</span>
                       </div>
                     )}
+                    {allowServiceCharge && Number(completedOrder?.serviceChargeCost || 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>SERVICE CHARGE:</span><span>{currencyFormat(completedOrder.serviceChargeCost)}</span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px' }}>
-                      <span>TOTAL:</span><span>{currencyFormat(completedOrder?.amount)}</span>
+                      <span>TOTAL:</span><span>{currencyFormat(getOrderTotal(completedOrder))}</span>
                     </div>
                     {paymentsData.map((p, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>

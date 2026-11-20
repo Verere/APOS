@@ -58,7 +58,6 @@ export function generateMetadata({
   canonical,
   alternates,
   manifest = '/manifest.webmanifest',
-  themeColor = '#2563eb',
   icons,
 }) {
   const fullTitle = title 
@@ -77,7 +76,6 @@ export function generateMetadata({
     description: fullDescription,
     keywords: keywords.length > 0 ? keywords.join(', ') : undefined,
     manifest,
-    themeColor,
     icons: icons || {
       icon: [
         { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },

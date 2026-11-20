@@ -24,6 +24,27 @@ import moment from 'moment'
 
     var date = moment();
 const bDate = date.format('D/MM/YYYY')
+
+async function serializePaymentsWithDeliveryCost(paymentRecords) {
+  const records = Array.isArray(paymentRecords) ? paymentRecords : []
+  const orderIds = records.map((payment) => payment.orderId).filter(Boolean)
+  const orders = orderIds.length
+    ? await Order.find({ _id: { $in: orderIds } }).select('_id deliveryCost').lean()
+    : []
+  const deliveryByOrderId = new Map(orders.map((order) => [String(order._id), Number(order.deliveryCost || 0)]))
+
+  return JSON.parse(JSON.stringify(records.map((payment) => {
+    const record = typeof payment.toObject === 'function' ? payment.toObject() : payment
+    const savedDeliveryCost = Number(record.deliveryCost || 0)
+    return {
+      ...record,
+      deliveryCost: savedDeliveryCost > 0
+        ? savedDeliveryCost
+        : (deliveryByOrderId.get(String(record.orderId)) || 0),
+    }
+  })))
+}
+
   //fetch category by menu
   export async function FetchCategory(slug) {
   
@@ -560,7 +581,7 @@ export async function fetchAllPaymentsByDates(slug) {
       connectToDB();
       const result = await payments.find({slug, isCancelled:false}).sort({'createdAt':'desc'})
   
-      return JSON.parse(JSON.stringify(result));
+      return await serializePaymentsWithDeliveryCost(result);
     } catch (err) {
       console.log(err);
       return{error:"Failed to fetch Order number!"};
@@ -575,7 +596,7 @@ export async function fetchAllPayments(slug) {
       connectToDB();
       const result = await payments.find({slug, bDate, isCancelled:false}).sort({'createdAt':'desc'})
   
-      return JSON.parse(JSON.stringify(result));
+      return await serializePaymentsWithDeliveryCost(result);
     } catch (err) {
       console.log(err);
       return{error:"Failed to fetch Order number!"};

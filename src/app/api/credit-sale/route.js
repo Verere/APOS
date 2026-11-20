@@ -23,13 +23,17 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { slug, customerId, cartItems, bDate, paymentAmount = 0, creditAmount, paymentMethod = 'CASH', otherPaymentMethod, bankName, reference, allowDecimalQuantity = false } = await req.json()
+    const { slug, customerId, cartItems, bDate, paymentAmount = 0, paymentMethod = 'CASH', otherPaymentMethod, bankName, reference, deliveryEnabled = false, deliveryCost = 0, serviceChargeEnabled = false, serviceChargeCost = 0, allowDecimalQuantity = false } = await req.json()
+    const normalizedPaymentAmount = Number(paymentAmount || 0)
 
     if (!slug || !customerId || !cartItems || !cartItems.length) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
+    }
+    if (!Number.isFinite(normalizedPaymentAmount) || normalizedPaymentAmount < 0) {
+      return NextResponse.json({ error: 'Payment amount must be a non-negative number' }, { status: 400 })
     }
 
     await connectDB()
@@ -57,9 +61,26 @@ export async function POST(req) {
     }
 
     const settings = await StoreSettings.findOne({ slug }).lean()
+    let deliveryAmount = 0
+    if ((deliveryEnabled === true || deliveryEnabled === 'true') && settings?.deliveryEnabled) {
+      deliveryAmount = Number(deliveryCost || 0)
+      if (!Number.isFinite(deliveryAmount) || deliveryAmount < 0) {
+        return NextResponse.json({ error: 'Delivery cost must be a non-negative number' }, { status: 400 })
+      }
+    }
+    let serviceChargeAmount = 0
+    if ((serviceChargeEnabled === true || serviceChargeEnabled === 'true') && !settings?.serviceChargeEnabled) {
+      return NextResponse.json({ error: 'Service charge is disabled in store settings' }, { status: 400 })
+    }
+    if ((serviceChargeEnabled === true || serviceChargeEnabled === 'true') && settings?.serviceChargeEnabled) {
+      serviceChargeAmount = Number(serviceChargeCost || 0)
+      if (!Number.isFinite(serviceChargeAmount) || serviceChargeAmount < 0) {
+        return NextResponse.json({ error: 'Service charge must be a non-negative number' }, { status: 400 })
+      }
+    }
     if (paymentMethod === 'OTHER' && !(settings?.otherPaymentMethods || []).includes(String(otherPaymentMethod || '').trim())) return NextResponse.json({ error: 'Invalid or missing Other payment method' }, { status: 400 })
     if (paymentMethod === 'TRANSFER' && (!(settings?.bankNames || []).includes(String(bankName || '').trim()) || !String(reference || '').trim())) return NextResponse.json({ error: 'Invalid or missing transfer bank/reference' }, { status: 400 })
-    if (paymentMethod === 'WALLET' && Number(paymentAmount) > Number(customer.walletBalance || 0)) return NextResponse.json({ error: 'Payment amount exceeds customer wallet balance' }, { status: 400 })
+    if (paymentMethod === 'WALLET' && normalizedPaymentAmount > Number(customer.walletBalance || 0)) return NextResponse.json({ error: 'Payment amount exceeds customer wallet balance' }, { status: 400 })
 
     // Validate cart items
     try {
@@ -85,6 +106,7 @@ export async function POST(req) {
         totalAmount,
         totalProfit,
       } = buildOrderItemSnapshots(cartItems, updatedProducts, { allowDecimalQuantity: allowDecimalQuantity === true })
+      const finalOrderAmount = totalAmount + deliveryAmount + serviceChargeAmount
 
       // Generate order number
       const orderCount = await Order.countDocuments({ slug })
@@ -92,15 +114,18 @@ export async function POST(req) {
 
       // Generate receipt number for payment if any
       let receiptNumber = null
-      if (paymentAmount > 0) {
+      if (normalizedPaymentAmount > 0) {
         const paymentCount = await Payment.countDocuments({ storeId: store._id })
         receiptNumber = `RCP-${slug.toUpperCase()}-${paymentCount + 1}`
       }
 
       // Determine order status based on payment
-      const actualCreditAmount = creditAmount || (totalAmount - paymentAmount)
-      const isPaidInFull = paymentAmount >= totalAmount
-      const orderStatus = isPaidInFull ? 'Paid' : (paymentAmount > 0 ? 'Partial' : 'Credit')
+      if (normalizedPaymentAmount > finalOrderAmount) {
+        throw Object.assign(new Error('Payment amount exceeds order total'), { code: 'BAD_PAYMENT' })
+      }
+      const actualCreditAmount = Math.max(0, finalOrderAmount - normalizedPaymentAmount)
+      const isPaidInFull = normalizedPaymentAmount >= finalOrderAmount
+      const orderStatus = isPaidInFull ? 'Paid' : (normalizedPaymentAmount > 0 ? 'Partial' : 'Credit')
 
       // Create order with cost and profit stored
       const newOrder = new Order({
@@ -109,9 +134,11 @@ export async function POST(req) {
         orderName: customer.name,
         items: orderItems,
         amount: totalAmount,
-        totalAmount: totalAmount, // Add totalAmount for consistency with other order endpoints
+        totalAmount: finalOrderAmount,
+        deliveryCost: deliveryAmount,
+        serviceChargeCost: serviceChargeAmount,
         profit: totalProfit,
-        amountPaid: paymentAmount,
+        amountPaid: normalizedPaymentAmount,
         bal: actualCreditAmount,
         bDate,
         soldBy,
@@ -124,19 +151,21 @@ export async function POST(req) {
       await attachTransactionsToOrder(transactionIds, newOrder._id, transactionSession)
 
       // If partial payment is made, create payment record
-      if (paymentAmount > 0) {
+      if (normalizedPaymentAmount > 0) {
         const paymentRecord = new Payment({
           storeId: store._id,
           orderId: newOrder._id,
           orderNum,
           receiptNumber,
           bDate,
-          orderAmount: totalAmount,
-          amountPaid: paymentAmount,
+          orderAmount: finalOrderAmount,
+          deliveryCost: deliveryAmount,
+          serviceChargeCost: serviceChargeAmount,
+          amountPaid: normalizedPaymentAmount,
           paymentMethods: [
             {
               method: paymentMethod || 'CASH',
-              amount: paymentAmount,
+              amount: normalizedPaymentAmount,
               details: String(otherPaymentMethod || '').trim() || undefined,
               bankName: String(bankName || '').trim() || undefined,
               reference: String(reference || '').trim() || undefined
@@ -147,16 +176,16 @@ export async function POST(req) {
         await paymentRecord.save({ session: transactionSession })
       }
 
-      if (paymentAmount > 0 && paymentMethod === 'WALLET') {
+      if (normalizedPaymentAmount > 0 && paymentMethod === 'WALLET') {
         const walletCustomer = await Customer.findById(customerId).session(transactionSession)
         const walletBalanceBefore = Number(walletCustomer?.walletBalance || 0)
-        walletCustomer.walletBalance = walletBalanceBefore - Number(paymentAmount)
+        walletCustomer.walletBalance = walletBalanceBefore - normalizedPaymentAmount
         await walletCustomer.save({ session: transactionSession })
         await new WalletTransaction({
           customer: walletCustomer._id,
           invoice: orderNum,
           type: 'Sale',
-          amount: Number(paymentAmount),
+          amount: normalizedPaymentAmount,
           balanceBefore: walletBalanceBefore,
           balanceAfter: walletCustomer.walletBalance,
           paymentMethod: 'WALLET',
@@ -206,8 +235,10 @@ export async function POST(req) {
         otherPaymentMethod: String(otherPaymentMethod || '').trim() || null,
         bankName: String(bankName || '').trim() || null,
         reference: String(reference || '').trim() || null,
-        totalAmount,
-        paymentAmount,
+        totalAmount: finalOrderAmount,
+        deliveryCost: deliveryAmount,
+        serviceChargeCost: serviceChargeAmount,
+        paymentAmount: normalizedPaymentAmount,
         creditAmount: actualCreditAmount,
         items: orderItems,
         customer: {
@@ -226,8 +257,8 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      message: paymentAmount > 0 
-        ? `Payment of ${paymentAmount} received. Credit of ${result.creditAmount} recorded.`
+      message: normalizedPaymentAmount > 0
+        ? `Payment of ${normalizedPaymentAmount} received. Credit of ${result.creditAmount} recorded.`
         : 'Credit sale completed successfully',
       ...result
     })
@@ -246,6 +277,9 @@ export async function POST(req) {
         { error: error.message, stockUpdates },
         { status: 400 }
       )
+    }
+    if (error && error.code === 'BAD_PAYMENT') {
+      return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
     return NextResponse.json(
