@@ -69,9 +69,9 @@ const {_id}= item
                 }}
                 min={item.cost || 0}
                 step="0.01"
-                className="w-20 sm:w-24 px-2 py-1 text-xs sm:text-sm text-gray-700 bg-yellow-50 border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-20 sm:w-24 px-2 py-1 text-xs sm:text-sm text-gray-700 bg-yellow-50 border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500 dark:bg-slate-800 dark:text-white dark:border-slate-600 dark:focus:ring-yellow-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
-              <span className="text-[10px] text-gray-400">Min: {currencyFormat(item.cost || 0)}</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-300">Min: {currencyFormat(item.cost || 0)}</span>
             </div>
           ) : (
             <span className="text-xs sm:text-sm text-gray-500">{currencyFormat(item.price)}</span>

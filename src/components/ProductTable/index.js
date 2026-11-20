@@ -671,24 +671,24 @@ return(
         <div className="w-full overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
         <Table.Root layout="auto" variant="surface">
     <Table.Header>
-      <Table.Row className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide py-4">Product</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Category</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Cost</Table.ColumnHeaderCell>
+      <Table.Row className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200 dark:from-slate-800 dark:to-slate-900 dark:border-slate-700">
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide py-4">Product</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">Category</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">Cost</Table.ColumnHeaderCell>
         {priceTypes.map((pt) => (
-          <Table.ColumnHeaderCell key={`price-header-${pt.id}`} className="font-bold text-gray-700 text-xs uppercase tracking-wide">
+          <Table.ColumnHeaderCell key={`price-header-${pt.id}`} className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">
             {pt.name}
           </Table.ColumnHeaderCell>
         ))}
         {showLegacyPriceColumn && (
-          <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Selling Price (Legacy)</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">Selling Price (Legacy)</Table.ColumnHeaderCell>
         )}
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Profit</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Qty</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Stock Value</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Stock</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Update</Table.ColumnHeaderCell>
-        <Table.ColumnHeaderCell className="font-bold text-gray-700 text-xs uppercase tracking-wide">Delete</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">Profit</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">Qty</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">Stock Value</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">Stock</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">Update</Table.ColumnHeaderCell>
+        <Table.ColumnHeaderCell className="font-bold text-gray-700 dark:text-slate-100 text-xs uppercase tracking-wide">Delete</Table.ColumnHeaderCell>
       </Table.Row>
     </Table.Header>
   
