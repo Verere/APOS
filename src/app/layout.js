@@ -1,7 +1,6 @@
 
 import "./globals.css";
 import GlobalState from '@/context'
-import './globals.css'
 import { Inter } from 'next/font/google'
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -50,7 +49,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={inter.className} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${inter.className}`} suppressHydrationWarning>
         <head>    
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel='icon' href='/nlogo.svg'/>
@@ -64,7 +63,7 @@ export default function RootLayout({ children }) {
           })(window,document,'script','dataLayer','GTM-WP8PD4TT');
         ` }} />
       </head>
-      <body  className="bg-slate-300 dark:bg-slate-900">
+      <body className="font-sans bg-background text-foreground">
         <Analytics />
         <NavigationLoadingProvider>
           <NavigationLoading />
@@ -72,7 +71,7 @@ export default function RootLayout({ children }) {
             <CartProvider>
               <ToastContainer position="top-right"/>
               <main className='flex min-h-screen flex-col'>
-                <Theme >
+                <Theme appearance="inherit">
                   <Providers>
                     {children}
                   </Providers>

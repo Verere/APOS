@@ -158,8 +158,8 @@
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -408,4 +408,97 @@
 
 .react-datepicker__triangle {
   display: none;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+:root:not(.dark) [class~="text-gray-400"]:not([class*="dark:text-"]),
+:root:not(.dark) [class~="text-slate-400"]:not([class*="dark:text-"]),
+:root:not(.dark) [class~="text-neutral-400"]:not([class*="dark:text-"]) {
+  color: #64748b;
+}
+
+.dark [class~="bg-white"]:not([class*="dark:bg-"]) {
+  background-color: var(--card);
+  color: var(--card-foreground);
+}
+
+.dark [class~="bg-gray-50"]:not([class*="dark:bg-"]),
+.dark [class~="bg-slate-50"]:not([class*="dark:bg-"]),
+.dark [class~="bg-neutral-50"]:not([class*="dark:bg-"]) {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.dark [class~="bg-gray-100"]:not([class*="dark:bg-"]),
+.dark [class~="bg-slate-100"]:not([class*="dark:bg-"]),
+.dark [class~="bg-neutral-100"]:not([class*="dark:bg-"]),
+.dark [class~="bg-gray-200"]:not([class*="dark:bg-"]),
+.dark [class~="bg-slate-200"]:not([class*="dark:bg-"]),
+.dark [class~="bg-neutral-200"]:not([class*="dark:bg-"]) {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+
+.dark [class~="hover:bg-white"]:not([class*="dark:hover:bg-"]):hover,
+.dark [class~="hover:bg-gray-50"]:not([class*="dark:hover:bg-"]):hover,
+.dark [class~="hover:bg-slate-50"]:not([class*="dark:hover:bg-"]):hover,
+.dark [class~="hover:bg-gray-100"]:not([class*="dark:hover:bg-"]):hover,
+.dark [class~="hover:bg-slate-100"]:not([class*="dark:hover:bg-"]):hover {
+  background-color: var(--accent);
+}
+
+.dark [class~="text-black"]:not([class*="dark:text-"]),
+.dark [class~="text-gray-900"]:not([class*="dark:text-"]),
+.dark [class~="text-gray-800"]:not([class*="dark:text-"]),
+.dark [class~="text-slate-900"]:not([class*="dark:text-"]),
+.dark [class~="text-slate-800"]:not([class*="dark:text-"]),
+.dark [class~="text-neutral-900"]:not([class*="dark:text-"]),
+.dark [class~="text-neutral-800"]:not([class*="dark:text-"]) {
+  color: #f8fafc;
+}
+
+.dark [class~="text-gray-700"]:not([class*="dark:text-"]),
+.dark [class~="text-gray-600"]:not([class*="dark:text-"]),
+.dark [class~="text-slate-700"]:not([class*="dark:text-"]),
+.dark [class~="text-slate-600"]:not([class*="dark:text-"]),
+.dark [class~="text-neutral-700"]:not([class*="dark:text-"]),
+.dark [class~="text-neutral-600"]:not([class*="dark:text-"]) {
+  color: #d1d5db;
+}
+
+.dark [class~="text-gray-500"]:not([class*="dark:text-"]),
+.dark [class~="text-gray-400"]:not([class*="dark:text-"]),
+.dark [class~="text-slate-500"]:not([class*="dark:text-"]),
+.dark [class~="text-slate-400"]:not([class*="dark:text-"]),
+.dark [class~="text-neutral-500"]:not([class*="dark:text-"]),
+.dark [class~="text-neutral-400"]:not([class*="dark:text-"]) {
+  color: #a1a1aa;
+}
+
+.dark [class~="placeholder:text-gray-400"]::placeholder,
+.dark [class~="placeholder:text-slate-400"]::placeholder {
+  color: #a1a1aa;
+  opacity: 1;
+}
+
+.dark [class~="border-gray-100"]:not([class*="dark:border-"]),
+.dark [class~="border-gray-200"]:not([class*="dark:border-"]),
+.dark [class~="border-slate-100"]:not([class*="dark:border-"]),
+.dark [class~="border-slate-200"]:not([class*="dark:border-"]),
+.dark [class~="border-neutral-100"]:not([class*="dark:border-"]),
+.dark [class~="border-neutral-200"]:not([class*="dark:border-"]) {
+  border-color: #3f3f46;
+}
+
+.dark [class~="border-gray-300"]:not([class*="dark:border-"]),
+.dark [class~="border-slate-300"]:not([class*="dark:border-"]),
+.dark [class~="border-neutral-300"]:not([class*="dark:border-"]) {
+  border-color: #52525b;
 }
