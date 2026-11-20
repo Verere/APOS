@@ -119,10 +119,10 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
   ].filter(card => card.title !== 'Total Orders');
 
   return (
-    <div className="space-y-6 sm:space-y-6">
+    <div className="w-full min-w-0 space-y-6">
       {/* Page Header */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
               Dashboard Overview
@@ -151,13 +151,13 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-6 xl:grid-cols-5">
         {kpiCards.map((kpi, index) => {
           const Icon = kpi.icon
           return (
             <Card 
               key={index} 
-              className="hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-700 hover:scale-105 bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 shadow-lg overflow-hidden"
+              className="min-w-0 overflow-hidden border border-gray-200 bg-gradient-to-br from-white to-gray-50 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
             >
               <CardContent className="p-4 sm:p-5 lg:p-6">
                 <div className="flex flex-col space-y-3">
@@ -225,9 +225,9 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Sales Chart */}
-        <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-blue-50 hover:shadow-2xl transition-shadow">
+        <Card className="min-w-0 border-0 bg-gradient-to-br from-white to-blue-50 shadow-lg transition-shadow hover:shadow-2xl">
           <CardHeader className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-purple-50">
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-800">
               <TrendingUp className="text-blue-600" size={24} />
@@ -294,7 +294,7 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
         </Card>
 
         {/* Activity Chart */}
-        <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-green-50 hover:shadow-2xl transition-shadow">
+        <Card className="min-w-0 border-0 bg-gradient-to-br from-white to-green-50 shadow-lg transition-shadow hover:shadow-2xl">
           <CardHeader className="border-b border-green-100 bg-gradient-to-r from-green-50 to-emerald-50">
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-800">
               <Activity className="text-green-600" size={24} />
@@ -314,7 +314,7 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
       </div>
 
       {/* Recent Orders Table */}
-      <Card className="shadow-lg border-0 bg-white hover:shadow-2xl transition-shadow">
+      <Card className="min-w-0 border-0 bg-white shadow-lg transition-shadow hover:shadow-2xl">
         <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-800">
             <ShoppingCart className="text-blue-600" size={24} />
@@ -323,7 +323,7 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
         </CardHeader>
         <CardContent className="p-0">
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
@@ -385,17 +385,17 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 lg:hidden">
             {recentOrders?.length > 0 ? (
               recentOrders.slice(0, 5).map((order, index) => (
-                <div key={index} className="p-4 hover:bg-blue-50 transition-colors">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
+                <div key={index} className="min-w-0 p-4 transition-colors hover:bg-blue-50">
+                  <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold text-blue-600 mb-1">#{order.id.slice(0, 8)}</p>
-                      <p className="font-semibold text-gray-900">{order.customer}</p>
+                      <p className="break-words font-semibold text-gray-900">{order.customer}</p>
                     </div>
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${
                         order.status === 'completed'
                           ? 'bg-green-100 text-green-700 border border-green-200'
                           : order.status === 'pending'
@@ -406,9 +406,9 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
                       {order.status}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">{order.date}</span>
-                    <span className="font-bold text-gray-900">{currencyFormat(order.amount)}</span>
+                  <div className="flex min-w-0 items-center justify-between gap-2 text-sm">
+                    <span className="min-w-0 break-words text-gray-600">{order.date}</span>
+                    <span className="break-words text-right font-bold text-gray-900">{currencyFormat(order.amount)}</span>
                   </div>
                 </div>
               ))

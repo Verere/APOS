@@ -1,12 +1,12 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, User, Settings, LogOut, ChevronDown } from 'lucide-react'
+import { Search, Bell, User, Settings, LogOut, ChevronDown, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { signOut } from 'next-auth/react'
 import ThemeSwitch from '@/app/switch'
 
-const TopBar = ({ user, slug, store }) => {
+const TopBar = ({ user, slug, store, onMenuClick = () => {}, isMenuOpen = false }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [notificationCount, setNotificationCount] = useState(3) // Example count
@@ -43,8 +43,19 @@ const TopBar = ({ user, slug, store }) => {
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-      <div className="flex items-center justify-between px-6 py-4">
+    <header className="sticky top-0 z-20 min-w-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="flex min-w-0 items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4 sm:py-4 lg:px-6">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 md:hidden"
+          aria-label="Open dashboard navigation"
+          aria-haspopup="true"
+          aria-expanded={isMenuOpen}
+          aria-controls="dashboard-sidebar"
+        >
+          <Menu size={22} />
+        </button>
         {/* Search Bar */}
         {/* <div className="flex-1 max-w-2xl">
           <form onSubmit={handleSearch} className="relative">
@@ -58,18 +69,17 @@ const TopBar = ({ user, slug, store }) => {
             />
           </form>
         </div> */}
-        <div className="flex-1 max-w-2xl">
-          <div className="flex items-center  gap-2">
-
-          <h2 className="text-2xl bg-gray-100 dark:bg-gray-700 px-4 py-2 font-semibold text-gray-800 dark:text-gray-200">{store?.name || slug}</h2>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+          <h2 className="max-w-full truncate bg-gray-100 px-2 py-2 text-base font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-200 sm:px-4 sm:text-lg lg:text-2xl">{store?.name || slug}</h2>
           </div>
           </div> 
 
         {/* Right Side Actions */}
-        <div className="flex items-center gap-4 ml-4">
+        <div className="ml-1 flex shrink-0 items-center gap-1 sm:ml-2 sm:gap-2 lg:ml-4 lg:gap-4">
           {/* Theme Switcher */}
           <button
-            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 lg:min-h-0 lg:min-w-0"
             aria-label="Toggle theme"
           >
             <ThemeSwitch />
@@ -77,7 +87,7 @@ const TopBar = ({ user, slug, store }) => {
 
           {/* Notifications */}
           <button
-            className="relative p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="relative flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 lg:min-h-0 lg:min-w-0"
             aria-label="Notifications"
           >
             <Bell size={22} />
@@ -92,12 +102,12 @@ const TopBar = ({ user, slug, store }) => {
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex min-h-11 items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-gray-100 sm:gap-3 sm:p-2"
             >
               <div className="w-9 h-9 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
                 {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
               </div>
-              <div className="hidden md:block text-left">
+              <div className="hidden text-left lg:block">
                 <div className="text-sm font-medium text-gray-700">
                   {user?.name || 'User'}
                 </div>
@@ -116,12 +126,12 @@ const TopBar = ({ user, slug, store }) => {
 
             {/* Dropdown Menu */}
             {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg py-2">
+              <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-1.5rem)] rounded-lg border border-gray-200 bg-white py-2 shadow-lg">
                 <div className="px-4 py-3 border-b border-gray-100">
                   <div className="text-sm font-medium text-gray-900">
                     {user?.name || 'User'}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="mt-1 break-words text-xs text-gray-500">
                     {user?.email}
                   </div>
                 </div>

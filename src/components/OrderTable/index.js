@@ -641,35 +641,35 @@ const OrderTable = ({ patients = [], slug, serverUnavailable = false, serverErro
           )}
         </div>
 
-        <div className={`mt-4 grid grid-cols-1 ${deliveryEnabled && serviceChargeEnabled ? 'sm:grid-cols-5' : deliveryEnabled || serviceChargeEnabled ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-4`}>
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-            <p className="text-sm text-gray-600 mb-1">Total Orders</p>
-            <p className="text-2xl font-bold text-blue-700">{filteredOrders.length}</p>
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <div className="min-w-0 rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-4 dark:border-blue-800 dark:from-blue-950/60 dark:to-blue-900/40">
+            <p className="mb-1 text-sm text-gray-600 dark:text-slate-300">Total Orders</p>
+            <p className="break-words text-xl font-bold leading-tight tabular-nums text-blue-700 dark:text-blue-200 [overflow-wrap:anywhere] sm:text-2xl">{filteredOrders.length}</p>
           </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-            <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
-            <p className="text-2xl font-bold text-green-700">
+          <div className="min-w-0 rounded-lg border border-green-200 bg-gradient-to-br from-green-50 to-green-100 p-4 dark:border-green-800 dark:from-green-950/60 dark:to-green-900/40">
+            <p className="mb-1 text-sm text-gray-600 dark:text-slate-300">Total Revenue</p>
+            <p className="break-words text-xl font-bold leading-tight tabular-nums text-green-700 dark:text-green-200 [overflow-wrap:anywhere] sm:text-2xl">
               {currencyFormat(filteredOrders.reduce((sum, order) => sum + getProductSalesAmount(order), 0))}
             </p>
           </div>
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-            <p className="text-sm text-gray-600 mb-1">Amount Collected</p>
-            <p className="text-2xl font-bold text-purple-700">
+          <div className="min-w-0 rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-4 dark:border-purple-800 dark:from-purple-950/60 dark:to-purple-900/40">
+            <p className="mb-1 text-sm text-gray-600 dark:text-slate-300">Amount Collected</p>
+            <p className="break-words text-xl font-bold leading-tight tabular-nums text-purple-700 dark:text-purple-200 [overflow-wrap:anywhere] sm:text-2xl">
               {currencyFormat(filteredOrders.reduce((sum, order) => sum + Number(order?.amountPaid || 0), 0))}
             </p>
           </div>
           {deliveryEnabled && (
-            <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200">
-              <p className="text-sm text-gray-600 mb-1">Delivery Fees</p>
-              <p className="text-2xl font-bold text-amber-700">
+            <div className="min-w-0 rounded-lg border border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-4 dark:border-amber-800 dark:from-amber-950/60 dark:to-amber-900/40">
+              <p className="mb-1 text-sm text-gray-600 dark:text-slate-300">Delivery Fees</p>
+              <p className="break-words text-xl font-bold leading-tight tabular-nums text-amber-700 dark:text-amber-200 [overflow-wrap:anywhere] sm:text-2xl">
                 {currencyFormat(filteredOrders.reduce((sum, order) => sum + Number(order?.deliveryCost || 0), 0))}
               </p>
             </div>
           )}
           {serviceChargeEnabled && (
-            <div className="bg-gradient-to-br from-violet-50 to-violet-100 p-4 rounded-lg border border-violet-200">
-              <p className="text-sm text-gray-600 mb-1">Service Charges</p>
-              <p className="text-2xl font-bold text-violet-700">
+            <div className="min-w-0 rounded-lg border border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100 p-4 dark:border-violet-800 dark:from-violet-950/60 dark:to-violet-900/40">
+              <p className="mb-1 text-sm text-gray-600 dark:text-slate-300">Service Charges</p>
+              <p className="break-words text-xl font-bold leading-tight tabular-nums text-violet-700 dark:text-violet-200 [overflow-wrap:anywhere] sm:text-2xl">
                 {currencyFormat(filteredOrders.reduce((sum, order) => sum + Number(order?.serviceChargeCost || 0), 0))}
               </p>
             </div>

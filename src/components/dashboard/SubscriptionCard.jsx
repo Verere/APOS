@@ -242,7 +242,7 @@ export default function SubscriptionCard() {
           {subscription?.subscription ? (
             <div className="space-y-4">
               {/* Subscription Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-1">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Start Date

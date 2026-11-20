@@ -95,12 +95,12 @@ export default function PosPaymentModal({
   }, [isOpen, isPending, isSubmitting])
 
   const paymentMethods = useMemo(() => [
-    { value: 'CASH', label: 'Cash', icon: Banknote, color: 'green' },
-    { value: 'POS', label: 'POS', icon: CreditCard, color: 'blue' },
-    { value: 'TRANSFER', label: 'Transfer', icon: ArrowRightLeft, color: 'purple' },
-    { value: 'OTHER', label: 'Other', icon: DollarSign, color: 'gray' },
-    { value: 'WALLET', label: 'Wallet', icon: Wallet, color: 'emerald' },
-    { value: 'COMPLIMENTARY', label: 'Complimentary', icon: Receipt, color: 'violet' }
+    { value: 'CASH', label: 'Cash', icon: Banknote, selectedClasses: 'border-green-600 bg-green-50 text-green-700 shadow-md scale-105 dark:border-green-400 dark:bg-green-900/50 dark:text-green-100' },
+    { value: 'POS', label: 'POS', icon: CreditCard, selectedClasses: 'border-blue-600 bg-blue-50 text-blue-700 shadow-md scale-105 dark:border-blue-400 dark:bg-blue-900/50 dark:text-blue-100' },
+    { value: 'TRANSFER', label: 'Transfer', icon: ArrowRightLeft, selectedClasses: 'border-purple-600 bg-purple-50 text-purple-700 shadow-md scale-105 dark:border-purple-400 dark:bg-purple-900/50 dark:text-purple-100' },
+    { value: 'OTHER', label: 'Other', icon: DollarSign, selectedClasses: 'border-gray-600 bg-gray-50 text-gray-700 shadow-md scale-105 dark:border-slate-400 dark:bg-slate-800 dark:text-slate-100' },
+    { value: 'WALLET', label: 'Wallet', icon: Wallet, selectedClasses: 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-md scale-105 dark:border-emerald-400 dark:bg-emerald-900/50 dark:text-emerald-100' },
+    { value: 'COMPLIMENTARY', label: 'Complimentary', icon: Receipt, selectedClasses: 'border-violet-600 bg-violet-50 text-violet-700 shadow-md scale-105 dark:border-violet-400 dark:bg-violet-900/50 dark:text-violet-100' }
   ], [])
 
   const manualPaymentTotal = useMemo(() => {
@@ -900,7 +900,7 @@ export default function PosPaymentModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+      <div className="flex max-h-[95vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in duration-200 dark:bg-slate-900">
         {isPaymentVisible && (
           <>
         {/* Header */}
@@ -939,47 +939,47 @@ export default function PosPaymentModal({
             {/* Left Column - Order Summary */}
             <div className="space-y-4">
               {/* Customer Info Card */}
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
+              <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-4 dark:border-purple-800 dark:from-slate-800 dark:to-slate-900">
                 <div className="flex items-center gap-2 mb-3">
-                  <User className="w-5 h-5 text-purple-600" />
-                  <h3 className="font-semibold text-gray-900">Customer</h3>
+                  <User className="w-5 h-5 text-purple-600 dark:text-purple-300" />
+                  <h3 className="font-semibold text-gray-900 dark:text-slate-100">Customer</h3>
                 </div>
                 
                 {customer ? (
                   <div className="space-y-2 text-sm">
-                    <div className="font-bold text-lg text-gray-900">{customer.name}</div>
+                    <div className="text-lg font-bold text-gray-900 dark:text-white">{customer.name}</div>
                     {customer.phone && (
-                      <div className="flex items-center gap-2 text-gray-600">
+                      <div className="flex items-center gap-2 text-gray-600 dark:text-slate-300">
                         <span>📱</span>
                         <span>{customer.phone}</span>
                       </div>
                     )}
                     {customer.email && (
-                      <div className="flex items-center gap-2 text-gray-600 text-xs">
+                      <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300">
                         <span>✉️</span>
                         <span>{customer.email}</span>
                       </div>
                     )}
-                     <div className="flex justify-between text-black bg-green-500 p-2 rounded-lg border border-purple-200">
+                     <div className="flex justify-between rounded-lg border border-green-700 bg-green-700 p-2 text-white dark:border-green-800 dark:bg-green-900 dark:text-green-100">
                               <span>Wallet Balance</span>
-                              <span className="font-semibold text-gray-900">{currencyFormat(customerWalletBalance)}</span>
+                             <span className="font-semibold">{currencyFormat(customerWalletBalance)}</span>
                             </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <div className="bg-purple-100 p-2 rounded-lg">
-                      <User className="w-5 h-5 text-purple-600" />
+                    <div className="rounded-lg bg-purple-100 p-2 dark:bg-purple-900/60">
+                      <User className="w-5 h-5 text-purple-600 dark:text-purple-300" />
                     </div>
                     <div>
-                      <div className="font-bold text-lg text-gray-900">Walk-in Customer</div>
-                      <div className="text-xs text-gray-500">No customer selected</div>
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">Walk-in Customer</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">No customer selected</div>
                     </div>
                   </div>
                 )}
                 {allowDelivery && !isComplimentary && (
-                  <div className="mt-3 space-y-2 rounded-lg border border-purple-200 bg-white p-3">
+                  <div className="mt-3 space-y-2 rounded-lg border border-purple-200 bg-white p-3 dark:border-purple-800 dark:bg-slate-900">
                     <label className="flex items-center justify-between gap-3 cursor-pointer">
-                      <span className="text-sm font-semibold text-gray-700">Add delivery fee</span>
+                      <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">Add delivery fee</span>
                       <input
                         type="checkbox"
                         checked={deliverySelected}
@@ -991,7 +991,7 @@ export default function PosPaymentModal({
                     </label>
                     {deliverySelected && (
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-600">Delivery amount</label>
+                        <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-300">Delivery amount</label>
                         <input
                           type="number"
                           min="0"
@@ -999,14 +999,14 @@ export default function PosPaymentModal({
                           value={deliveryFeeInput}
                           onChange={(e) => setDeliveryFeeInput(e.target.value)}
                           placeholder="Enter delivery fee"
-                          className="w-full rounded-lg border border-purple-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400"
                         />
                       </div>
                     )}
                     {allowServiceCharge && !isComplimentary && (
-                      <div className="mt-3 space-y-2 rounded-lg border border-violet-200 bg-white p-3">
+                      <div className="mt-3 space-y-2 rounded-lg border border-violet-200 bg-white p-3 dark:border-violet-800 dark:bg-slate-900">
                         <label className="flex items-center justify-between gap-3 cursor-pointer">
-                          <span className="text-sm font-semibold text-gray-700">Add service charge</span>
+                          <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">Add service charge</span>
                           <input
                             type="checkbox"
                             checked={serviceChargeSelected}
@@ -1016,7 +1016,7 @@ export default function PosPaymentModal({
                         </label>
                         {serviceChargeSelected && (
                           <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">Service charge amount</label>
+                            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-300">Service charge amount</label>
                             <input
                               type="number"
                               min="0"
@@ -1024,7 +1024,7 @@ export default function PosPaymentModal({
                               value={serviceChargeInput}
                               onChange={(e) => setServiceChargeInput(e.target.value)}
                               placeholder="Enter service charge"
-                              className="w-full rounded-lg border border-violet-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                              className="w-full rounded-lg border border-violet-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-violet-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400"
                             />
                           </div>
                         )}
@@ -1035,63 +1035,63 @@ export default function PosPaymentModal({
               </div>
 
               {/* Order Info Card */}
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
+              <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 p-4 dark:border-slate-700 dark:from-slate-800 dark:to-slate-900">
                 <div className="flex items-center gap-2 mb-3">
-                  <ShoppingCart className="w-5 h-5 text-gray-600" />
-                  <h3 className="font-semibold text-gray-900">Order Summary</h3>
+                  <ShoppingCart className="w-5 h-5 text-gray-600 dark:text-slate-300" />
+                  <h3 className="font-semibold text-gray-900 dark:text-slate-100">Order Summary</h3>
                 </div>
                 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Order #:</span>
+                    <span className="text-gray-600 dark:text-slate-300">Order #:</span>
                     <span className="font-mono font-semibold">{rcpt || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Date:</span>
+                    <span className="text-gray-600 dark:text-slate-300">Date:</span>
                     <span className="font-medium">{busDate}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Items:</span>
+                    <span className="text-gray-600 dark:text-slate-300">Items:</span>
                     <span className="font-medium">{cartItems.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Cashier:</span>
+                    <span className="text-gray-600 dark:text-slate-300">Cashier:</span>
                     <span className="font-medium">{user?.name || 'N/A'}</span>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-300">
+                <div className="mt-4 border-t border-gray-300 pt-4 dark:border-slate-600">
                   {deliveryAmount > 0 && (
                     <div className="flex justify-between items-center mb-2 text-sm">
-                      <span className="text-gray-600">Delivery</span>
-                      <span className="font-semibold text-gray-900">{currencyFormat(deliveryAmount)}</span>
+                      <span className="text-gray-600 dark:text-slate-300">Delivery</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{currencyFormat(deliveryAmount)}</span>
                     </div>
                   )}
                   {serviceChargeAmount > 0 && (
                     <div className="flex justify-between items-center mb-2 text-sm">
-                      <span className="text-gray-600">Service charge</span>
-                      <span className="font-semibold text-gray-900">{currencyFormat(serviceChargeAmount)}</span>
+                      <span className="text-gray-600 dark:text-slate-300">Service charge</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{currencyFormat(serviceChargeAmount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold text-gray-900">Order Total</span>
-                    <span className="text-2xl font-bold text-blue-600">{currencyFormat(orderTotal)}</span>
+                    <span className="text-lg font-semibold text-gray-900 dark:text-white">Order Total</span>
+                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-300">{currencyFormat(orderTotal)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Cart Items */}
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                  <h4 className="font-semibold text-gray-900 text-sm">Items ({cartItems.length})</h4>
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+                <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-slate-100">Items ({cartItems.length})</h4>
                 </div>
                 <div className="max-h-48 overflow-y-auto">
                   {cartItems.map((item, index) => (
-                    <div key={index} className="px-4 py-2 border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                    <div key={index} className="border-b border-gray-100 px-4 py-2 last:border-0 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800">
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-sm font-medium text-gray-900 flex-1">{item.productName || item.name || item.item}</span>
-                        <span className="text-xs text-gray-500 whitespace-nowrap">x{item.quantity ?? item.qty}</span>
-                        <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                        <span className="flex-1 text-sm font-medium text-gray-900 dark:text-slate-100">{item.productName || item.name || item.item}</span>
+                        <span className="whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">x{item.quantity ?? item.qty}</span>
+                        <span className="whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
                           {currencyFormat(item.total ?? item.amount ?? ((item.unitPrice ?? item.price) * (item.quantity ?? item.qty ?? 0)))}
                         </span>
                       </div>
@@ -1101,21 +1101,21 @@ export default function PosPaymentModal({
               </div>
 
               {/* Payment Summary */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-                <h4 className="font-semibold text-gray-900 mb-3 text-sm">Payment Summary</h4>
+              <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 dark:border-blue-800 dark:from-slate-800 dark:to-slate-900">
+                <h4 className="mb-3 text-sm font-semibold text-gray-900 dark:text-slate-100">Payment Summary</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Total Payment:</span>
-                    <span className="font-bold text-blue-600">{currencyFormat(totalPayment)}</span>
+                    <span className="text-gray-600 dark:text-slate-300">Total Payment:</span>
+                    <span className="font-bold text-blue-600 dark:text-blue-300">{currencyFormat(totalPayment)}</span>
                   </div>
                   {balance > 0 && (
-                    <div className="flex justify-between text-red-600">
+                    <div className="flex justify-between text-red-600 dark:text-red-300">
                       <span>Remaining:</span>
                       <span className="font-bold">{currencyFormat(balance)}</span>
                     </div>
                   )}
                   {change > 0 && (
-                    <div className="flex justify-between text-green-600">
+                    <div className="flex justify-between text-green-600 dark:text-green-300">
                       <span>Change:</span>
                       <span className="font-bold">{currencyFormat(change)}</span>
                     </div>
@@ -1129,30 +1129,30 @@ export default function PosPaymentModal({
               <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
                 {/* Payment Method Selection */}
                 {isComplimentary ? (
-                  <div className="bg-violet-50 border-l-4 border-violet-500 rounded-lg px-4 py-3 flex items-start gap-3">
-                    <Receipt className="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 rounded-lg border-l-4 border-violet-500 bg-violet-50 px-4 py-3 dark:bg-violet-950/40">
+                    <Receipt className="mt-0.5 w-5 h-5 flex-shrink-0 text-violet-600 dark:text-violet-300" />
                     <div className="flex-1">
-                      <p className="font-semibold text-violet-900 text-sm">Complimentary Sale</p>
-                      <p className="text-sm text-violet-700">This order will be completed with no payment and no outstanding balance.</p>
+                      <p className="text-sm font-semibold text-violet-900 dark:text-violet-100">Complimentary Sale</p>
+                      <p className="text-sm text-violet-700 dark:text-violet-200">This order will be completed with no payment and no outstanding balance.</p>
                     </div>
                   </div>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Payment Methods {selectedMethods.length > 1 && <span className="text-blue-600">(Split Payment)</span>}
+                      <label className="mb-3 block text-sm font-semibold text-gray-700 dark:text-slate-200">
+                        Payment Methods {selectedMethods.length > 1 && <span className="text-blue-600 dark:text-blue-300">(Split Payment)</span>}
                       </label>
                       <div className="grid grid-cols-2 gap-2">
                    
-                        {paymentMethods.filter(({ value }) => value !== 'COMPLIMENTARY').map(({ value, label, icon: Icon, color }) => (
+                        {paymentMethods.filter(({ value }) => value !== 'COMPLIMENTARY').map(({ value, label, icon: Icon, selectedClasses }) => (
                           <button
                             key={value}
                             type="button"
                             onClick={() => togglePaymentMethod(value)}
-                            className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 transition-all font-medium text-sm ${
+                            className={`flex items-center justify-center gap-2 rounded-xl border-2 px-3 py-3 text-sm font-medium transition-all ${
                               selectedMethods.includes(value)
-                                ? `border-${color}-600 bg-${color}-50 text-${color}-700 shadow-md scale-105`
-                                : 'border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50'
+                                ? selectedClasses
+                                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-800'
                             }`}
                           >
                             <Icon className="w-5 h-5" />
@@ -1160,30 +1160,30 @@ export default function PosPaymentModal({
                           </button>
                         ))}
                         {selectedMethods.includes('TRANSFER') && (
-                          <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-3">
+                          <div className="space-y-3 rounded-xl border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-950/40">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">Transfer Bank</label>
-                              <select value={transferBank} onChange={(e) => setTransferBank(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                              <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-200">Transfer Bank</label>
+                              <select value={transferBank} onChange={(e) => setTransferBank(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white">
                                 <option value="">Select a saved bank</option>
                                 {bankNames.map((bank) => <option key={bank} value={bank}>{bank}</option>)}
                               </select>
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">Transfer Reference</label>
-                              <input type="text" value={transferReference} onChange={(e) => setTransferReference(e.target.value)} placeholder="Enter transfer reference" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                              <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-200">Transfer Reference</label>
+                              <input type="text" value={transferReference} onChange={(e) => setTransferReference(e.target.value)} placeholder="Enter transfer reference" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400" />
                             </div>
                           </div>
                         )}
 
                       </div>
 
-                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-3">
+                      <div className="mt-4 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/40">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2">
-                            <Wallet className="w-5 h-5 text-emerald-700" />
+                            <Wallet className="w-5 h-5 text-emerald-700 dark:text-emerald-300" />
                             <div>
-                              <p className="text-sm font-semibold text-emerald-900">Use Wallet</p>
-                              <p className="text-xs text-emerald-700">
+                              <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Use Wallet</p>
+                              <p className="text-xs text-emerald-700 dark:text-emerald-200">
                                 Available: {currencyFormat(customerWalletBalance)}
                               </p>
                             </div>
@@ -1200,39 +1200,39 @@ export default function PosPaymentModal({
                         {walletSelected && (
                           <>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-2">Wallet Amount</label>
+                              <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-200">Wallet Amount</label>
                               <div className="relative">
-                                <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600" />
-                                <span className="absolute left-11 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₦</span>
+                                <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600 dark:text-emerald-300" />
+                                <span className="absolute left-11 top-1/2 -translate-y-1/2 font-semibold text-gray-500 dark:text-slate-300">₦</span>
                                 <input
                                   type="number"
                                   min="0"
                                   step="0.01"
                                   value={walletAmount}
                                   onChange={(e) => handleWalletAmountChange(e.target.value)}
-                                  className="w-full pl-16 pr-4 py-3 border-2 border-emerald-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-lg font-semibold transition-all"
+                                  className="w-full rounded-xl border-2 border-emerald-300 bg-white py-3 pl-16 pr-4 text-lg font-semibold text-gray-900 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-emerald-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400"
                                   placeholder="0.00"
                                 />
                               </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
-                              <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
-                                <p className="text-gray-500">Max wallet usable</p>
-                                <p className="font-semibold text-gray-900">{currencyFormat(maxWalletUsable)}</p>
+                              <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2 dark:border-emerald-800 dark:bg-slate-900">
+                                <p className="text-gray-500 dark:text-slate-400">Max wallet usable</p>
+                                <p className="font-semibold text-gray-900 dark:text-white">{currencyFormat(maxWalletUsable)}</p>
                               </div>
-                              <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
-                                <p className="text-gray-500">Invoice remaining</p>
-                                <p className="font-semibold text-gray-900">{currencyFormat(invoiceRemainingAfterWallet)}</p>
+                              <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2 dark:border-emerald-800 dark:bg-slate-900">
+                                <p className="text-gray-500 dark:text-slate-400">Invoice remaining</p>
+                                <p className="font-semibold text-gray-900 dark:text-white">{currencyFormat(invoiceRemainingAfterWallet)}</p>
                               </div>
-                              <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2 col-span-2">
-                                <p className="text-gray-500">Wallet balance after payment</p>
-                                <p className="font-semibold text-gray-900">{currencyFormat(walletBalanceAfterUse)}</p>
+                              <div className="col-span-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 dark:border-emerald-800 dark:bg-slate-900">
+                                <p className="text-gray-500 dark:text-slate-400">Wallet balance after payment</p>
+                                <p className="font-semibold text-gray-900 dark:text-white">{currencyFormat(walletBalanceAfterUse)}</p>
                               </div>
                             </div>
 
                             {hasInvalidWalletAmount && (
-                              <p className="text-xs text-red-600">
+                              <p className="text-xs text-red-600 dark:text-red-300">
                                 Wallet amount must be between 0 and {currencyFormat(maxWalletUsable)}
                               </p>
                             )}
@@ -1240,7 +1240,7 @@ export default function PosPaymentModal({
                         )}
 
                         {!canUseWallet && (
-                          <p className="text-xs text-amber-700">
+                          <p className="text-xs text-amber-700 dark:text-amber-300">
                             Select a customer with wallet balance to use wallet payment.
                           </p>
                         )}
@@ -1251,7 +1251,7 @@ export default function PosPaymentModal({
                         <button
                           type="button"
                           onClick={handleSplitEvenly}
-                          className="mt-2 w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+                          className="mt-2 w-full text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
                         >
                           Split evenly between {selectedMethods.length} methods
                         </button>
@@ -1265,12 +1265,12 @@ export default function PosPaymentModal({
                         
                         return (
                           <div key={method}>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-200">
                               {methodInfo?.label} Amount
                             </label>
                             <div className="relative">
                               <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                              <span className="absolute left-11 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₦</span>
+                              <span className="absolute left-11 top-1/2 -translate-y-1/2 font-semibold text-gray-500 dark:text-slate-300">₦</span>
                               <input
                                 type="number"
                                 value={paymentAmounts[method]}
@@ -1278,7 +1278,7 @@ export default function PosPaymentModal({
                                 min="0"
                                 step="0.01"
                                 placeholder="0.00"
-                                className="w-full pl-16 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold transition-all"
+                                className="w-full rounded-xl border-2 border-gray-300 bg-white py-3 pl-16 pr-4 text-lg font-semibold text-gray-900 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400"
                               />
                             </div>
                           </div>
@@ -1290,15 +1290,15 @@ export default function PosPaymentModal({
                       <button
                         type="button"
                         onClick={handlePayFull}
-                        className="w-full px-4 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-all text-sm font-semibold"
+                        className="w-full rounded-xl bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 transition-all hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-200 dark:hover:bg-blue-900"
                       >
                         Pay Full Amount ({currencyFormat(orderTotal)})
                       </button>
                     )}
                     {selectedMethods.includes('OTHER') && (
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Specific Other Method</label>
-                        <select value={otherPaymentMethod} onChange={(e) => setOtherPaymentMethod(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+                        <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-200">Specific Other Method</label>
+                        <select value={otherPaymentMethod} onChange={(e) => setOtherPaymentMethod(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white">
                           <option value="">Select a saved method</option>
                           {otherPaymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
                         </select>
@@ -1308,35 +1308,35 @@ export default function PosPaymentModal({
                 )}
 
                 {isComplimentary && (
-                  <div className="space-y-3 bg-violet-50 border border-violet-200 rounded-xl p-4">
+                  <div className="space-y-3 rounded-xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-800 dark:bg-violet-950/40">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Approved By</label>
+                      <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-200">Approved By</label>
                       <input
                         type="text"
                         value={approvedBy}
                         onChange={(e) => setApprovedBy(e.target.value)}
                         placeholder="Supervisor / manager name"
-                        className="w-full px-4 py-3 border-2 border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full rounded-xl border-2 border-violet-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-violet-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Reason</label>
+                      <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-200">Reason</label>
                       <input
                         type="text"
                         value={complimentaryReason}
                         onChange={(e) => setComplimentaryReason(e.target.value)}
                         placeholder="Why is this complimentary?"
-                        className="w-full px-4 py-3 border-2 border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full rounded-xl border-2 border-violet-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-violet-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Remarks</label>
+                      <label className="mb-2 block text-sm font-semibold text-gray-700 dark:text-slate-200">Remarks</label>
                       <textarea
                         value={complimentaryRemarks}
                         onChange={(e) => setComplimentaryRemarks(e.target.value)}
                         placeholder="Optional internal notes"
                         rows={3}
-                        className="w-full px-4 py-3 border-2 border-violet-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+                        className="w-full resize-none rounded-xl border-2 border-violet-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-violet-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400"
                       />
                     </div>
                   </div>
@@ -1344,31 +1344,31 @@ export default function PosPaymentModal({
 
                 {/* Error/Warning Messages */}
                 {hasInvalidWalletAmount && (
-                  <div className="bg-red-50 border-l-4 border-red-500 rounded-lg px-4 py-3 flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 rounded-lg border-l-4 border-red-500 bg-red-50 px-4 py-3 dark:bg-red-950/40">
+                    <AlertCircle className="mt-0.5 w-5 h-5 flex-shrink-0 text-red-600 dark:text-red-300" />
                     <div className="flex-1">
-                      <p className="font-semibold text-red-900 text-sm">Invalid Wallet Amount</p>
-                      <p className="text-sm text-red-700">Wallet cannot be greater than {currencyFormat(maxWalletUsable)}</p>
+                      <p className="text-sm font-semibold text-red-900 dark:text-red-100">Invalid Wallet Amount</p>
+                      <p className="text-sm text-red-700 dark:text-red-200">Wallet cannot be greater than {currencyFormat(maxWalletUsable)}</p>
                     </div>
                   </div>
                 )}
 
                 {isOverpayment && (
-                  <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg px-4 py-3 flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 rounded-lg border-l-4 border-yellow-500 bg-yellow-50 px-4 py-3 dark:bg-amber-950/40">
+                    <AlertCircle className="mt-0.5 w-5 h-5 flex-shrink-0 text-yellow-600 dark:text-amber-300" />
                     <div className="flex-1">
-                      <p className="font-semibold text-yellow-900 text-sm">Overpayment</p>
-                      <p className="text-sm text-yellow-700">Change: {currencyFormat(change)}</p>
+                      <p className="text-sm font-semibold text-yellow-900 dark:text-amber-100">Overpayment</p>
+                      <p className="text-sm text-yellow-700 dark:text-amber-200">Change: {currencyFormat(change)}</p>
                     </div>
                   </div>
                 )}
 
                 {isUnderpayment && (
-                  <div className="bg-red-50 border-l-4 border-red-500 rounded-lg px-4 py-3 flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 rounded-lg border-l-4 border-red-500 bg-red-50 px-4 py-3 dark:bg-red-950/40">
+                    <AlertCircle className="mt-0.5 w-5 h-5 flex-shrink-0 text-red-600 dark:text-red-300" />
                     <div className="flex-1">
-                      <p className="font-semibold text-red-900 text-sm">Insufficient Payment</p>
-                      <p className="text-sm text-red-700">Short by: {currencyFormat(balance)}</p>
+                      <p className="text-sm font-semibold text-red-900 dark:text-red-100">Insufficient Payment</p>
+                      <p className="text-sm text-red-700 dark:text-red-200">Short by: {currencyFormat(balance)}</p>
                     </div>
                   </div>
                 )}
@@ -1429,7 +1429,7 @@ export default function PosPaymentModal({
                   )}
                 </button>
                 {showLongProcessingMessage && (
-                  <p className="mt-3 text-center text-sm text-amber-700" role="status" aria-live="polite">
+                  <p className="mt-3 text-center text-sm text-amber-700 dark:text-amber-300" role="status" aria-live="polite">
                     This is taking longer than usual. Your payment may still be processing—please wait and do not submit again.
                   </p>
                 )}
@@ -1444,43 +1444,43 @@ export default function PosPaymentModal({
         {/* Print Modal */}
         {showPrintModal && completedOrder && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                  <CheckCircle className="w-10 h-10 text-green-600" />
+                <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50">
+                  <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-300" />
                 </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
-                  <p className="text-gray-600">Would you like to print the receipt?</p>
-                  <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700">
+                  <h2 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">Payment Successful!</h2>
+                  <p className="text-gray-600 dark:text-slate-300">Would you like to print the receipt?</p>
+                  <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium">Order #</span>
-                      <span className="font-semibold text-gray-900">{completedOrder?.orderNum || 'N/A'}</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{completedOrder?.orderNum || 'N/A'}</span>
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="font-medium">Cashier</span>
-                      <span className="font-semibold text-gray-900">{completedOrder?.soldBy || user?.name || user?.email || 'N/A'}</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{completedOrder?.soldBy || user?.name || user?.email || 'N/A'}</span>
                     </div>
                   </div>
-                <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm text-left">
+                <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-left text-sm dark:border-slate-700 dark:bg-slate-800">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Order #:</span>
-                    <span className="font-semibold text-gray-900">{completedOrder?.orderNum || rcpt || 'N/A'}</span>
+                    <span className="text-gray-500 dark:text-slate-400">Order #:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{completedOrder?.orderNum || rcpt || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between mt-1">
-                    <span className="text-gray-500">Cashier:</span>
-                    <span className="font-semibold text-gray-900">{completedOrder?.cashier || user?.name || 'N/A'}</span>
+                    <span className="text-gray-500 dark:text-slate-400">Cashier:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{completedOrder?.cashier || user?.name || 'N/A'}</span>
                   </div>
                    {showOutstandingBalanceOnReceipt && (
                   <div className="flex justify-between mt-1">
-                    <span className="text-gray-500">Outstanding Bill:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-500 dark:text-slate-400">Outstanding Bill:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">
                       {currencyFormat(completedOrder?.outstandingBalance ?? completedOrder?.customer?.outstandingBalance ?? 0)}
                     </span>
                   </div>)}
                 {showWalletBalanceOnReceipt && (
                   <div className="flex justify-between mt-1">
-                    <span className="text-gray-500">Wallet Balance:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-500 dark:text-slate-400">Wallet Balance:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">
                       {currencyFormat(completedOrder?.walletBalance ?? completedOrder?.customer?.walletBalance ?? 0)}
                     </span>
                   </div>
@@ -1613,7 +1613,7 @@ export default function PosPaymentModal({
                     resetReceiptState()
                     onClose?.()
                   }}
-                  className="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-300 transition-all font-semibold"
+                  className="w-full rounded-xl bg-gray-200 px-6 py-3 font-semibold text-gray-700 transition-all hover:bg-gray-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
                 >
                   Close
                 </button>

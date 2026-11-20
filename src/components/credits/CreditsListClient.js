@@ -134,7 +134,7 @@ export default function CreditsListClient({ credits, stats, slug, otherPaymentMe
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500">
           <div className="flex items-center justify-between">
             <div>

@@ -353,7 +353,7 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
               {/* Personal Information */}
               <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-3 pb-2 border-b">Personal Information</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Full Name</label>
                     <p className="text-base font-semibold text-gray-900">{selectedCustomer.name}</p>
@@ -427,7 +427,7 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
                   <TrendingUp className="w-5 h-5" />
                   Purchase Statistics
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                   <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                     <div className="flex items-center gap-2 mb-1">
                       <ShoppingCart className="w-4 h-4 text-blue-600" />
@@ -524,7 +524,7 @@ export default function CustomersListClient({ customers, slug, currentUserRole, 
                   <CreditCard className="w-5 h-5" />
                   Credit Information
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">

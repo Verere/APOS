@@ -149,8 +149,8 @@ export default async function InventoryReportPage({ params, searchParams }) {
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="w-full min-w-0 space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Inventory Report</h1>
           <p className="text-sm md:text-base text-gray-600">
@@ -172,7 +172,7 @@ export default async function InventoryReportPage({ params, searchParams }) {
       </div>
 
       <form method="get" className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
             <input
@@ -218,7 +218,7 @@ export default async function InventoryReportPage({ params, searchParams }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
             <select
@@ -251,16 +251,16 @@ export default async function InventoryReportPage({ params, searchParams }) {
               <option value="asc">Ascending</option>
             </select>
           </div>
-          <div className="sm:col-span-2 lg:col-span-2 flex items-end gap-3">
+          <div className="flex items-end gap-3 md:col-span-2">
             <button
               type="submit"
-              className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 md:w-auto"
             >
               Apply Filters
             </button>
             <a
               href={`/${slug}/dashboard/inventory-report`}
-              className="w-full sm:w-auto px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors text-center"
+              className="w-full rounded-lg bg-gray-100 px-4 py-2.5 text-center text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 md:w-auto"
             >
               Reset
             </a>
@@ -268,7 +268,7 @@ export default async function InventoryReportPage({ params, searchParams }) {
         </div>
       </form>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <div className="bg-white rounded-lg border border-gray-200 p-3">
           <p className="text-xs text-gray-500">Opening</p>
           <p className="text-lg font-bold text-gray-900">{formatNumber(totals.openingStock)}</p>
@@ -297,8 +297,8 @@ export default async function InventoryReportPage({ params, searchParams }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <div className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-1 border-b border-gray-200 px-4 py-3 md:flex-row md:items-center md:justify-between">
           <h2 className="font-semibold text-gray-900">Inventory Movement Report</h2>
           <span className="text-xs md:text-sm text-gray-500">{rows.length} product(s) • {formatNumber(totals.transactionCount)} txn(s)</span>
         </div>

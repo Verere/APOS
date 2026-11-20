@@ -562,7 +562,7 @@ return(
      
      {/* Stats Cards - Only visible to owners */}
      {userRole === 'OWNER' && (
-     <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:gap-4 gap-3 lg:flex-1">
+     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:flex lg:flex-1 lg:gap-4">
        {/* Total Stock Value Card */}
        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border-2 border-blue-200 shadow-md hover:shadow-lg transition-shadow">
          <div className="flex items-center gap-3">

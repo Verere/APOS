@@ -748,59 +748,59 @@ return(
       </div>
 
       {/* Payment Summary Cards */}
-      <div className={`grid grid-cols-2 sm:grid-cols-3 ${deliveryEnabled && serviceChargeEnabled ? 'lg:grid-cols-7' : deliveryEnabled || serviceChargeEnabled ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3 mb-4`}>
-        <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="min-w-0 rounded-lg border border-green-200 bg-gradient-to-br from-green-50 to-green-100 p-3 dark:border-green-800 dark:from-green-950/60 dark:to-green-900/40">
           <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4 text-green-600" />
-            <p className="text-xs text-gray-600">Cash</p>
+            <DollarSign className="w-4 h-4 text-green-600 dark:text-green-300" />
+            <p className="text-xs text-gray-600 dark:text-slate-300">Cash</p>
           </div>
-          <p className="text-lg font-bold text-green-700">{currencyFormat(paymentStats.cash)}</p>
+          <p className="break-words text-lg font-bold leading-tight tabular-nums text-green-700 dark:text-green-200 [overflow-wrap:anywhere]">{currencyFormat(paymentStats.cash)}</p>
         </div>
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
+        <div className="min-w-0 rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 dark:border-blue-800 dark:from-blue-950/60 dark:to-blue-900/40">
           <div className="flex items-center gap-2 mb-1">
-            <CreditCard className="w-4 h-4 text-blue-600" />
-            <p className="text-xs text-gray-600">POS</p>
+            <CreditCard className="w-4 h-4 text-blue-600 dark:text-blue-300" />
+            <p className="text-xs text-gray-600 dark:text-slate-300">POS</p>
           </div>
-          <p className="text-lg font-bold text-blue-700">{currencyFormat(paymentStats.pos)}</p>
+          <p className="break-words text-lg font-bold leading-tight tabular-nums text-blue-700 dark:text-blue-200 [overflow-wrap:anywhere]">{currencyFormat(paymentStats.pos)}</p>
         </div>
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-3 rounded-lg border border-purple-200">
+        <div className="min-w-0 rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-3 dark:border-purple-800 dark:from-purple-950/60 dark:to-purple-900/40">
           <div className="flex items-center gap-2 mb-1">
-            <Smartphone className="w-4 h-4 text-purple-600" />
-            <p className="text-xs text-gray-600">Transfer</p>
+            <Smartphone className="w-4 h-4 text-purple-600 dark:text-purple-300" />
+            <p className="text-xs text-gray-600 dark:text-slate-300">Transfer</p>
           </div>
-          <p className="text-lg font-bold text-purple-700">{currencyFormat(paymentStats.transfer)}</p>
+          <p className="break-words text-lg font-bold leading-tight tabular-nums text-purple-700 dark:text-purple-200 [overflow-wrap:anywhere]">{currencyFormat(paymentStats.transfer)}</p>
         </div>
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-3 rounded-lg border border-orange-200">
+        <div className="min-w-0 rounded-lg border border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 p-3 dark:border-orange-800 dark:from-orange-950/60 dark:to-orange-900/40">
           <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4 text-orange-600" />
-            <p className="text-xs text-gray-600">Other</p>
+            <DollarSign className="w-4 h-4 text-orange-600 dark:text-orange-300" />
+            <p className="text-xs text-gray-600 dark:text-slate-300">Other</p>
           </div>
-          <p className="text-lg font-bold text-orange-700">{currencyFormat(paymentStats.other)}</p>
+          <p className="break-words text-lg font-bold leading-tight tabular-nums text-orange-700 dark:text-orange-200 [overflow-wrap:anywhere]">{currencyFormat(paymentStats.other)}</p>
         </div>
         {deliveryEnabled && (
-          <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 p-3 rounded-lg border border-cyan-200">
+          <div className="min-w-0 rounded-lg border border-cyan-200 bg-gradient-to-br from-cyan-50 to-cyan-100 p-3 dark:border-cyan-800 dark:from-cyan-950/60 dark:to-cyan-900/40">
             <div className="flex items-center gap-2 mb-1">
-              <Truck className="w-4 h-4 text-cyan-600" />
-              <p className="text-xs text-gray-600">Delivery Fees</p>
+              <Truck className="w-4 h-4 text-cyan-600 dark:text-cyan-300" />
+              <p className="text-xs text-gray-600 dark:text-slate-300">Delivery Fees</p>
             </div>
-            <p className="text-lg font-bold text-cyan-700">{currencyFormat(paymentStats.delivery)}</p>
+            <p className="break-words text-lg font-bold leading-tight tabular-nums text-cyan-700 dark:text-cyan-200 [overflow-wrap:anywhere]">{currencyFormat(paymentStats.delivery)}</p>
           </div>
         )}
         {serviceChargeEnabled && (
-          <div className="bg-gradient-to-br from-violet-50 to-violet-100 p-3 rounded-lg border border-violet-200">
+          <div className="min-w-0 rounded-lg border border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100 p-3 dark:border-violet-800 dark:from-violet-950/60 dark:to-violet-900/40">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-4 h-4 text-violet-600" />
-              <p className="text-xs text-gray-600">Service Charges</p>
+              <DollarSign className="w-4 h-4 text-violet-600 dark:text-violet-300" />
+              <p className="text-xs text-gray-600 dark:text-slate-300">Service Charges</p>
             </div>
-            <p className="text-lg font-bold text-violet-700">{currencyFormat(paymentStats.serviceCharge)}</p>
+            <p className="break-words text-lg font-bold leading-tight tabular-nums text-violet-700 dark:text-violet-200 [overflow-wrap:anywhere]">{currencyFormat(paymentStats.serviceCharge)}</p>
           </div>
         )}
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-3 rounded-lg border border-gray-300">
+        <div className="min-w-0 rounded-lg border border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 p-3 dark:border-slate-700 dark:from-slate-800 dark:to-slate-900">
           <div className="flex items-center gap-2 mb-1">
-            <Receipt className="w-4 h-4 text-gray-600" />
-            <p className="text-xs text-gray-600">Total</p>
+            <Receipt className="w-4 h-4 text-gray-600 dark:text-slate-300" />
+            <p className="text-xs text-gray-600 dark:text-slate-300">Total</p>
           </div>
-          <p className="text-lg font-bold text-gray-800">{currencyFormat(paymentStats.total)}</p>
+          <p className="break-words text-lg font-bold leading-tight tabular-nums text-gray-800 dark:text-white [overflow-wrap:anywhere]">{currencyFormat(paymentStats.total)}</p>
         </div>
       </div>
 

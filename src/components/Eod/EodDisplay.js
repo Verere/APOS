@@ -65,8 +65,8 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen w-full min-w-0 bg-gray-50 py-4 sm:py-8">
+      <div className="mx-auto w-full max-w-7xl min-w-0 px-3 sm:px-6 lg:px-8">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3 sm:gap-4">
@@ -79,7 +79,7 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${attentionRequired.length ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200'}`}>
                 {statusLabel}
               </span>
@@ -95,7 +95,7 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
         </div>
 
         <div ref={printRef} className="space-y-8">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {metricCards.map((card) => {
               const Icon = card.icon;
               const toneClasses = {
@@ -127,7 +127,7 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
               <TrendingUp className="h-5 w-5 text-blue-600" />
               <h2 className="text-xl font-bold text-slate-900">Business Performance</h2>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               {[
                 ['Revenue', summary.revenue ?? eodData?.totalRevenue ?? 0],
                 ...(deliveryEnabled ? [['Delivery Fees', summary.totalDelivery ?? eodData?.totalDelivery ?? 0]] : []),
@@ -158,7 +158,7 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
               <DollarSign className="h-5 w-5 text-cyan-600" />
               <h2 className="text-xl font-bold text-slate-900">Settlement / Money Received</h2>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {paymentRows.map((item) => (
                 <div key={item.label} className={summaryCardClasses}>
                   <div className="break-words text-sm font-semibold text-slate-600 dark:text-slate-300">{item.label}</div>
@@ -168,7 +168,7 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
               ))}
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
               {[
                 ['Sales settled today', settlement?.salesSettledToday?.amount ?? 0],
                 ['Money actually received today', settlement?.moneyReceivedToday?.amount ?? 0],
@@ -205,7 +205,7 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
             </div>
             <div className="mt-6 space-y-3">
               {(expensesSummary.breakdown || []).map((item) => (
-                <div key={item.category} className="flex min-w-0 flex-col gap-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+                <div key={item.category} className="flex min-w-0 flex-col gap-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900 md:flex-row md:items-center md:justify-between">
                   <span className="min-w-0 break-words font-medium text-slate-700 dark:text-slate-200">{item.category}</span>
                   <span className="break-words font-bold leading-tight tabular-nums text-slate-900 dark:text-white [overflow-wrap:anywhere]">{currencyFormat(item.total)} ({item.count})</span>
                 </div>
@@ -218,7 +218,7 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
               <Archive className="h-5 w-5 text-violet-600" />
               <h2 className="text-xl font-bold text-slate-900">Inventory / Stock Summary</h2>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {[
                 ['Opening stock value', inventorySummary.openingStockValue || 0],
                 ['Purchases / stock received', inventorySummary.purchasesStockReceived || 0],
@@ -250,7 +250,7 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
               <BriefcaseBusiness className="h-5 w-5 text-red-600" />
               <h2 className="text-xl font-bold text-slate-900">Debtors / Credit</h2>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
               {[
                 ['Credit sales today', debtors.creditSalesToday || 0],
                 ['Debt payments received today', debtors.debtPaymentsReceivedToday || 0],
@@ -272,7 +272,7 @@ export default function EodDisplay({ eodData, slug, deliveryEnabled = false, ser
               <Wallet className="h-5 w-5 text-emerald-600" />
               <h2 className="text-xl font-bold text-slate-900">Customer Deposits / Wallet</h2>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
               {[
                 ['Opening deposit balance', wallet.summary.openingDepositBalance || 0],
                 ['Deposits received today', wallet.summary.depositsReceivedToday || 0],

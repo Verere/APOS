@@ -25,11 +25,20 @@ import {
   Calendar,
   UserPlus,
   UserCheck,
+  X,
 } from 'lucide-react'
 
-const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
+const Sidebar = ({
+  slug,
+  isCollapsed,
+  setIsCollapsed,
+  isMobileViewport = false,
+  isMobileOpen = false,
+  onClose = () => {},
+}) => {
   const pathname = usePathname()
   const router = useRouter()
+  const isCollapsedVisual = isCollapsed && !(isMobileViewport && isMobileOpen)
   const [productsExpanded, setProductsExpanded] = useState(true)
   const [customersExpanded, setCustomersExpanded] = useState(true)
   const [expensesExpanded, setExpensesExpanded] = useState(true)
@@ -89,6 +98,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
 
   const handleNavigation = (item) => {
     setLoadingItem(item.path)
+    onClose()
     if (item.isAction) {
       window.location.href = item.path
     } else {
@@ -98,30 +108,43 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
 
   const handleSubmenuNavigation = (subItem) => {
     setLoadingItem(subItem.path)
+    onClose()
     router.push(subItem.path)
   }
 
   return (
     <aside
+      id="dashboard-sidebar"
       className={cn(
-        'fixed left-0 top-0 h-screen bg-gray-900 text-white transition-all duration-300 ease-in-out flex flex-col z-40',
-        isCollapsed ? 'w-16' : 'w-64'
+        'fixed inset-y-0 left-0 z-40 flex h-[100dvh] max-w-[85vw] flex-col bg-gray-900 text-white shadow-2xl transition-all duration-300 ease-in-out md:max-w-none md:translate-x-0 md:shadow-none',
+        isCollapsedVisual ? 'w-16' : 'w-64',
+        isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}
+      aria-hidden={isMobileViewport && !isMobileOpen}
+      inert={isMobileViewport && !isMobileOpen}
     >
       {/* Sidebar Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-800 h-16">
+      <div className="flex h-16 items-center justify-between border-b border-gray-800 p-3 sm:p-4">
         <h2 className={cn(
           "text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent transition-all duration-300",
-          isCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
+          isCollapsedVisual ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
         )}>
           MarketBook
         </h2>
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 rounded-lg hover:bg-gray-800 transition-all duration-200 ml-auto"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          onClick={() => {
+            if (isMobileViewport && isMobileOpen) {
+              onClose()
+              return
+            }
+            setIsCollapsed(!isCollapsedVisual)
+          }}
+          className="ml-auto min-h-11 min-w-11 rounded-lg p-2 transition-all duration-200 hover:bg-gray-800 lg:min-h-0 lg:min-w-0"
+          aria-label={isMobileViewport && isMobileOpen ? 'Close sidebar' : isCollapsedVisual ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {isCollapsed ? (
+          {isMobileViewport && isMobileOpen ? (
+            <X size={20} className="transition-transform duration-300" />
+          ) : isCollapsedVisual ? (
             <ChevronRight size={20} className="transition-transform duration-300" />
           ) : (
             <ChevronLeft size={20} className="transition-transform duration-300" />
@@ -142,16 +165,17 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                 <li key={item.label}>
                   <a
                     href="https://wa.me/2349076361669"
+                    onClick={onClose}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 hover:bg-green-700 text-gray-300 hover:text-white',
-                      isCollapsed && 'justify-center px-0'
+                      isCollapsedVisual && 'justify-center px-0'
                     )}
-                    title={isCollapsed ? item.label : ''}
+                    title={isCollapsedVisual ? item.label : ''}
                   >
                     <Icon size={20} className="flex-shrink-0" />
-                    {!isCollapsed && (
+                    {!isCollapsedVisual && (
                       <span className="font-medium text-sm transition-all duration-300 opacity-100">{item.label}</span>
                     )}
                   </a>
@@ -164,7 +188,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                 <li key={item.label}>
                   <button
                     onClick={() => {
-                      if (isCollapsed) {
+                      if (isCollapsedVisual) {
                         setIsCollapsed(false)
                       }
                       setExpensesExpanded(!expensesExpanded)
@@ -174,12 +198,12 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                       hasActiveSubmenu
                         ? 'bg-gray-800 text-white'
                         : 'hover:bg-gray-800 text-gray-300 hover:text-white',
-                      isCollapsed && 'justify-center px-0'
+                      isCollapsedVisual && 'justify-center px-0'
                     )}
-                    title={isCollapsed ? item.label : ''}
+                    title={isCollapsedVisual ? item.label : ''}
                   >
                     <Icon size={20} className="flex-shrink-0" />
-                    {!isCollapsed && (
+                    {!isCollapsedVisual && (
                       <>
                         <span className="font-medium text-sm transition-all duration-300 opacity-100">{item.label}</span>
                         <div className="ml-auto transition-all duration-300">
@@ -193,7 +217,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                     )}
                   </button>
                   {/* Submenu */}
-                  {!isCollapsed && expensesExpanded && (
+                  {!isCollapsedVisual && expensesExpanded && (
                     <ul className="mt-1 ml-3 space-y-1 border-l-2 border-gray-700 pl-3 animate-in fade-in slide-in-from-top-2 duration-300">
                       {item.submenu.map((subItem) => {
                         const SubIcon = subItem.icon
@@ -236,7 +260,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                   <>
                     <button
                       onClick={() => {
-                        if (isCollapsed) {
+                        if (isCollapsedVisual) {
                           setIsCollapsed(false)
                         }
                         if (item.label === 'Products') {
@@ -250,12 +274,12 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                         hasActiveSubmenu
                           ? 'bg-gray-800 text-white'
                           : 'hover:bg-gray-800 text-gray-300 hover:text-white',
-                        isCollapsed && 'justify-center px-0'
+                        isCollapsedVisual && 'justify-center px-0'
                       )}
-                      title={isCollapsed ? item.label : ''}
+                      title={isCollapsedVisual ? item.label : ''}
                     >
                       <Icon size={20} className="flex-shrink-0" />
-                      {!isCollapsed && (
+                      {!isCollapsedVisual && (
                         <>
                           <span className="font-medium text-sm transition-all duration-300 opacity-100">{item.label}</span>
                           <div className="ml-auto transition-all duration-300">
@@ -270,7 +294,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                     </button>
                     
                     {/* Submenu */}
-                    {!isCollapsed && ((item.label === 'Products' && productsExpanded) || (item.label === 'Customers' && customersExpanded)) && (
+                    {!isCollapsedVisual && ((item.label === 'Products' && productsExpanded) || (item.label === 'Customers' && customersExpanded)) && (
                       <ul className="mt-1 ml-3 space-y-1 border-l-2 border-gray-700 pl-3 animate-in fade-in slide-in-from-top-2 duration-300">
                         {item.submenu.map((subItem) => {
                           const SubIcon = subItem.icon
@@ -314,20 +338,20 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
                       isActive
                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
                         : 'hover:bg-gray-800 text-gray-300 hover:text-white',
-                      isCollapsed && 'justify-center px-0',
+                      isCollapsedVisual && 'justify-center px-0',
                       loadingItem === item.path && 'opacity-75 cursor-wait'
                     )}
-                    title={isCollapsed ? item.label : ''}
+                    title={isCollapsedVisual ? item.label : ''}
                   >
                     {loadingItem === item.path ? (
                       <Loader2 size={20} className="flex-shrink-0 animate-spin" />
                     ) : (
                       <Icon size={20} className="flex-shrink-0" />
                     )}
-                    {!isCollapsed && (
+                    {!isCollapsedVisual && (
                       <span className="font-medium text-sm transition-all duration-300 opacity-100">{item.label}</span>
                     )}
-                    {!isCollapsed && isActive && loadingItem !== item.path && (
+                    {!isCollapsedVisual && isActive && loadingItem !== item.path && (
                       <div className="ml-auto w-1 h-6 bg-white rounded-full transition-all duration-300" />
                     )}
                   </button>
@@ -341,7 +365,7 @@ const Sidebar = ({ slug, isCollapsed, setIsCollapsed }) => {
       {/* Footer */}
       <div className={cn(
         "p-4 border-t border-gray-800 transition-all duration-300",
-        isCollapsed ? "opacity-0 h-0 p-0 overflow-hidden" : "opacity-100"
+        isCollapsedVisual ? "opacity-0 h-0 p-0 overflow-hidden" : "opacity-100"
       )}>
         <div className="text-xs text-gray-400 text-center">
           © 2025 MarketBook Dashboard
