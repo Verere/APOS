@@ -157,7 +157,7 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
           return (
             <Card 
               key={index} 
-              className="hover:shadow-2xl transition-all duration-300 border-0 hover:scale-105 bg-gradient-to-br from-white to-gray-50 shadow-lg overflow-hidden"
+              className="hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-700 hover:scale-105 bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 shadow-lg overflow-hidden"
             >
               <CardContent className="p-4 sm:p-5 lg:p-6">
                 <div className="flex flex-col space-y-3">
@@ -183,18 +183,18 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
 
                   {/* Title */}
                   <div>
-                    <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
+                    <p className="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       {kpi.title}
                     </p>
                   </div>
 
                   {/* Value */}
                   <div>
-                    <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 break-words">
+                    <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-white break-words">
                       {kpi.value}
                     </h3>
                     {kpi.subtitle && (
-                      <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-300 mt-1 font-medium">
                         {kpi.subtitle}
                       </p>
                     )}
@@ -212,7 +212,7 @@ const DashboardContent = ({ stats, recentOrders, salesData, selectedMonth, selec
                       >
                         {kpi.change}
                       </span>
-                      <span className="text-xs text-gray-500 font-medium">
+                      <span className="text-xs text-gray-500 dark:text-gray-300 font-medium">
                         vs last month
                       </span>
                     </div>
